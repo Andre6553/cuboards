@@ -1,0 +1,49 @@
+{
+  "scrapedAt": "2026-06-14",
+  "screws": [
+    {
+      "id": "gelmar-4386",
+      "sku": "4386",
+      "title": "Chipboard Screws, Pozi, No.8, 4mm x 16mm, 800 Pieces",
+      "category": "chipboard",
+      "diameterMm": 4,
+      "lengthMm": 16,
+      "packSize": 800,
+      "priceZar": 73,
+      "url": "https://www.gelmar.co.za/chipboard-screws-pozi-no-8-4mm-x-16mm-800-pieces.html"
+    },
+    {
+      "id": "gelmar-1049",
+      "sku": "1049",
+      "title": "Drywall Screws, Phillips, 3.5mm x 28mm, 1000 Pieces",
+      "category": "drywall",
+      "diameterMm": 3.5,
+      "lengthMm": 28,
+      "packSize": 1000,
+      "priceZar": 110,
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-28mm-1000-pieces.html"
+    },
+    {
+      "id": "gelmar-4360",
+      "sku": "4360",
+      "title": "Drywall Screws, Phillips, 3.5mm x 32mm, 150 Pieces",
+      "category": "drywall",
+      "diameterMm": 3.5,
+      "lengthMm": 32,
+      "packSize": 150,
+      "priceZar": 26,
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-32mm-150-pieces.html"
+    },
+    {
+      "id": "gelmar-1037",
+      "sku": "1037",
+      "title": "Drywall Screws, Phillips, 6mm x 32mm, 1000 Pieces",
+      "category": "drywall",
+      "diameterMm": 6,
+      "lengthMm": 32,
+      "packSize": 1000,
+      "priceZar": 119,
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-6mm-x-32mm-1000-pieces.html"
+    }
+  ]
+}
