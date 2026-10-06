@@ -8,7 +8,7 @@ carcasses, doors, drawers, edging, hardware, cost estimates, and exports a PDF c
 Strong candidate to sell as a tool/subscription to installers.
 
 ## Stack & key paths
-- **GitHub:** https://github.com/Andre6553/cuboards (private)
+- **GitHub:** https://github.com/Andre6553/cuboards (public)
 - **Vite + TypeScript** web app. Source in `src/`, built site in `dist/`.
 - `Start Cuboards.bat` launches it; dev: `npm install` then `npm run dev`
   (http://localhost:5173). See `README.md`.
