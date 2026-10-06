@@ -20,6 +20,7 @@ import type { Client, DoorConfig, DoorGaps, DrawerConfig, EdgingMaterial, Job, M
 import { DEFAULT_DOOR_GAPS } from './doorRules';
 import { DEFAULT_DRAWER_GAPS, DEFAULT_FRONT_OVERHANG_MM, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
 import { syncFrontLayoutToUnit } from './frontLayout';
+import { loadPriceList } from './priceList';
 
 const STORAGE_KEY = 'cuboards_jobs';
 
@@ -90,7 +91,7 @@ const emptyClient = (): Client => ({
 
 export function createNewJob(): Job {
   const now = new Date().toISOString();
-  return {
+  const job: Job = {
     id: crypto.randomUUID(),
     createdAt: now,
     updatedAt: now,
@@ -106,6 +107,23 @@ export function createNewJob(): Job {
     connectingFittingPrices: { ...DEFAULT_CONNECTING_FITTING_PRICES },
     installRates: { ...DEFAULT_INSTALL_RATES },
     units: [],
+  };
+  const list = loadPriceList();
+  if (!list) return job;
+  const { savedAt: _savedAt, ...defaults } = structuredClone(list);
+  return migrateJob({ ...job, ...defaults });
+}
+
+export function duplicateJob(source: Job): Job {
+  const now = new Date().toISOString();
+  const copy = structuredClone(source);
+  return {
+    ...copy,
+    id: crypto.randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+    client: { ...copy.client, name: `${copy.client.name || 'Untitled job'} (copy)` },
+    units: copy.units.map((u) => ({ ...u, id: crypto.randomUUID() })),
   };
 }
 
@@ -213,20 +231,33 @@ export function deleteJob(jobs: Job[], id: string): Job[] {
   return jobs.filter((j) => j.id !== id);
 }
 
-export function exportJobJson(job: Job): void {
-  const blob = new Blob([JSON.stringify(job, null, 2)], { type: 'application/json' });
+function downloadJson(data: unknown, filename: string): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `cuboards-${job.client.ref || job.client.name || job.id}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-export function importJobJson(file: File): Promise<Job> {
+export function exportJobJson(job: Job): void {
+  downloadJson(job, `cuboards-${job.client.ref || job.client.name || job.id}.json`);
+}
+
+export function exportAllJobsJson(jobs: Job[]): void {
+  downloadJson(jobs, `cuboards-backup-${new Date().toISOString().slice(0, 10)}.json`);
+}
+
+/** Accepts a single exported job or a full backup (array of jobs). */
+export function importJobsJson(file: File): Promise<Job[]> {
   return file.text().then((text) => {
-    const job = migrateJob(JSON.parse(text) as Job);
-    if (!job.id || !job.settings) throw new Error('Invalid job file');
-    return { ...job, id: crypto.randomUUID(), updatedAt: new Date().toISOString() };
+    const parsed = JSON.parse(text) as Job | Job[];
+    const list = Array.isArray(parsed) ? parsed : [parsed];
+    return list.map((raw) => {
+      const job = migrateJob(raw);
+      if (!job.id || !job.settings) throw new Error('Invalid job file');
+      return { ...job, id: crypto.randomUUID(), updatedAt: new Date().toISOString() };
+    });
   });
 }

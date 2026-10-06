@@ -4,13 +4,14 @@ import { CollapsibleSection } from './CollapsibleSection';
 interface Props {
   client: Client;
   onChange: (client: Client) => void;
+  defaultOpen?: boolean;
 }
 
-export function ClientForm({ client, onChange }: Props) {
+export function ClientForm({ client, onChange, defaultOpen }: Props) {
   const set = (field: keyof Client, value: string) => onChange({ ...client, [field]: value });
 
   return (
-    <CollapsibleSection title="Client details">
+    <CollapsibleSection title="Client details" defaultOpen={defaultOpen}>
       <div className="form-grid">
         <label>
           Client name
