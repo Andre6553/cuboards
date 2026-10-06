@@ -5,6 +5,11 @@ export const CUT_SIZE_MODE_LABELS: Record<CutSizeMode, string> = {
   net: 'Net cut sizes (deduct edging thickness from cut list)',
 };
 
+export const CUT_SIZE_MODE_CUTLIST_HINT: Record<CutSizeMode, string> = {
+  final: 'Edging needs to be subtracted from these final sizes.',
+  net: 'Edging thickness is already subtracted on edged sides.',
+};
+
 export function getBoardEdgingThickness(job: Job, boardMaterialId: string): number {
   const boardMat = job.materials.find((m) => m.id === boardMaterialId);
   const edgingMat = job.edgingMaterials.find((e) => e.id === boardMat?.edgingMaterialId);

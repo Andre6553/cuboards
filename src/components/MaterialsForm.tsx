@@ -456,7 +456,7 @@ export function MaterialsForm({
 
         <p className="hint">
 
-          Board thickness applies to all carcass parts. Sheet size {settings.sheetWidth} × {settings.sheetHeight} mm is used for costing — estimated usage is rounded up in ¼-sheet steps (default sheet 2750 × 1830).
+          Board thickness applies to all carcass parts. Sheet size {settings.sheetWidth} × {settings.sheetHeight} mm is used for costing — estimated usage is rounded up in ¼-sheet steps (default sheet 2750 × 1830). For boards with <strong>Grain</strong> ticked, sheets are counted from a layout: grain runs along the sheet's long side, and sides, doors and drawer fronts are never rotated (grain top to bottom).
 
         </p>
 

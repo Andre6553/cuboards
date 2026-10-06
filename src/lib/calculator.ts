@@ -24,6 +24,7 @@ import {
 import { resolveFrontLayout } from './frontLayout';
 import { coverageLabel, kickplateRunLengthMm, woodKickplatePieces } from './kickplateRules';
 import { estimateSheetsFromArea, formatSheetCount } from './sheetCost';
+import { layoutSheets, SAW_KERF_MM } from './sheetLayout';
 import { calcJobScrews, screwLineDetail } from './screwRules';
 import { calcJobConnectingFittings, connectingFittingLineDetail } from './connectingFittingRules';
 import { getConnectingFittingById } from './connectingFittingCatalog';
@@ -689,7 +690,7 @@ function consolidatePieces(
     const pattern = p.edgingPattern ?? 'none';
     const edgingMaterialId = p.edgingMaterialId ?? resolveEdgingMaterialId(job, p.materialId);
     const edgingKey = edgingGroupKey(job, pattern, edgingMaterialId);
-    const key = `${p.materialId}|${p.width}|${p.length}|${edgingKey}`;
+    const key = `${p.materialId}|${p.width}|${p.length}|${p.grain}|${edgingKey}`;
     const edgingLabel = formatEdgingLabel(job, pattern, edgingMaterialId);
     const groupKey = `${p.materialName}|${edgingKey}`;
     const existing = map.get(key);
@@ -700,8 +701,10 @@ function consolidatePieces(
         materialName: p.materialName,
         width: p.width,
         length: p.length,
+        grain: p.grain,
         totalQty: p.qty,
         edgingLabel,
+        patternLabel: EDGING_LABELS[pattern] ?? pattern,
         groupKey,
       });
     }
@@ -712,31 +715,6 @@ function consolidatePieces(
       b.length - a.length ||
       b.width - a.width,
   );
-}
-
-function mergeConsolidatedLists(...lists: ConsolidatedPiece[][]): ConsolidatedPiece[] {
-  const map = new Map<string, ConsolidatedPiece>();
-  for (const list of lists) {
-    for (const piece of list) {
-      const key = `${piece.groupKey}|${piece.width}|${piece.length}`;
-      const existing = map.get(key);
-      if (existing) {
-        existing.totalQty += piece.totalQty;
-      } else {
-        map.set(key, { ...piece });
-      }
-    }
-  }
-  return Array.from(map.values()).sort(
-    (a, b) =>
-      a.groupKey.localeCompare(b.groupKey) ||
-      b.length - a.length ||
-      b.width - a.width,
-  );
-}
-
-function isNoEdgingPiece(piece: ConsolidatedPiece): boolean {
-  return piece.groupKey.endsWith('|none');
 }
 
 function edgingTapeKeyFromGroupKey(groupKey: string): string {
@@ -750,70 +728,39 @@ function edgingTapeKeyFromGroupKey(groupKey: string): string {
   return `${name}|${thickness}`;
 }
 
-function buildCarcassEdgingByMaterial(carcassConsolidated: ConsolidatedPiece[]): Map<string, Set<string>> {
-  const map = new Map<string, Set<string>>();
-  for (const piece of carcassConsolidated) {
-    const set = map.get(piece.materialName) ?? new Set();
-    set.add(edgingTapeKeyFromGroupKey(piece.groupKey));
-    map.set(piece.materialName, set);
-  }
-  return map;
-}
-
-/** Carcass tables: one table per board material; no-edging rows at the bottom. */
-function groupCarcassCutList(consolidated: ConsolidatedPiece[]): CutListGroup[] {
-  const map = new Map<string, ConsolidatedPiece[]>();
-  for (const piece of consolidated) {
-    const list = map.get(piece.materialName) ?? [];
-    list.push(piece);
-    map.set(piece.materialName, list);
-  }
-
-  return Array.from(map.entries())
-    .map(([materialName, items]) => {
-      const sorted = [...items].sort((a, b) => {
-        const aNo = isNoEdgingPiece(a);
-        const bNo = isNoEdgingPiece(b);
-        if (aNo !== bNo) return aNo ? 1 : -1;
-        const edgeCmp = a.edgingLabel.localeCompare(b.edgingLabel);
-        if (edgeCmp !== 0) return edgeCmp;
-        return b.length - a.length || b.width - a.width;
-      });
-      const headed = sorted.find((p) => !isNoEdgingPiece(p)) ?? sorted[0];
-      const heading = isNoEdgingPiece(headed)
-        ? materialName
-        : `${materialName} — ${headed.edgingLabel}`;
-      return { heading, items: sorted };
-    })
-    .sort((a, b) => a.heading.localeCompare(b.heading));
+function tapeHeading(tapeKey: string): string {
+  if (tapeKey === 'none') return 'No edging';
+  const pipe = tapeKey.lastIndexOf('|');
+  return `${tapeKey.slice(0, pipe)} (${tapeKey.slice(pipe + 1)} mm)`;
 }
 
 /**
- * Move doors/drawer parts into the carcass list when they use the same board as the carcass
- * and the same edging tape (e.g. Congo PVC 1 mm), including 1 long, 1 long + 2 short, and no edging.
+ * One table per board material + edging tape (name and thickness), covering carcass,
+ * doors and drawer parts. The Edging column then only needs the pattern.
  */
-function splitFacadeForCarcassMerge(
-  facadeConsolidated: ConsolidatedPiece[],
-  carcassEdgingByMaterial: Map<string, Set<string>>,
-  carcassMaterialNames: Set<string>,
-): { intoCarcass: ConsolidatedPiece[]; facadeRemainder: ConsolidatedPiece[] } {
-  const intoCarcass: ConsolidatedPiece[] = [];
-  const facadeRemainder: ConsolidatedPiece[] = [];
-  for (const piece of facadeConsolidated) {
-    const mat = piece.materialName;
-    const tape = edgingTapeKeyFromGroupKey(piece.groupKey);
-    const carcassTapes = carcassEdgingByMaterial.get(mat);
-    const sameBoard = carcassMaterialNames.has(mat);
-    const sameEdgingTape = carcassTapes?.has(tape) ?? false;
-    const solidOnCarcassBoard = tape === 'none' && sameBoard;
-
-    if (sameBoard && (sameEdgingTape || solidOnCarcassBoard)) {
-      intoCarcass.push(piece);
-    } else {
-      facadeRemainder.push(piece);
-    }
+function groupBoardCutList(consolidated: ConsolidatedPiece[]): CutListGroup[] {
+  const map = new Map<string, { materialName: string; tapeKey: string; items: ConsolidatedPiece[] }>();
+  for (const piece of consolidated) {
+    const tapeKey = edgingTapeKeyFromGroupKey(piece.groupKey);
+    const key = `${piece.materialName}|${tapeKey}`;
+    const entry = map.get(key) ?? { materialName: piece.materialName, tapeKey, items: [] };
+    entry.items.push({ ...piece, edgingLabel: piece.patternLabel });
+    map.set(key, entry);
   }
-  return { intoCarcass, facadeRemainder };
+
+  return Array.from(map.values())
+    .sort((a, b) => {
+      const matCmp = a.materialName.localeCompare(b.materialName);
+      if (matCmp !== 0) return matCmp;
+      if ((a.tapeKey === 'none') !== (b.tapeKey === 'none')) return a.tapeKey === 'none' ? 1 : -1;
+      return a.tapeKey.localeCompare(b.tapeKey, undefined, { numeric: true });
+    })
+    .map(({ materialName, tapeKey, items }) => ({
+      heading: `${materialName} — ${tapeHeading(tapeKey)}`,
+      items: items.sort(
+        (a, b) => a.edgingLabel.localeCompare(b.edgingLabel) || b.length - a.length || b.width - a.width,
+      ),
+    }));
 }
 
 function groupConsolidatedPieces(
@@ -873,25 +820,58 @@ function calcCosts(
   hardware: HardwareItem[],
   plasticKickplateTotalMetres: number,
   screws: ScrewLine[],
+  sheetWarnings: string[],
 ): CostLine[] {
   const costs: CostLine[] = [];
-  const sheetArea = job.settings.sheetWidth * job.settings.sheetHeight;
+  const { sheetWidth, sheetHeight } = job.settings;
+  const sheetArea = sheetWidth * sheetHeight;
   const byMaterial = new Map<string, number>();
+  const piecesByMaterial = new Map<string, CutPiece[]>();
 
   for (const piece of pieces) {
     if (piece.materialId === MASONITE_ID) continue;
     const area = piece.width * piece.length * piece.qty;
     byMaterial.set(piece.materialId, (byMaterial.get(piece.materialId) ?? 0) + area);
+    const list = piecesByMaterial.get(piece.materialId) ?? [];
+    list.push(piece);
+    piecesByMaterial.set(piece.materialId, list);
   }
 
   for (const m of job.materials) {
     const totalAreaMm2 = byMaterial.get(m.id);
     if (!totalAreaMm2) continue;
-    const sheetsNeeded = estimateSheetsFromArea(totalAreaMm2, sheetArea);
+    let sheetsNeeded = estimateSheetsFromArea(totalAreaMm2, sheetArea);
+    let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} (¼-sheet increments)`;
+
+    if (m.hasGrain) {
+      const layout = layoutSheets(
+        (piecesByMaterial.get(m.id) ?? []).map((p) => ({
+          length: p.length,
+          width: p.width,
+          qty: p.qty,
+          grainLocked: p.grain !== 'none',
+          label: `${p.partName} (${p.unitName}) ${p.length} × ${p.width}`,
+        })),
+        sheetWidth,
+        sheetHeight,
+      );
+      const unplacedArea = layout.unplaced.reduce((s, p) => s + p.length * p.width * p.qty, 0);
+      sheetsNeeded = Math.max(
+        sheetsNeeded,
+        layout.sheetsToOrder + estimateSheetsFromArea(unplacedArea, sheetArea),
+      );
+      detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · grain layout (sides, doors & drawer fronts grain top to bottom, ${SAW_KERF_MM} mm saw cut)`;
+      for (const p of layout.unplaced) {
+        sheetWarnings.push(
+          `${m.name}: ${p.label} is longer than the ${Math.max(sheetWidth, sheetHeight)} mm sheet grain — it can't be cut with grain top to bottom.`,
+        );
+      }
+    }
+
     costs.push({
       category: 'board',
       name: m.name,
-      detail: `${formatSheetCount(sheetsNeeded)} @ ${job.settings.sheetWidth}×${job.settings.sheetHeight} (¼-sheet increments)`,
+      detail,
       quantity: sheetsNeeded,
       unitPrice: m.pricePerSheet,
       subtotal: sheetsNeeded * m.pricePerSheet,
@@ -1000,27 +980,15 @@ export function generateCutList(job: Job): CutListResult {
   const boardPieces = pieces.filter((p) => p.materialId !== MASONITE_ID);
   const masonitePieces = pieces.filter((p) => p.materialId === MASONITE_ID);
 
-  const carcassConsolidated = consolidatePieces(job, boardPieces, 'carcass');
-  const facadeConsolidated = consolidatePieces(job, boardPieces, ['door', 'drawer']);
+  const consolidated = consolidatePieces(job, boardPieces);
   const masoniteConsolidated = consolidatePieces(job, masonitePieces);
-  const carcassMaterialNames = new Set(
-    pieces.filter((p) => p.category === 'carcass').map((p) => p.materialName),
-  );
-  const carcassEdgingByMaterial = buildCarcassEdgingByMaterial(carcassConsolidated);
-  const { intoCarcass, facadeRemainder } = splitFacadeForCarcassMerge(
-    facadeConsolidated,
-    carcassEdgingByMaterial,
-    carcassMaterialNames,
-  );
-  const mergedCarcassConsolidated = mergeConsolidatedLists(carcassConsolidated, intoCarcass);
-  const consolidated = carcassConsolidated;
-  const carcassGroups = groupCarcassCutList(mergedCarcassConsolidated);
-  const facadeGroups = groupConsolidatedPieces(facadeRemainder);
+  const boardGroups = groupBoardCutList(consolidated);
   const masoniteGroups = groupConsolidatedPieces(masoniteConsolidated, { includeEdgingInHeading: false });
   const consolidatedEdging = consolidateEdging(edging, job.edgingMaterials);
   const plasticKickplateTotalMetres = plasticKickplates.reduce((s, p) => s + p.totalMetres, 0);
   const screws = [...calcJobScrews(job), ...calcJobConnectingFittings(job)];
-  const materialCosts = calcCosts(job, pieces, edging, hardware, plasticKickplateTotalMetres, screws);
+  const sheetWarnings: string[] = [];
+  const materialCosts = calcCosts(job, pieces, edging, hardware, plasticKickplateTotalMetres, screws, sheetWarnings);
   const install = calcJobInstall(job);
   const materialsTotal = materialCosts.reduce((sum, c) => sum + c.subtotal, 0);
   const installationTotal = install?.installationTotal ?? 0;
@@ -1030,8 +998,7 @@ export function generateCutList(job: Job): CutListResult {
   return {
     pieces,
     consolidated,
-    carcassGroups,
-    facadeGroups,
+    boardGroups,
     masoniteGroups,
     edging,
     consolidatedEdging,
@@ -1040,6 +1007,7 @@ export function generateCutList(job: Job): CutListResult {
     plasticKickplates,
     plasticKickplateTotalMetres,
     costs: materialCosts,
+    sheetWarnings,
     install,
     materialsTotal,
     installationTotal,

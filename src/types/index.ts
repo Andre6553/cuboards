@@ -360,14 +360,18 @@ export interface ConsolidatedPiece {
   materialName: string;
   width: number;
   length: number;
+  /** Grain runs along `length` when not 'none'. */
+  grain: CutPiece['grain'];
   totalQty: number;
   edgingLabel: string;
+  /** Edging pattern only, e.g. "2 long 2 short" */
+  patternLabel: string;
   /** Board + edging pattern + tape spec — used to merge cut list tables */
   groupKey: string;
 }
 
 export interface CutListGroup {
-  /** e.g. "White 18mm — 2 long 2 short · PVC white (1 mm)" */
+  /** e.g. "White 18mm — PVC white (1 mm)" */
   heading: string;
   items: ConsolidatedPiece[];
 }
@@ -383,11 +387,9 @@ export interface ConsolidatedEdging {
 
 export interface CutListResult {
   pieces: CutPiece[];
-  /** @deprecated use carcassGroups — kept for compatibility */
   consolidated: ConsolidatedPiece[];
-  carcassGroups: CutListGroup[];
-  /** Doors + drawer melamine — grouped by material and edging */
-  facadeGroups: CutListGroup[];
+  /** Carcass, doors and drawer parts — one group per board material + edging tape */
+  boardGroups: CutListGroup[];
   masoniteGroups: CutListGroup[];
   edging: EdgingLine[];
   consolidatedEdging: ConsolidatedEdging[];
@@ -396,6 +398,8 @@ export interface CutListResult {
   plasticKickplates: PlasticKickplateLine[];
   plasticKickplateTotalMetres: number;
   costs: CostLine[];
+  /** Grain-locked parts that don't fit the sheet in the required direction. */
+  sheetWarnings: string[];
   install: InstallEstimate | null;
   materialsTotal: number;
   installationTotal: number;

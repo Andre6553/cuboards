@@ -1,7 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CUT_SIZE_MODE_LABELS } from './constants';
+import { CUT_SIZE_MODE_CUTLIST_HINT } from './edgingCutSize';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
+import { grainLabel } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
 function renderGroupedSection(
@@ -34,14 +36,20 @@ function renderGroupedSection(
     y += 3;
     doc.setTextColor(0);
 
+    const showGrain = group.items.some((p) => p.grain !== 'none');
+    const head = ['Length×Height (mm)', 'Qty'];
+    if (showGrain) head.push('Grain');
+    if (showEdging) head.push('Edging');
+
     autoTable(doc, {
       startY: y,
-      head: showEdging
-        ? [['Length×Height (mm)', 'Qty', 'Edging']]
-        : [['Length×Height (mm)', 'Qty']],
-      body: showEdging
-        ? group.items.map((p) => [`${p.length} × ${p.width}`, p.totalQty.toString(), p.edgingLabel])
-        : group.items.map((p) => [`${p.length} × ${p.width}`, p.totalQty.toString()]),
+      head: [head],
+      body: group.items.map((p) => {
+        const row = [`${p.length} × ${p.width}`, p.totalQty.toString()];
+        if (showGrain) row.push(grainLabel(p.grain));
+        if (showEdging) row.push(p.edgingLabel);
+        return row;
+      }),
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
       margin: { left: margin, right: margin },
@@ -54,13 +62,53 @@ function renderGroupedSection(
   return y + 2;
 }
 
-export function exportCutListPdf(job: Job, result: CutListResult): void {
+const SIZE_MODE_NOTE_RED: [number, number, number] = [185, 28, 28];
+
+function drawSizeModeNote(doc: jsPDF, margin: number, y: number, job: Job, prominent: boolean): number {
+  const sizeMode = job.settings.cutSizeMode ?? 'final';
+  const note = `Note: Size mode: ${CUT_SIZE_MODE_LABELS[sizeMode]} — ${CUT_SIZE_MODE_CUTLIST_HINT[sizeMode]}`;
+  const fontSize = prominent ? 14 : 11;
+  const gapAfter = prominent ? 6 : 4;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const boxWidth = pageWidth - margin * 2;
+  const padX = prominent ? 6 : 0;
+  const padY = prominent ? 5 : 0;
+  const textMaxWidth = boxWidth - padX * 2;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(fontSize);
+  const textDims = doc.getTextDimensions(note, { maxWidth: textMaxWidth, fontSize });
+  const textOpts = { maxWidth: textMaxWidth, baseline: 'top' as const };
+
+  if (prominent) {
+    const boxH = padY * 2 + textDims.h + 1;
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(248, 113, 113);
+    doc.roundedRect(margin, y, boxWidth, boxH, 2, 2, 'FD');
+    doc.setTextColor(...SIZE_MODE_NOTE_RED);
+    doc.text(note, margin + padX, y + padY, textOpts);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0);
+    return y + boxH + gapAfter;
+  }
+
+  doc.setTextColor(...SIZE_MODE_NOTE_RED);
+  doc.text(note, margin, y, textOpts);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0);
+  return y + textDims.h + gapAfter;
+}
+
+export type CutListPdfMode = 'factory' | 'full';
+
+export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListPdfMode = 'full'): void {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const margin = 14;
   let y = margin;
+  const factory = mode === 'factory';
 
   doc.setFontSize(18);
-  doc.text('Cuboards — Cut List', margin, y);
+  doc.text(factory ? 'Cuboards — Factory cut list' : 'Cuboards — Full cut list', margin, y);
   y += 8;
 
   doc.setFontSize(10);
@@ -74,12 +122,13 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
   doc.text(`Address: ${job.client.address || '—'}`, margin, y);
   y += 5;
   doc.text(
-    `Board: ${job.settings.thickness}mm  |  Sheet: ${job.settings.sheetWidth}×${job.settings.sheetHeight}mm  |  Cut sizes: ${CUT_SIZE_MODE_LABELS[job.settings.cutSizeMode ?? 'final']}  |  Generated: ${new Date().toLocaleString()}`,
+    `Board: ${job.settings.thickness}mm  |  Sheet: ${job.settings.sheetWidth}×${job.settings.sheetHeight}mm  |  Generated: ${new Date().toLocaleString()}`,
     margin,
     y,
   );
-  y += 8;
+  y += 6;
   doc.setTextColor(0);
+  y = drawSizeModeNote(doc, margin, y, job, factory);
 
   if (jobNeedsPostformTopQuote(job)) {
     doc.setFontSize(9);
@@ -90,8 +139,28 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
     doc.setTextColor(0);
   }
 
-  y = renderGroupedSection(doc, y, margin, 'Carcass cut list', result.carcassGroups);
-  y = renderGroupedSection(doc, y, margin, 'Doors & drawers cut list', result.facadeGroups);
+  if (result.pieces.some((p) => p.grain !== 'none')) {
+    doc.setFontSize(9);
+    doc.setTextColor(60);
+    const grainLines = doc.splitTextToSize(
+      'Grain: parts marked "Top to bottom" (sides, doors, drawer fronts) have the grain along the first size (Length). Do not rotate these on the sheet.',
+      270,
+    );
+    doc.text(grainLines, margin, y);
+    y += grainLines.length * 4 + 3;
+    doc.setTextColor(0);
+  }
+
+  for (const warning of result.sheetWarnings) {
+    doc.setFontSize(9);
+    doc.setTextColor(...SIZE_MODE_NOTE_RED);
+    const warnLines = doc.splitTextToSize(warning, 270);
+    doc.text(warnLines, margin, y);
+    y += warnLines.length * 4 + 2;
+    doc.setTextColor(0);
+  }
+
+  y = renderGroupedSection(doc, y, margin, 'Board cut list', result.boardGroups);
   y = renderGroupedSection(doc, y, margin, 'Masonite cut list', result.masoniteGroups, false);
 
   if (result.consolidatedEdging.length > 0) {
@@ -104,17 +173,19 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
 
     autoTable(doc, {
       startY: y,
-      head: [['Edging', 'Thick', 'Total (m)', 'R/m', 'Cost']],
-      body: [
-        ...result.consolidatedEdging.map((e) => [
-          e.edgingMaterialName,
-          `${e.thickness} mm`,
-          e.totalLm.toFixed(2),
-          `R ${e.pricePerMetre.toFixed(2)}`,
-          `R ${e.subtotal.toFixed(2)}`,
-        ]),
-        ['Edging total', '', edgingTotalLm.toFixed(2), '', `R ${edgingTotalCost.toFixed(2)}`],
-      ],
+      head: factory ? [['Edging type', 'Thick']] : [['Edging', 'Thick', 'Total (m)', 'R/m', 'Cost']],
+      body: factory
+        ? result.consolidatedEdging.map((e) => [e.edgingMaterialName, `${e.thickness} mm`])
+        : [
+            ...result.consolidatedEdging.map((e) => [
+              e.edgingMaterialName,
+              `${e.thickness} mm`,
+              e.totalLm.toFixed(2),
+              `R ${e.pricePerMetre.toFixed(2)}`,
+              `R ${e.subtotal.toFixed(2)}`,
+            ]),
+            ['Edging total', '', edgingTotalLm.toFixed(2), '', `R ${edgingTotalCost.toFixed(2)}`],
+          ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
       margin: { left: margin, right: margin },
@@ -124,7 +195,7 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
     y = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  if (result.plasticKickplates.length > 0) {
+  if (!factory && result.plasticKickplates.length > 0) {
     if (y > 150) { doc.addPage(); y = margin; }
     doc.setFontSize(12);
     doc.text('Plastic kickplate', margin, y);
@@ -132,20 +203,34 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
 
     autoTable(doc, {
       startY: y,
-      head: [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)', 'R/m', 'Subtotal']],
-      body: [
-        ...result.plasticKickplates.map((p) => [
-          p.unitName,
-          p.coverageLabel,
-          p.lengthMm.toString(),
-          `${p.stripHeight}×${p.stripWidth}`,
-          p.cupboardQty.toString(),
-          p.totalMetres.toFixed(2),
-          `R ${p.pricePerMetre.toFixed(2)}`,
-          `R ${p.subtotal.toFixed(2)}`,
-        ]),
-        ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), '', `R ${(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre).toFixed(2)}`],
-      ],
+      head: factory
+        ? [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)']]
+        : [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)', 'R/m', 'Subtotal']],
+      body: factory
+        ? [
+            ...result.plasticKickplates.map((p) => [
+              p.unitName,
+              p.coverageLabel,
+              p.lengthMm.toString(),
+              `${p.stripHeight}×${p.stripWidth}`,
+              p.cupboardQty.toString(),
+              p.totalMetres.toFixed(2),
+            ]),
+            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2)],
+          ]
+        : [
+            ...result.plasticKickplates.map((p) => [
+              p.unitName,
+              p.coverageLabel,
+              p.lengthMm.toString(),
+              `${p.stripHeight}×${p.stripWidth}`,
+              p.cupboardQty.toString(),
+              p.totalMetres.toFixed(2),
+              `R ${p.pricePerMetre.toFixed(2)}`,
+              `R ${p.subtotal.toFixed(2)}`,
+            ]),
+            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), '', `R ${(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre).toFixed(2)}`],
+          ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
       margin: { left: margin, right: margin },
@@ -155,7 +240,7 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
     y = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  if (result.hardware.length > 0) {
+  if (!factory && result.hardware.length > 0) {
     if (y > 150) { doc.addPage(); y = margin; }
     doc.setFontSize(12);
     doc.text('Hardware', margin, y);
@@ -181,6 +266,7 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
     y = (doc as any).lastAutoTable.finalY + 8;
   }
 
+  if (!factory) {
   if (y > 160) { doc.addPage(); y = margin; }
 
   doc.setFontSize(12);
@@ -213,7 +299,10 @@ export function exportCutListPdf(job: Job, result: CutListResult): void {
     headStyles: { fillColor: [45, 55, 72] },
     margin: { left: margin, right: margin },
   });
+  }
 
-  const filename = `cutlist-${job.client.ref || job.client.name || 'job'}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const slug = job.client.ref || job.client.name || 'job';
+  const prefix = factory ? 'factory-cutlist' : 'full-cutlist';
+  const filename = `${prefix}-${slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 }

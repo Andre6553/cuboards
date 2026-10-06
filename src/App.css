@@ -675,12 +675,32 @@
 .cutlist-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 0.5rem;
 }
 
 .cutlist-header h2 {
   margin: 0;
+}
+
+.cutlist-header .hint {
+  margin: 0.25rem 0 0;
+}
+
+.cutlist-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cutlist-size-mode-alert {
+  margin: 0 0 1rem;
+  font-weight: 700;
+  color: #b91c1c;
+  font-size: 0.85rem;
 }
 
 .cutlist-group {
