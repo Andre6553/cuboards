@@ -1,0 +1,9 @@
+{
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "functions": {
+    "api/gelmar-runners.js": { "maxDuration": 60 },
+    "api/gelmar-hinges.js": { "maxDuration": 60 },
+    "api/gelmar-screws.js": { "maxDuration": 60 },
+    "api/gelmar-connecting-fittings.js": { "maxDuration": 60 }
+  }
+}

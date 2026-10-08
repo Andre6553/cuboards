@@ -67,7 +67,7 @@ export function gelmarRefreshNote(changes: GelmarPriceChange[], checkedCount: nu
 export function gelmarRefreshFetchErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (msg.includes('Failed to fetch')) {
-    return 'Could not reach the local Cuboards server to scrape Gelmar. Keep the app running on http://localhost:5199.';
+    return 'Could not reach the Gelmar refresh API. On your PC use npm run dev (port 5199); on the live site wait for deploy or check Vercel function logs.';
   }
   return msg;
 }
