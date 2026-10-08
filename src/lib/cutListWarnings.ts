@@ -19,7 +19,7 @@ function bottomLabel(bottomType: 'solid' | 'masonite' | undefined): string {
   return bottomType === 'solid' ? 'solid melamine drawer bottoms' : 'masonite drawer bottoms';
 }
 
-/** Warn when drawer rows exist but none are on the cut list (qty per cupboard = 0). */
+/** Warn only when drawer rows exist but qty is 0 — nothing on the cut list. */
 export function getDrawerCutListWarnings(job: Job): string[] {
   const warnings: string[] = [];
 
@@ -37,13 +37,6 @@ export function getDrawerCutListWarnings(job: Job): string[] {
 
       warnings.push(
         `${unit.name}: drawer row(s) are configured but Qty per cupboard is 0 — no drawer parts, runners, or ${bottomHint} will appear on the cut list. Open the unit → Drawers → set Qty per cupboard to 1 or more (or click "+ Add drawers" if none exist).`,
-      );
-      continue;
-    }
-
-    if (active.length === 1 && active[0].qty > 1) {
-      warnings.push(
-        `${unit.name}: Qty ${active[0].qty} on one drawer row cuts ${active[0].qty} matching boxes/fronts, it does not stack ${active[0].qty} different heights. For a drawer tower, click "+ Add drawers" for each row (qty 1 each).`,
       );
     }
   }

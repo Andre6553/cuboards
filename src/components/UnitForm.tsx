@@ -701,7 +701,7 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
       <CollapsibleSection title="Drawers" variant="nested">
       <p className="hint">
         Drawers stack <strong>vertically</strong> on the front — one full-width front per row. Use <strong>+ Add drawers</strong> for another row.
-        <strong> Qty per cupboard</strong> = how many of that row on each unit (not side by side).
+        <strong> Qty per cupboard</strong> = how many matching drawers on that row (e.g. 4 = four same height). Different heights = separate rows with qty 1 each.
       </p>
       <p className="hint">
         Cut list mode: <strong>{CUT_SIZE_MODE_LABELS[settings.cutSizeMode ?? 'final']}</strong>

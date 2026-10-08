@@ -244,7 +244,11 @@ export function MaterialsForm({
       onPricesChange: onConnectingFittingPricesChange,
     });
 
-  const updateMaterial = (id: string, field: keyof Material, value: string | number | boolean) => {
+  const updateMaterial = (
+    id: string,
+    field: keyof Material,
+    value: string | number | boolean | Material['sheetPurchaseUnit'],
+  ) => {
 
     onMaterialsChange(materials.map((m) => (m.id === id ? { ...m, [field]: value } : m)));
 
@@ -269,6 +273,8 @@ export function MaterialsForm({
         pricePerSheet: 0,
 
         hasGrain: false,
+
+        sheetPurchaseUnit: 'quarter',
 
         edgingMaterialId: edgingMaterials[0]?.id ?? '',
 
@@ -456,7 +462,7 @@ export function MaterialsForm({
 
         <p className="hint">
 
-          Board thickness applies to all carcass parts. Sheet size {settings.sheetWidth} × {settings.sheetHeight} mm is used for costing — estimated usage is rounded up in ¼-sheet steps (default sheet 2750 × 1830). For boards with <strong>Grain</strong> ticked, sheets are counted from a layout: grain runs along the sheet's long side, and sides, doors and drawer fronts are never rotated (grain top to bottom).
+          Board thickness applies to all carcass parts. Sheet size {settings.sheetWidth} × {settings.sheetHeight} mm is used for costing — estimated usage uses each board&apos;s <strong>Buy as</strong> setting (default sheet 2750 × 1830). For boards with <strong>Grain</strong> ticked, sheets are counted from a layout: grain runs along the sheet's long side, and sides, doors and drawer fronts are never rotated (grain top to bottom).
 
         </p>
 
@@ -466,7 +472,12 @@ export function MaterialsForm({
 
       <CollapsibleSection title="Board materials — price per sheet">
 
-        <p className="hint">Set your melamine board prices here. Link each board to its edging tape below.</p>
+        <p className="hint">
+          Set your melamine board prices here. <strong>Buy as</strong> is the smallest board size your supplier will sell
+          for that colour (¼, ½, or full sheet only). Sheet count rounds up to that step so you do not pay for a whole
+          extra sheet when you only need a bit more — e.g. need 1.05 sheets and ¼ sheets are available → quote 1.25, not 2.
+          Link each board to its edging tape below.
+        </p>
 
         <div className="table-wrap">
 
@@ -483,6 +494,8 @@ export function MaterialsForm({
                 <th>Price / sheet (R)</th>
 
                 <th>Grain</th>
+
+                <th title="Smallest size supplier sells">Buy as</th>
 
                 <th>Edging tape</th>
 
@@ -505,6 +518,20 @@ export function MaterialsForm({
                   <td><input className="table-input" type="number" value={m.pricePerSheet} onChange={(e) => updateMaterial(m.id, 'pricePerSheet', Number(e.target.value))} /></td>
 
                   <td className="center"><input type="checkbox" checked={m.hasGrain} onChange={(e) => updateMaterial(m.id, 'hasGrain', e.target.checked)} /></td>
+
+                  <td>
+                    <select
+                      className="table-input"
+                      value={m.sheetPurchaseUnit ?? 'quarter'}
+                      onChange={(e) =>
+                        updateMaterial(m.id, 'sheetPurchaseUnit', e.target.value as Material['sheetPurchaseUnit'])
+                      }
+                    >
+                      <option value="quarter">¼ sheet</option>
+                      <option value="half">½ sheet</option>
+                      <option value="full">Full sheet only</option>
+                    </select>
+                  </td>
 
                   <td>
 
@@ -624,7 +651,35 @@ export function MaterialsForm({
 
         </div>
 
-        <p className="hint">Masonite sheet: {masonite.sheetWidth} × {masonite.sheetHeight} mm</p>
+        <label className="sheet-size-field">
+          Masonite sheet size (mm)
+          <div className="sheet-size-pair">
+            <input
+              type="number"
+              min={100}
+              value={masonite.sheetWidth ?? 2440}
+              title="Sheet length"
+              onChange={(e) =>
+                onMasoniteChange({ ...masonite, sheetWidth: Math.max(100, Number(e.target.value) || 2440) })
+              }
+            />
+            <span className="sheet-size-sep">×</span>
+            <input
+              type="number"
+              min={100}
+              value={masonite.sheetHeight ?? 1220}
+              title="Sheet width"
+              onChange={(e) =>
+                onMasoniteChange({ ...masonite, sheetHeight: Math.max(100, Number(e.target.value) || 1220) })
+              }
+            />
+          </div>
+        </label>
+
+        <p className="hint">
+          Sheet size is used for masonite costing on the cut list (area ÷ this size, rounded up in ¼-sheet steps).
+          Default 2440 × 1220 mm — change to match your supplier.
+        </p>
 
       </CollapsibleSection>
 

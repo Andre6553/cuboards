@@ -1,4 +1,3 @@
-import { SHEET_PURCHASE_FRACTION } from './sheetCost';
 
 import type { CutPiece } from '../types';
 
@@ -114,6 +113,7 @@ export function layoutSheets(
   sheetWidth: number,
   sheetHeight: number,
   kerf = SAW_KERF_MM,
+  purchaseFraction = 0.25,
 ): SheetLayoutResult {
   const grainLen = Math.max(sheetWidth, sheetHeight);
   const crossLen = Math.min(sheetWidth, sheetHeight);
@@ -161,10 +161,8 @@ export function layoutSheets(
 
   const last = sheets[sheets.length - 1];
   const usedFraction = (Math.min(last.maxX, grainLen) * Math.min(last.maxY, crossLen)) / (grainLen * crossLen);
-  const lastSheet = Math.max(
-    SHEET_PURCHASE_FRACTION,
-    Math.ceil(usedFraction / SHEET_PURCHASE_FRACTION - 1e-9) * SHEET_PURCHASE_FRACTION,
-  );
+  const step = purchaseFraction > 0 ? purchaseFraction : 0.25;
+  const lastSheet = Math.max(step, Math.ceil(usedFraction / step - 1e-9) * step);
 
   return {
     sheetsUsed: sheets.length,

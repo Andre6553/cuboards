@@ -8,6 +8,9 @@ export type MountType = 'floor' | 'wall';
 export type KickplateType = 'wood' | 'plastic';
 export type KickplateCoverage = 'front' | 'front-one-side' | 'front-both-sides';
 export type KickplateSide = 'left' | 'right';
+/** Smallest board size you can buy from the supplier for that melamine. */
+export type SheetPurchaseUnit = 'full' | 'half' | 'quarter';
+
 export type EdgingPattern =
   | '1_long'
   | '2_long'
@@ -22,6 +25,8 @@ export interface Material {
   colour: string;
   pricePerSheet: number;
   hasGrain: boolean;
+  /** How sheet count is rounded for costing; defaults to quarter if omitted (old jobs). */
+  sheetPurchaseUnit?: SheetPurchaseUnit;
   edgingMaterialId: string;
 }
 

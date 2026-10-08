@@ -23,11 +23,17 @@ import {
 } from './carcassRules';
 import { resolveFrontLayout } from './frontLayout';
 import { coverageLabel, kickplateRunLengthMm, woodKickplatePieces } from './kickplateRules';
-import { estimateSheetsFromArea, formatSheetCount } from './sheetCost';
+import {
+  estimateSheetsFromArea,
+  formatSheetCount,
+  resolveSheetPurchaseUnit,
+  sheetPurchaseDetailLabel,
+  sheetPurchaseFraction,
+  SHEET_PURCHASE_FRACTION,
+} from './sheetCost';
 import { layoutSheets, SAW_KERF_MM } from './sheetLayout';
-import { calcJobScrews, screwLineDetail } from './screwRules';
-import { calcJobConnectingFittings, connectingFittingLineDetail } from './connectingFittingRules';
-import { getConnectingFittingById } from './connectingFittingCatalog';
+import { calcJobScrews } from './screwRules';
+import { calcJobConnectingFittings } from './connectingFittingRules';
 import { calcJobInstall } from './installRules';
 import type {
   ConsolidatedEdging,
@@ -134,6 +140,14 @@ function addEdging(
 
 function roundMm(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+/** Catalog short names end with "· SKU 200 · R 6.30"; the hardware table shows those in their own columns. */
+function stripSkuAndPrice(shortName: string): string {
+  return shortName
+    .split(' · ')
+    .filter((bit) => !/^SKU\s/i.test(bit) && !/^R\s?\d/.test(bit))
+    .join(' · ');
 }
 
 function joinNotes(...parts: (string | undefined)[]): string {
@@ -457,7 +471,7 @@ function calcDoors(
 
     const presetId = door.hinge?.type === 'preset' ? door.hinge.presetId ?? 'gelmar-200' : 'custom';
     const catalogEntry = door.hinge?.type === 'preset' ? getHingeById(presetId) : undefined;
-    const presetName = catalogEntry?.shortName ?? catalogEntry?.name ?? 'Custom hinge';
+    const presetName = stripSkuAndPrice(catalogEntry?.shortName ?? catalogEntry?.name ?? 'Custom hinge');
     const priceEach =
       job.hingePrices[presetId] ??
       catalogEntry?.defaultPrice ??
@@ -496,7 +510,9 @@ function calcDrawers(
     const sideClearance = drawer.sideClearance ?? runner.sideClearance;
     const presetId = drawer.runner.type === 'preset' ? drawer.runner.presetId ?? 'generic-13' : 'custom';
     const catalogEntry = drawer.runner.type === 'preset' ? getRunnerById(presetId) : undefined;
-    const presetName = catalogEntry?.shortName ?? catalogEntry?.name ?? (drawer.runner.type === 'preset' ? 'Runner' : 'Custom runner');
+    const presetName = stripSkuAndPrice(
+      catalogEntry?.shortName ?? catalogEntry?.name ?? (drawer.runner.type === 'preset' ? 'Runner' : 'Custom runner'),
+    );
 
     const frontBackWidth = drawerBoxFrontBackWidth(W, T, sideClearance);
     const frontClearance = drawer.frontClearance ?? 20;
@@ -840,8 +856,11 @@ function calcCosts(
   for (const m of job.materials) {
     const totalAreaMm2 = byMaterial.get(m.id);
     if (!totalAreaMm2) continue;
-    let sheetsNeeded = estimateSheetsFromArea(totalAreaMm2, sheetArea);
-    let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} (¼-sheet increments)`;
+    const purchaseUnit = resolveSheetPurchaseUnit(m);
+    const purchaseFrac = sheetPurchaseFraction(m);
+    const purchaseLabel = sheetPurchaseDetailLabel(purchaseUnit);
+    let sheetsNeeded = estimateSheetsFromArea(totalAreaMm2, sheetArea, purchaseFrac);
+    let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} (${purchaseLabel})`;
 
     if (m.hasGrain) {
       const layout = layoutSheets(
@@ -854,13 +873,15 @@ function calcCosts(
         })),
         sheetWidth,
         sheetHeight,
+        SAW_KERF_MM,
+        purchaseFrac,
       );
       const unplacedArea = layout.unplaced.reduce((s, p) => s + p.length * p.width * p.qty, 0);
       sheetsNeeded = Math.max(
         sheetsNeeded,
-        layout.sheetsToOrder + estimateSheetsFromArea(unplacedArea, sheetArea),
+        layout.sheetsToOrder + estimateSheetsFromArea(unplacedArea, sheetArea, purchaseFrac),
       );
-      detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · grain layout (sides, doors & drawer fronts grain top to bottom, ${SAW_KERF_MM} mm saw cut)`;
+      detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · grain layout (${purchaseLabel}; sides, doors & drawer fronts grain top to bottom, ${SAW_KERF_MM} mm saw cut)`;
       for (const p of layout.unplaced) {
         sheetWarnings.push(
           `${m.name}: ${p.label} is longer than the ${Math.max(sheetWidth, sheetHeight)} mm sheet grain — it can't be cut with grain top to bottom.`,
@@ -883,11 +904,12 @@ function calcCosts(
     .reduce((sum, p) => sum + p.width * p.length * p.qty, 0);
   if (masoniteArea > 0) {
     const mSheetArea = job.masonite.sheetWidth * job.masonite.sheetHeight;
-    const sheetsNeeded = estimateSheetsFromArea(masoniteArea, mSheetArea);
+    const masoniteFrac = SHEET_PURCHASE_FRACTION.quarter;
+    const sheetsNeeded = estimateSheetsFromArea(masoniteArea, mSheetArea, masoniteFrac);
     costs.push({
       category: 'masonite',
       name: `${job.masonite.name} (${job.masonite.colour})`,
-      detail: `${job.masonite.thickness}mm · ${formatSheetCount(sheetsNeeded)} (¼-sheet increments)`,
+      detail: `${job.masonite.thickness}mm · ${formatSheetCount(sheetsNeeded)} (${sheetPurchaseDetailLabel('quarter')})`,
       quantity: sheetsNeeded,
       unitPrice: job.masonite.pricePerSheet,
       subtotal: sheetsNeeded * job.masonite.pricePerSheet,
@@ -911,38 +933,35 @@ function calcCosts(
     });
   }
 
-  const hardwareTotal = hardware
-    .filter((h) => h.description !== 'Plastic kickplate strip')
-    .reduce((sum, h) => sum + h.subtotal, 0);
+  // One line per group here — the itemised rows live in the Hardware / Screws & fittings tables.
+  const hardwareRows = hardware.filter((h) => h.description !== 'Plastic kickplate strip');
+  const hardwareTotal = hardwareRows.reduce((sum, h) => sum + h.subtotal, 0);
   if (hardwareTotal > 0) {
-    const byType = new Map<string, { qty: number; subtotal: number }>();
-    for (const h of hardware) {
-      if (h.description === 'Plastic kickplate strip') continue;
-      const cur = byType.get(h.description) ?? { qty: 0, subtotal: 0 };
-      cur.qty += h.qty;
-      cur.subtotal += h.subtotal;
-      byType.set(h.description, cur);
-    }
-    for (const [name, data] of byType) {
-      costs.push({
-        category: 'hardware',
-        name,
-        detail: `${data.qty} unit(s)`,
-        quantity: data.qty,
-        unitPrice: data.qty > 0 ? data.subtotal / data.qty : 0,
-        subtotal: data.subtotal,
-      });
-    }
-  }
-
-  for (const line of screws) {
+    const byType = new Map<string, number>();
+    for (const h of hardwareRows) byType.set(h.description, (byType.get(h.description) ?? 0) + h.qty);
+    const summary = Array.from(byType.entries())
+      .map(([name, qty]) => `${qty} × ${name.toLowerCase()}`)
+      .join(' · ');
     costs.push({
       category: 'hardware',
-      name: line.name,
-      detail: getConnectingFittingById(line.screwId) ? connectingFittingLineDetail(line) : screwLineDetail(line),
-      quantity: line.packsNeeded,
-      unitPrice: line.packPrice,
-      subtotal: line.subtotal,
+      name: 'Hardware',
+      detail: `${summary} — see Hardware table`,
+      quantity: hardwareRows.reduce((sum, h) => sum + h.qty, 0),
+      unitPrice: 0,
+      subtotal: hardwareTotal,
+    });
+  }
+
+  const screwsTotal = screws.reduce((sum, s) => sum + s.subtotal, 0);
+  if (screwsTotal > 0) {
+    const packs = screws.reduce((sum, s) => sum + s.packsNeeded, 0);
+    costs.push({
+      category: 'hardware',
+      name: 'Screws & fittings',
+      detail: `${screws.length} item(s) · ${packs} pack(s) — see Screws & fittings table`,
+      quantity: packs,
+      unitPrice: 0,
+      subtotal: screwsTotal,
     });
   }
 
@@ -950,8 +969,8 @@ function calcCosts(
     const pk = job.plasticKickplate;
     costs.push({
       category: 'hardware',
-      name: `${pk.name} (job total)`,
-      detail: `${plasticKickplateTotalMetres.toFixed(2)} m total · ${pk.stripHeight}×${pk.stripWidth} mm @ R${pk.pricePerMetre}/m`,
+      name: pk.name,
+      detail: `${plasticKickplateTotalMetres.toFixed(2)} m · ${pk.stripHeight}×${pk.stripWidth} mm @ R${pk.pricePerMetre}/m — see Plastic kickplate table`,
       quantity: Math.round(plasticKickplateTotalMetres * 100) / 100,
       unitPrice: pk.pricePerMetre,
       subtotal: plasticKickplateTotalMetres * pk.pricePerMetre,

@@ -219,6 +219,12 @@
   margin: 0;
 }
 
+.cutlist-warnings-note {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
 .data-table-compact input.price-input-inline {
   width: 5.5rem;
   padding: 0.25rem 0.4rem;

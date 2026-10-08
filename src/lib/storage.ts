@@ -143,7 +143,7 @@ export function migrateJob(job: Job): Job {
   return {
     ...job,
     edgingMaterials,
-    masonite: job.masonite ?? { ...DEFAULT_MASONITE },
+    masonite: { ...DEFAULT_MASONITE, ...job.masonite },
     plasticKickplate: job.plasticKickplate ?? { ...DEFAULT_PLASTIC_KICKPLATE },
     runnerPrices: { ...getDefaultRunnerPrices(), ...job.runnerPrices },
     hingePrices: { ...getDefaultHingePrices(), ...job.hingePrices },

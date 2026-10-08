@@ -240,16 +240,19 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
     y = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  if (!factory && result.hardware.length > 0) {
+  // Kickplate strips are costed in the Plastic kickplate line; keep them out of Hardware.
+  const hardwareRows = result.hardware.filter((h) => h.description !== 'Plastic kickplate strip');
+  if (!factory && hardwareRows.length > 0) {
     if (y > 150) { doc.addPage(); y = margin; }
     doc.setFontSize(12);
     doc.text('Hardware', margin, y);
     y += 2;
 
+    const hardwareTotal = hardwareRows.reduce((sum, h) => sum + h.subtotal, 0);
     autoTable(doc, {
       startY: y,
-      head: [['Item', 'Unit', 'Qty', 'Detail', 'R/pair', 'Subtotal']],
-      body: result.hardware.map((h) => [
+      head: [['Item', 'Unit', 'Qty', 'Detail', 'Unit price', 'Subtotal']],
+      body: hardwareRows.map((h) => [
         h.description,
         h.unitName,
         h.qty.toString(),
@@ -257,8 +260,39 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
         `R ${h.pricePerPair.toFixed(2)}`,
         `R ${h.subtotal.toFixed(2)}`,
       ]),
+      foot: [['Hardware total', '', '', '', '', `R ${hardwareTotal.toFixed(2)}`]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
+      footStyles: { fillColor: [237, 242, 247], textColor: 20, fontStyle: 'bold' },
+      margin: { left: margin, right: margin },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  if (!factory && result.screws.length > 0) {
+    if (y > 150) { doc.addPage(); y = margin; }
+    doc.setFontSize(12);
+    doc.text('Screws & fittings (job total)', margin, y);
+    y += 2;
+
+    const screwsTotal = result.screws.reduce((sum, s) => sum + s.subtotal, 0);
+    autoTable(doc, {
+      startY: y,
+      head: [['Item', 'SKU', 'Qty needed', 'Packs', 'Pack price', 'Subtotal']],
+      body: result.screws.map((s) => [
+        s.name,
+        s.sku,
+        s.totalScrews.toString(),
+        `${s.packsNeeded} × ${s.packSize}`,
+        `R ${s.packPrice.toFixed(2)}`,
+        `R ${s.subtotal.toFixed(2)}`,
+      ]),
+      foot: [['Screws & fittings total', '', '', '', '', `R ${screwsTotal.toFixed(2)}`]],
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [45, 55, 72] },
+      footStyles: { fillColor: [237, 242, 247], textColor: 20, fontStyle: 'bold' },
       margin: { left: margin, right: margin },
     });
 

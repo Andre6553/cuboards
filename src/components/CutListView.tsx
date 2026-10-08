@@ -65,6 +65,10 @@ export function CutListView({ job }: Props) {
   const showPostformTopNotice = jobNeedsPostformTopQuote(job);
   const hasDrawerParts = result.pieces.some((p) => p.category === 'drawer');
   const hasDrawerRunners = result.hardware.some((h) => h.description === 'Drawer runner pair');
+  // Kickplate strips have their own table above; keep them out of Hardware so nothing shows twice.
+  const hardwareRows = result.hardware.filter((h) => h.description !== 'Plastic kickplate strip');
+  const hardwareTotal = hardwareRows.reduce((sum, h) => sum + h.subtotal, 0);
+  const screwsTotal = result.screws.reduce((sum, s) => sum + s.subtotal, 0);
   const sizeMode = job.settings.cutSizeMode ?? 'final';
   const hasGrainParts = result.pieces.some((p) => p.grain !== 'none');
 
@@ -255,7 +259,7 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {!factory && result.hardware.length > 0 && (
+          {!factory && hardwareRows.length > 0 && (
             <>
               <h3 className="section-title">Hardware</h3>
               {!hasDrawerRunners && job.units.some((u) => (u.unitQty ?? 0) > 0 && u.drawers.length > 0) && (
@@ -274,7 +278,7 @@ export function CutListView({ job }: Props) {
                     </tr>
                   </thead>
                   <tbody>
-                    {result.hardware.map((h, i) => (
+                    {hardwareRows.map((h, i) => (
                       <tr key={i}>
                         <td>{h.description}</td>
                         <td>{h.unitName}</td>
@@ -284,6 +288,10 @@ export function CutListView({ job }: Props) {
                         <td>R {h.subtotal.toFixed(2)}</td>
                       </tr>
                     ))}
+                    <tr className="total-row">
+                      <td colSpan={5}><strong>Hardware total</strong></td>
+                      <td><strong>R {hardwareTotal.toFixed(2)}</strong></td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -316,6 +324,10 @@ export function CutListView({ job }: Props) {
                         <td>R {s.subtotal.toFixed(2)}</td>
                       </tr>
                     ))}
+                    <tr className="total-row">
+                      <td colSpan={5}><strong>Screws &amp; fittings total</strong></td>
+                      <td><strong>R {screwsTotal.toFixed(2)}</strong></td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -431,7 +443,13 @@ export function CutListView({ job }: Props) {
           )}
           </>
           )}
-          {!factory && <p className="hint">Board & masonite costs use area ÷ sheet size, rounded up in ¼-sheet steps (you can buy a quarter board). Confirm with nesting before ordering.</p>}
+          {!factory && (
+            <p className="hint">
+              Board sheet counts round up to each material&apos;s <strong>Buy as</strong> step (smallest size that supplier
+              sells — so a small overrun can be a ¼ or ½ sheet, not a full sheet). Masonite uses ¼-sheet steps. Confirm
+              with nesting before ordering.
+            </p>
+          )}
 
           <details className="detail-breakdown">
             <summary>Per-unit breakdown</summary>
