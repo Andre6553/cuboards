@@ -24,7 +24,10 @@ export interface WoodKickplatePiece {
   notes: string;
 }
 
-/** Wood kickplate board cuts (height × run length per piece). */
+/**
+ * Wood kickplate board cuts.
+ * Cut list length = kick height (grain top to bottom on the visible face); width = run along front/side.
+ */
 export function woodKickplatePieces(
   width: number,
   depth: number,
@@ -32,21 +35,21 @@ export function woodKickplatePieces(
   plinth: KitchenPlinthConfig,
 ): WoodKickplatePiece[] {
   const pieces: WoodKickplatePiece[] = [
-    { partName: 'Kickplate (front)', width: height, length: width, notes: 'Front face' },
+    { partName: 'Kickplate (front)', width, length: height, notes: 'Front face' },
   ];
 
   if (plinth.kickplateCoverage === 'front-one-side') {
     const side = plinth.kickplateSide === 'right' ? 'right' : 'left';
     pieces.push({
       partName: `Kickplate (${side} side)`,
-      width: height,
-      length: depth,
+      width: depth,
+      length: height,
       notes: `${side} return`,
     });
   } else if (plinth.kickplateCoverage === 'front-both-sides') {
     pieces.push(
-      { partName: 'Kickplate (left side)', width: height, length: depth, notes: 'Left return' },
-      { partName: 'Kickplate (right side)', width: height, length: depth, notes: 'Right return' },
+      { partName: 'Kickplate (left side)', width: depth, length: height, notes: 'Left return' },
+      { partName: 'Kickplate (right side)', width: depth, length: height, notes: 'Right return' },
     );
   }
 

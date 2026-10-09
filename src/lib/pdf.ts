@@ -153,7 +153,7 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
     doc.setFontSize(9);
     doc.setTextColor(60);
     const grainLines = doc.splitTextToSize(
-      'Grain: parts marked "Top to bottom" (sides, doors, drawer fronts) have the grain along the first size (Length). Do not rotate these on the sheet.',
+      'Grain: parts marked "Top to bottom" (sides, doors, drawer fronts, wood kickplates) have the grain along the first size (Length). Do not rotate these on the sheet.',
       270,
     );
     doc.text(grainLines, margin, y);

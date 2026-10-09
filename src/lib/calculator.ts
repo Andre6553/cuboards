@@ -402,11 +402,12 @@ function calcKitchenPlinth(
         width: kp.width,
         length: kp.length,
         qty: mult,
-        grain: materialHasGrain(job.materials, plinth.kickplateMaterialId) ? 'horizontal' : 'none',
+        grain: materialHasGrain(job.materials, plinth.kickplateMaterialId) ? 'vertical' : 'none',
         notes: joinNotes(kp.notes, coverageLabel(coverage)),
         edgingPattern: '1_long',
+        longAlong: 'width',
       });
-      addEdging(edging, job, plinth.kickplateMaterialId, kp.partName, unit.name, '1_long', kp.width, kp.length, mult, undefined, 'length');
+      addEdging(edging, job, plinth.kickplateMaterialId, kp.partName, unit.name, '1_long', kp.width, kp.length, mult, undefined, 'width');
     }
   } else {
     const runMm = kickplateRunLengthMm(W, D, coverage);

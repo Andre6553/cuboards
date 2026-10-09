@@ -191,7 +191,7 @@ export function CutListView({ job }: Props) {
       )}
       {showTechnical && hasGrainParts && (
         <p className="hint">
-          Grain: sides, doors and drawer fronts on grain boards are marked <strong>Top to bottom</strong> — grain runs
+          Grain: sides, doors, drawer fronts and wood kickplates on grain boards are marked <strong>Top to bottom</strong> — grain runs
           along the first size (Length). Sheet counts keep these parts with the grain on the sheet's long side.
         </p>
       )}
