@@ -1,4 +1,4 @@
-import type { Material, SheetPurchaseUnit } from '../types';
+import type { MasoniteConfig, Material, SheetPurchaseUnit } from '../types';
 
 /** Default when a saved job has no per-board purchase setting. */
 export const DEFAULT_SHEET_PURCHASE_UNIT: SheetPurchaseUnit = 'quarter';
@@ -15,6 +15,14 @@ export function resolveSheetPurchaseUnit(material: Material): SheetPurchaseUnit 
 
 export function sheetPurchaseFraction(material: Material): number {
   return SHEET_PURCHASE_FRACTION[resolveSheetPurchaseUnit(material)];
+}
+
+export function resolveMasonitePurchaseUnit(masonite: MasoniteConfig): SheetPurchaseUnit {
+  return masonite.sheetPurchaseUnit ?? DEFAULT_SHEET_PURCHASE_UNIT;
+}
+
+export function masonitePurchaseFraction(masonite: MasoniteConfig): number {
+  return SHEET_PURCHASE_FRACTION[resolveMasonitePurchaseUnit(masonite)];
 }
 
 export function sheetPurchaseDetailLabel(unit: SheetPurchaseUnit): string {

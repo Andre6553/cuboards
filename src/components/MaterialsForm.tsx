@@ -836,6 +836,23 @@ export function MaterialsForm({
 
           <label>{priceInputLabel(settings, 'Price / sheet')}<NumberInput  value={masonite.pricePerSheet} onChange={(n) => onMasoniteChange({ ...masonite, pricePerSheet: n })} /></label>
 
+          <label>
+            Buy as
+            <select
+              value={masonite.sheetPurchaseUnit ?? 'quarter'}
+              onChange={(e) =>
+                onMasoniteChange({
+                  ...masonite,
+                  sheetPurchaseUnit: e.target.value as MasoniteConfig['sheetPurchaseUnit'],
+                })
+              }
+            >
+              <option value="quarter">¼ sheet</option>
+              <option value="half">½ sheet</option>
+              <option value="full">Full sheet only</option>
+            </select>
+          </label>
+
         </div>
 
         <label className="sheet-size-field">
@@ -860,7 +877,7 @@ export function MaterialsForm({
         </label>
 
         <p className="hint">
-          Sheet size is used for masonite costing on the cut list (area ÷ this size, rounded up in ¼-sheet steps).
+          Sheet size and <strong>Buy as</strong> set masonite costing on the cut list (same rules as melamine boards).
           Default 2440 × 1220 mm — change to match your supplier.
         </p>
 

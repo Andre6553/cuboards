@@ -44,6 +44,8 @@ export interface MasoniteConfig {
   pricePerSheet: number;
   sheetWidth: number;
   sheetHeight: number;
+  /** Smallest sheet size supplier sells; defaults to quarter if omitted (old jobs). */
+  sheetPurchaseUnit?: SheetPurchaseUnit;
 }
 
 export interface RunnerPrices {

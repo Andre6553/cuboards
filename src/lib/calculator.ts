@@ -32,10 +32,11 @@ import { coverageLabel, kickplateRunLengthMm, woodKickplatePieces } from './kick
 import {
   estimateSheetsFromArea,
   formatSheetCount,
+  masonitePurchaseFraction,
+  resolveMasonitePurchaseUnit,
   resolveSheetPurchaseUnit,
   sheetPurchaseDetailLabel,
   sheetPurchaseFraction,
-  SHEET_PURCHASE_FRACTION,
 } from './sheetCost';
 import { calcBoardOffcuts } from './sheetOffcuts';
 import { calcSheetMaps } from './sheetMaps';
@@ -925,12 +926,13 @@ function calcCosts(
     .reduce((sum, p) => sum + p.width * p.length * p.qty, 0);
   if (masoniteArea > 0) {
     const mSheetArea = job.masonite.sheetWidth * job.masonite.sheetHeight;
-    const masoniteFrac = SHEET_PURCHASE_FRACTION.quarter;
+    const masoniteUnit = resolveMasonitePurchaseUnit(job.masonite);
+    const masoniteFrac = masonitePurchaseFraction(job.masonite);
     const sheetsNeeded = estimateSheetsFromArea(masoniteArea, mSheetArea, masoniteFrac);
     costs.push({
       category: 'masonite',
       name: `${job.masonite.name} (${job.masonite.colour})`,
-      detail: `${job.masonite.thickness}mm · ${formatSheetCount(sheetsNeeded)} (${sheetPurchaseDetailLabel('quarter')})`,
+      detail: `${job.masonite.thickness}mm · ${formatSheetCount(sheetsNeeded)} (${sheetPurchaseDetailLabel(masoniteUnit)})`,
       quantity: sheetsNeeded,
       unitPrice: job.masonite.pricePerSheet,
       subtotal: sheetsNeeded * job.masonite.pricePerSheet,

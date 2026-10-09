@@ -1,5 +1,5 @@
 import type { CutPiece, Job, SheetMapGroup, SheetMapSheet } from '../types';
-import { sheetPurchaseFraction } from './sheetCost';
+import { masonitePurchaseFraction, sheetPurchaseFraction } from './sheetCost';
 import { cutPiecesToLayout } from './sheetLayoutPieces';
 import { layoutSheets, resolveSawKerfMm } from './sheetLayout';
 
@@ -73,7 +73,7 @@ export function calcSheetMaps(job: Job, pieces: CutPiece[]): SheetMapGroup[] {
       masonitePieces,
       job.masonite.sheetWidth ?? 2440,
       job.masonite.sheetHeight ?? 1220,
-      0.25,
+      masonitePurchaseFraction(job.masonite),
       sawKerfMm,
     );
     if (sheets.length > 0) {

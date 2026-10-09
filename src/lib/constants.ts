@@ -152,6 +152,7 @@ export const DEFAULT_MASONITE: MasoniteConfig = {
   pricePerSheet: 120,
   sheetWidth: 2440,
   sheetHeight: 1220,
+  sheetPurchaseUnit: 'quarter',
 };
 
 export const DEFAULT_RUNNER_PRICES: RunnerPrices = getDefaultRunnerPrices();
