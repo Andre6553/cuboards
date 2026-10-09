@@ -66,7 +66,11 @@ export function GelmarPriceRefreshPanel({
           </ul>
         </details>
       )}
-      {error && <p className="gelmar-refresh-status err">{error}</p>}
+      {error && (
+        <p className="gelmar-refresh-status err" role="alert">
+          {error}
+        </p>
+      )}
     </>
   );
 }

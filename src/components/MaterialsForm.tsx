@@ -23,8 +23,8 @@ import {
   applyGelmarPricesToJob,
   emptyGelmarRefreshUi,
   fetchGelmarLivePrices,
-  gelmarRefreshFetchErrorMessage,
   gelmarRefreshNote,
+  notifyGelmarRefreshFailure,
   type GelmarRefreshUiState,
 } from '../lib/gelmarPriceRefresh';
 
@@ -216,7 +216,7 @@ export function MaterialsForm({
     } catch (err) {
       options.setUi({
         ...emptyGelmarRefreshUi(),
-        error: gelmarRefreshFetchErrorMessage(err),
+        error: notifyGelmarRefreshFailure(err),
       });
     } finally {
       options.setRefreshing(false);

@@ -13,22 +13,42 @@ export function emptyGelmarRefreshUi(): GelmarRefreshUiState {
   return { note: null, error: null, changes: [], checked: [], liveAt: null };
 }
 
+/** Shown when live Gelmar scrape fails — site layout change, block, or API down. */
+export const GELMAR_REFRESH_FAILURE_MESSAGE =
+  'Could not retrieve the latest prices from gelmar.co.za. Your job still uses saved prices. ' +
+  'If this keeps happening, the website may have changed — please contact the developer of Cuboards so the price checker can be updated.';
+
 type ApiPricesResponse = {
   ok?: boolean;
   scrapedAt?: string;
   prices?: Record<string, number>;
+  count?: number;
   error?: string;
+  warnings?: string[];
 };
 
 export async function fetchGelmarLivePrices(
   apiPath: string,
 ): Promise<{ scrapedAt?: string; prices: Record<string, number> }> {
-  const res = await fetch(apiPath, { method: 'POST' });
-  const data = (await res.json()) as ApiPricesResponse;
-  if (!res.ok || !data.ok || !data.prices) {
-    throw new Error(data.error || `Gelmar refresh failed (${res.status})`);
+  let data: ApiPricesResponse;
+  try {
+    const res = await fetch(apiPath, { method: 'POST' });
+    data = (await res.json()) as ApiPricesResponse;
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || `Gelmar refresh failed (${res.status})`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Gelmar refresh')) throw err;
+    throw new Error('network');
   }
-  return { scrapedAt: data.scrapedAt, prices: data.prices };
+
+  const priceCount = data.prices ? Object.keys(data.prices).length : 0;
+  if (priceCount === 0) {
+    const detail = data.warnings?.length ? data.warnings.join('; ') : data.error;
+    throw new Error(detail || 'no_prices');
+  }
+
+  return { scrapedAt: data.scrapedAt, prices: data.prices!, warnings: data.warnings };
 }
 
 export function applyGelmarPricesToJob(
@@ -66,8 +86,24 @@ export function gelmarRefreshNote(changes: GelmarPriceChange[], checkedCount: nu
 
 export function gelmarRefreshFetchErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
-  if (msg.includes('Failed to fetch')) {
-    return 'Could not reach the Gelmar refresh API. On your PC use npm run dev (port 5199); on the live site wait for deploy or check Vercel function logs.';
+  if (
+    msg === 'network' ||
+    msg.includes('Failed to fetch') ||
+    msg.includes('Gelmar refresh failed') ||
+    msg.includes('no_prices') ||
+    msg.includes('HTTP ') ||
+    msg.includes('no price') ||
+    msg.includes('Gelmar returned no')
+  ) {
+    return GELMAR_REFRESH_FAILURE_MESSAGE;
   }
-  return msg;
+  return `${GELMAR_REFRESH_FAILURE_MESSAGE} (Detail: ${msg})`;
+}
+
+export function notifyGelmarRefreshFailure(err: unknown): string {
+  const message = gelmarRefreshFetchErrorMessage(err);
+  if (typeof window !== 'undefined') {
+    window.alert(message);
+  }
+  return message;
 }
