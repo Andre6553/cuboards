@@ -1450,6 +1450,10 @@
   transform: scale(0.99);
 }
 
+.sheet-map-thumb-btn .sheet-map-svg {
+  pointer-events: none;
+}
+
 .sheet-map-caption {
   display: flex;
   flex-wrap: wrap;
@@ -1537,23 +1541,22 @@
 
 .sheet-map-svg--fullscreen {
   display: block;
-  width: min(100%, 960px);
-  min-width: 280px;
   height: auto;
   max-height: none;
   border: none;
   border-radius: 0;
+  shape-rendering: geometricPrecision;
 }
 
 .sheet-map-zoom-layer {
+  flex-shrink: 0;
   transform-origin: 0 0;
-  will-change: transform;
 }
 
 .sheet-map-lightbox {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 10000;
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -1563,6 +1566,7 @@
 .sheet-map-lightbox-scrim {
   position: absolute;
   inset: 0;
+  z-index: 0;
   border: none;
   background: rgba(15, 23, 42, 0.72);
   cursor: pointer;
@@ -1578,7 +1582,8 @@
   margin: 0 auto;
   background: var(--surface);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-  max-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
 }
 
 .sheet-map-lightbox-header {
@@ -1631,6 +1636,21 @@
   user-select: none;
   background: #f8fafc;
   border-radius: 6px;
+  position: relative;
+}
+
+.sheet-map-lightbox-canvas--centered {
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet-map-lightbox-canvas--centered .sheet-map-zoom-layer {
+  transform: none !important;
+}
+
+.sheet-map-lightbox-canvas--zoomed {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sheet-map-lightbox-canvas--dragging {
