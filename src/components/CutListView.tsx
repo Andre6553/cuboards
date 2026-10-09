@@ -6,6 +6,7 @@ import { screwLineDetail } from '../lib/screwRules';
 import { connectingFittingLineDetail } from '../lib/connectingFittingRules';
 import { getConnectingFittingById } from '../lib/connectingFittingCatalog';
 import { UNIT_TYPE_LABELS } from '../lib/constants';
+import type { Unit } from '../types';
 import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS } from '../lib/edgingCutSize';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { grainLabel } from '../lib/sheetLayout';
@@ -56,9 +57,46 @@ function GroupedCutTable({ groups, showEdging = true }: { groups: CutListGroup[]
   );
 }
 
+function QuoteScopeTable({ units }: { units: Unit[] }) {
+  const active = units.filter((u) => (u.unitQty ?? 0) > 0);
+  if (active.length === 0) return null;
+  return (
+    <>
+      <h3 className="section-title">Scope of work</h3>
+      <p className="hint">Summary for your client — no panel sizes on this view.</p>
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Unit</th>
+              <th>Type</th>
+              <th>Qty</th>
+              <th>Size (W × H × D mm)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {active.map((u) => (
+              <tr key={u.id}>
+                <td>{u.name}</td>
+                <td>{UNIT_TYPE_LABELS[u.type]}</td>
+                <td>{u.unitQty}</td>
+                <td>{u.width} × {u.height} × {u.depth}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 export function CutListView({ job }: Props) {
   const [mode, setMode] = useState<CutListPdfMode>('full');
   const factory = mode === 'factory';
+  const quote = mode === 'quote';
+  const showCutLists = !quote;
+  const showPricingDetail = !factory;
+  const showTechnical = mode === 'full';
   const result = generateCutList(job);
   const edgingWarnings = getDoorDrawerEdgingWarnings(job);
   const drawerWarnings = getDrawerCutListWarnings(job);
@@ -76,11 +114,13 @@ export function CutListView({ job }: Props) {
     <section className="card cutlist-card">
       <div className="cutlist-header">
         <div>
-          <h2>{factory ? 'Factory cut list' : 'Full cut list'}</h2>
+          <h2>{factory ? 'Factory cut list' : quote ? 'Client quotation' : 'Full cut list'}</h2>
           <p className="hint">
             {factory
               ? 'For the cutting factory: panel sizes and edging types only. No metres, prices, kickplate, hinges, screws, or installation.'
-              : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
+              : quote
+                ? 'Client-facing summary: scope, supply, installation, and totals — no panel cut sizes. Download PDF to send.'
+                : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
           </p>
         </div>
         <div className="cutlist-header-actions">
@@ -88,12 +128,15 @@ export function CutListView({ job }: Props) {
             <button type="button" className={`tab ${factory ? 'active' : ''}`} onClick={() => setMode('factory')}>
               Factory
             </button>
-            <button type="button" className={`tab ${factory ? '' : 'active'}`} onClick={() => setMode('full')}>
+            <button type="button" className={`tab ${quote ? 'active' : ''}`} onClick={() => setMode('quote')}>
+              Client quote
+            </button>
+            <button type="button" className={`tab ${!factory && !quote ? 'active' : ''}`} onClick={() => setMode('full')}>
               Full
             </button>
           </div>
           <button type="button" className="btn btn-primary" onClick={() => exportCutListPdf(job, result, mode)}>
-            Download {factory ? 'factory' : 'full'} PDF
+            Download {factory ? 'factory' : quote ? 'client quote' : 'full'} PDF
           </button>
         </div>
       </div>
@@ -117,13 +160,13 @@ export function CutListView({ job }: Props) {
           </ul>
         </div>
       )}
-      {showPostformTopNotice && (
+      {(quote || showPostformTopNotice) && showPostformTopNotice && (
         <div className="cutlist-warnings" role="note">
           <strong>Postform tops not included</strong>
           <p>{POSTFORM_TOP_NOTICE}</p>
         </div>
       )}
-      {result.sheetWarnings.length > 0 && (
+      {showTechnical && result.sheetWarnings.length > 0 && (
         <div className="cutlist-warnings" role="alert">
           <strong>Part too long for grain direction</strong>
           <ul>
@@ -133,10 +176,12 @@ export function CutListView({ job }: Props) {
           </ul>
         </div>
       )}
+      {showTechnical && (
       <p className="cutlist-size-mode-alert">
         Size mode: {CUT_SIZE_MODE_LABELS[sizeMode]} — {CUT_SIZE_MODE_CUTLIST_HINT[sizeMode]}
       </p>
-      {hasGrainParts && (
+      )}
+      {showTechnical && hasGrainParts && (
         <p className="hint">
           Grain: sides, doors and drawer fronts on grain boards are marked <strong>Top to bottom</strong> — grain runs
           along the first size (Length). Sheet counts keep these parts with the grain on the sheet's long side.
@@ -149,6 +194,10 @@ export function CutListView({ job }: Props) {
         <p className="hint">No units on the cut list — set cupboard quantity to 1 or more on at least one unit.</p>
       ) : (
         <>
+          {quote && <QuoteScopeTable units={job.units} />}
+
+          {showCutLists && (
+          <>
           <h3 className="section-title">Board cut list</h3>
           <p className="hint">
             One table per board material and edging tape — carcass, doors and drawer parts together.
@@ -162,8 +211,10 @@ export function CutListView({ job }: Props) {
           <h3 className="section-title">Masonite cut list</h3>
           <p className="hint">Carcass backs and drawer bottoms — 2 mm smaller on length and width.</p>
           <GroupedCutTable groups={result.masoniteGroups} showEdging={false} />
+          </>
+          )}
 
-          {result.consolidatedEdging.length > 0 && (
+          {showCutLists && result.consolidatedEdging.length > 0 && (
             <>
               <h3 className="section-title">Edging tape</h3>
               {factory ? (
@@ -217,7 +268,7 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {!factory && result.plasticKickplates.length > 0 && (
+          {showPricingDetail && showTechnical && result.plasticKickplates.length > 0 && (
             <>
               <h3 className="section-title">Plastic kickplate</h3>
               <div className="table-wrap">
@@ -259,7 +310,7 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {!factory && hardwareRows.length > 0 && (
+          {showPricingDetail && showTechnical && hardwareRows.length > 0 && (
             <>
               <h3 className="section-title">Hardware</h3>
               {!hasDrawerRunners && job.units.some((u) => (u.unitQty ?? 0) > 0 && u.drawers.length > 0) && (
@@ -298,7 +349,7 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {!factory && result.screws.length > 0 && (
+          {showPricingDetail && showTechnical && result.screws.length > 0 && (
             <>
               <h3 className="section-title">Screws &amp; fittings (job total)</h3>
               <div className="table-wrap">
@@ -339,7 +390,7 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {!factory && result.install && (
+          {showPricingDetail && result.install && (
             <>
               <h3 className="section-title">Installation estimate</h3>
               <div className="table-wrap">
@@ -397,9 +448,14 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {!factory && (
+          {showPricingDetail && (
           <>
-          <h3 className="section-title">Cost estimate</h3>
+          <h3 className="section-title">{quote ? 'Quotation summary' : 'Cost estimate'}</h3>
+          {quote && (
+            <p className="hint">
+              Supply and installation totals for the client. Download PDF for a clean quotation without cut sizes.
+            </p>
+          )}
           <div className="cost-summary cost-summary-wide">
             {result.costs.map((c, i) => (
               <div key={i} className="cost-row">
@@ -438,12 +494,17 @@ export function CutListView({ job }: Props) {
               <span>R {result.grandTotal.toFixed(2)}</span>
             </div>
           </div>
-          {showPostformTopNotice && (
+          {showTechnical && showPostformTopNotice && (
             <p className="hint hint-inline warn">{POSTFORM_TOP_NOTICE}</p>
+          )}
+          {quote && (
+            <p className="hint quote-terms-hint">
+              PDF includes exclusions (VAT, postform, appliances, etc.) and a 30-day validity date. Panel cut lists stay on Factory / Full only.
+            </p>
           )}
           </>
           )}
-          {!factory && (
+          {showTechnical && (
             <p className="hint">
               Board sheet counts round up to each material&apos;s <strong>Buy as</strong> step (smallest size that supplier
               sells — so a small overrun can be a ¼ or ½ sheet, not a full sheet). Masonite uses ¼-sheet steps. Confirm
@@ -451,6 +512,7 @@ export function CutListView({ job }: Props) {
             </p>
           )}
 
+          {showTechnical && (
           <details className="detail-breakdown">
             <summary>Per-unit breakdown</summary>
             <div className="table-wrap">
@@ -484,6 +546,7 @@ export function CutListView({ job }: Props) {
               </table>
             </div>
           </details>
+          )}
         </>
       )}
     </section>

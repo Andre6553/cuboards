@@ -27,3 +27,4 @@ Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF ex
 - **2026-10-06:** Materials Gelmar **Refresh** buttons (runners, hinges, screws, connecting fittings) call `/api/gelmar-*` and write live prices into the current job. Local: Vite middleware (`npm run dev` / `preview`, port 5199). **Vercel:** `api/gelmar-*.js` + `vercel.json` (no env vars). Blum/Hettich/generic runner presets stay hardcoded.
 - **2026-10-08:** Vercel serverless Gelmar APIs added for production Refresh; SPA rewrite excludes `/api/*`.
 - **2026-10-09:** Mobile unit form: responsive `auto-fit` grids + drawer box hints moved out of grid so material/edging selects are full width on phone.
+- **2026-10-09:** Cut list tab **Client quote** + portrait PDF (`quotePdf.ts`) — scope, supply/install totals, exclusions; no panel sizes (Factory/Full unchanged).

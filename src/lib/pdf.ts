@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { CUT_SIZE_MODE_LABELS } from './constants';
 import { CUT_SIZE_MODE_CUTLIST_HINT } from './edgingCutSize';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
+import { exportClientQuotePdf } from './quotePdf';
 import { grainLabel } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
@@ -99,9 +100,14 @@ function drawSizeModeNote(doc: jsPDF, margin: number, y: number, job: Job, promi
   return y + textDims.h + gapAfter;
 }
 
-export type CutListPdfMode = 'factory' | 'full';
+export type CutListPdfMode = 'factory' | 'full' | 'quote';
 
 export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListPdfMode = 'full'): void {
+  if (mode === 'quote') {
+    exportClientQuotePdf(job, result);
+    return;
+  }
+
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const margin = 14;
   let y = margin;
