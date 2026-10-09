@@ -1578,8 +1578,8 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   background: var(--surface);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
   height: 100dvh;
@@ -1614,22 +1614,29 @@
 .sheet-map-lightbox-body {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.75rem 0.5rem;
+  flex-direction: column;
   min-height: 0;
-  overflow: auto;
+  padding: 0.5rem 0.65rem 0.65rem;
+  overflow: hidden;
+}
+
+.sheet-map-lightbox-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
 }
 
 .sheet-map-lightbox-canvas {
   flex: 1;
+  width: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   min-width: 0;
-  min-height: 200px;
-  padding: 0.5rem;
+  min-height: 120px;
+  padding: 0.35rem;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
@@ -1684,6 +1691,25 @@
   cursor: pointer;
 }
 
+.sheet-map-lightbox-nav--overlay {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.sheet-map-lightbox-nav--overlay.sheet-map-lightbox-nav--prev {
+  left: 0.35rem;
+}
+
+.sheet-map-lightbox-nav--overlay.sheet-map-lightbox-nav--next {
+  right: 0.35rem;
+}
+
 .sheet-map-lightbox-nav:disabled {
   opacity: 0.35;
   cursor: not-allowed;
@@ -1729,19 +1755,45 @@
 
 @media (max-width: 640px) {
   .sheet-map-lightbox-panel {
-    max-width: none;
-    min-height: 100vh;
+    min-height: 100dvh;
   }
 
-  .sheet-map-lightbox-nav {
-    width: 2.25rem;
-    font-size: 1.5rem;
+  .sheet-map-lightbox-header {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .sheet-map-lightbox-title {
+    font-size: 0.95rem;
+  }
+
+  .sheet-map-lightbox-meta {
+    font-size: 0.75rem;
+  }
+
+  .sheet-map-lightbox-footer {
+    grid-template-columns: 1fr 1fr;
+    padding: 0.5rem 0.65rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sheet-map-lightbox-footer > .btn:first-child,
+  .sheet-map-lightbox-footer > .btn:last-child {
+    justify-self: stretch;
+  }
+
+  .sheet-map-lightbox-footer .sheet-map-zoom-controls {
+    grid-column: 1 / -1;
+    justify-self: center;
+    justify-content: center;
   }
 
   .sheet-map-lightbox-foot-hint {
-    order: 3;
-    width: 100%;
-    flex: none;
+    display: none;
+  }
+
+  .sheet-map-lightbox-nav--overlay {
+    width: 2.1rem;
+    height: 2.4rem;
+    font-size: 1.45rem;
   }
 }
 

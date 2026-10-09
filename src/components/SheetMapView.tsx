@@ -102,7 +102,7 @@ function SheetDiagramSvg({
       ))}
 
       {sheet.placements.map((p, i) => {
-        const fontSize = fitFontSize(p.label, p.widthMm, p.heightMm, expanded ? 1.35 : 1);
+        const fontSize = fitFontSize(p.label, p.widthMm, p.heightMm, expanded ? 1.85 : 1);
         const cx = pad + p.xMm + p.widthMm / 2;
         const cy = pad + grainBand + p.yMm + p.heightMm / 2;
         const lines = p.label.split(' · ');
@@ -257,15 +257,30 @@ function SheetMapLightbox({
   const contentWidth = fitWidth * zoom;
   const contentHeight = contentWidth * viewAspect;
 
-  useLayoutEffect(() => {
+  const measureFit = useCallback(() => {
     const el = canvasRef.current;
     if (!el) return;
-    const measure = () => setFitWidth(Math.max(280, el.clientWidth - 12));
-    measure();
-    const ro = new ResizeObserver(measure);
+    const inset = 8;
+    const availW = el.clientWidth - inset * 2;
+    const availH = el.clientHeight - inset * 2;
+    if (availW < 80 || availH < 80) return;
+    const widthIfFull = availW;
+    const widthIfHeightLimited = availH / viewAspect;
+    setFitWidth(Math.max(200, Math.min(widthIfFull, widthIfHeightLimited)));
+  }, [viewAspect]);
+
+  useLayoutEffect(() => {
+    measureFit();
+    const id = requestAnimationFrame(() => measureFit());
+    const el = canvasRef.current;
+    if (!el) return () => cancelAnimationFrame(id);
+    const ro = new ResizeObserver(() => measureFit());
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [index]);
+    return () => {
+      cancelAnimationFrame(id);
+      ro.disconnect();
+    };
+  }, [index, measureFit]);
 
   const resetView = useCallback(() => {
     setZoom(1);
@@ -388,54 +403,56 @@ function SheetMapLightbox({
         </header>
 
         <div className="sheet-map-lightbox-body">
-          <button
-            type="button"
-            className="sheet-map-lightbox-nav sheet-map-lightbox-nav--prev"
-            onClick={goPrev}
-            disabled={!hasPrev}
-            aria-label="Previous sheet"
-          >
-            ‹
-          </button>
-
-          <div
-            ref={canvasRef}
-            className={`sheet-map-lightbox-canvas${dragging ? ' sheet-map-lightbox-canvas--dragging' : ''}${centered ? ' sheet-map-lightbox-canvas--centered' : ''}${zoom > MIN_ZOOM ? ' sheet-map-lightbox-canvas--zoomed' : ''}`}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onDoubleClick={resetView}
-          >
-            <div
-              className="sheet-map-zoom-layer"
-              style={{
-                width: contentWidth,
-                height: contentHeight,
-                ...(centered ? {} : { transform: `translate(${pan.x}px, ${pan.y}px)` }),
-              }}
+          <div className="sheet-map-lightbox-stage">
+            <button
+              type="button"
+              className="sheet-map-lightbox-nav sheet-map-lightbox-nav--overlay sheet-map-lightbox-nav--prev"
+              onClick={goPrev}
+              disabled={!hasPrev}
+              aria-label="Previous sheet"
             >
-              <SheetDiagramSvg
-                sheet={slide.sheet}
-                patternId={patternId}
-                expanded
-                showSheetGrainBand
-                showPartGrainArrows
-                className="sheet-map-svg--fullscreen"
-                pixelWidth={contentWidth}
-              />
-            </div>
-          </div>
+              ‹
+            </button>
 
-          <button
-            type="button"
-            className="sheet-map-lightbox-nav sheet-map-lightbox-nav--next"
-            onClick={goNext}
-            disabled={!hasNext}
-            aria-label="Next sheet"
-          >
-            ›
-          </button>
+            <div
+              ref={canvasRef}
+              className={`sheet-map-lightbox-canvas${dragging ? ' sheet-map-lightbox-canvas--dragging' : ''}${centered ? ' sheet-map-lightbox-canvas--centered' : ''}${zoom > MIN_ZOOM ? ' sheet-map-lightbox-canvas--zoomed' : ''}`}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              onDoubleClick={resetView}
+            >
+              <div
+                className="sheet-map-zoom-layer"
+                style={{
+                  width: contentWidth,
+                  height: contentHeight,
+                  ...(centered ? {} : { transform: `translate(${pan.x}px, ${pan.y}px)` }),
+                }}
+              >
+                <SheetDiagramSvg
+                  sheet={slide.sheet}
+                  patternId={patternId}
+                  expanded
+                  showSheetGrainBand
+                  showPartGrainArrows
+                  className="sheet-map-svg--fullscreen"
+                  pixelWidth={contentWidth}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="sheet-map-lightbox-nav sheet-map-lightbox-nav--overlay sheet-map-lightbox-nav--next"
+              onClick={goNext}
+              disabled={!hasNext}
+              aria-label="Next sheet"
+            >
+              ›
+            </button>
+          </div>
         </div>
 
         <footer className="sheet-map-lightbox-footer">
