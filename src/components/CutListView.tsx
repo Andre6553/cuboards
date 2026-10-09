@@ -123,7 +123,7 @@ export function CutListView({ job }: Props) {
             {factory
               ? 'For the cutting factory: panel sizes and edging types only. No metres, prices, kickplate, hinges, screws, or installation.'
               : quote
-                ? 'Client-facing summary: units in scope + lump-sum totals (supply not itemised) — no panel cut sizes.'
+                ? 'Client-facing: scope of work and quotation total only — no supply breakdown or cut sizes.'
                 : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
           </p>
         </div>
@@ -198,7 +198,14 @@ export function CutListView({ job }: Props) {
         <p className="hint">No units on the cut list — set cupboard quantity to 1 or more on at least one unit.</p>
       ) : (
         <>
-          {quote && <QuoteScopeTable units={job.units} />}
+          {quote && (
+            <>
+              <QuoteScopeTable units={job.units} />
+              <div className="cost-summary cost-summary-wide quote-total-only">
+                <QuoteTotalsRows settings={job.settings} grandTotal={result.grandTotal} compact />
+              </div>
+            </>
+          )}
 
           {showCutLists && (
           <>
@@ -496,40 +503,10 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {showPricingDetail && (
+          {showPricingDetail && !quote && (
           <>
-          <h3 className="section-title">{quote ? 'Quotation summary' : 'Cost estimate'}</h3>
-          {quote && (
-            <p className="hint">
-              Supply is one total (boards, edging, hardware, etc.) — not shown line by line to the client. Installation and
-              travel shown if included. Download PDF matches this summary.
-            </p>
-          )}
+          <h3 className="section-title">Cost estimate</h3>
           <div className="cost-summary cost-summary-wide">
-            {quote ? (
-              <>
-                <div className="cost-row subtotal">
-                  <span></span>
-                  <span>Supply (materials &amp; hardware)</span>
-                  <span></span>
-                  <span>{fmt(result.materialsTotal)}</span>
-                </div>
-                <div className="cost-row subtotal">
-                  <span className="cost-cat">install</span>
-                  <span>Installation</span>
-                  <span className="cost-detail">{result.install ? 'Included' : 'Not included'}</span>
-                  <span>{fmt(result.installationTotal)}</span>
-                </div>
-                {result.travelTotal > 0 && (
-                  <div className="cost-row subtotal">
-                    <span></span>
-                    <span>Travel</span>
-                    <span></span>
-                    <span>{fmt(result.travelTotal)}</span>
-                  </div>
-                )}
-              </>
-            ) : (
               <>
                 {result.costs.map((c, i) => (
                   <div key={i} className="cost-row">
@@ -562,18 +539,17 @@ export function CutListView({ job }: Props) {
                   <span>{fmt(result.travelTotal)}</span>
                 </div>
               </>
-            )}
             <QuoteTotalsRows settings={job.settings} grandTotal={result.grandTotal} />
           </div>
           {showTechnical && showPostformTopNotice && (
             <p className="hint hint-inline warn">{POSTFORM_TOP_NOTICE}</p>
           )}
+          </>
+          )}
           {quote && (
             <p className="hint quote-terms-hint">
-              PDF includes exclusions (VAT, postform, appliances, etc.) and a 30-day validity date. Panel cut lists stay on Factory / Full only.
+              PDF includes exclusions (VAT, postform, appliances, etc.) and validity date. Panel cut lists stay on Factory / Full only.
             </p>
-          )}
-          </>
           )}
           {showTechnical && (
             <p className="hint">

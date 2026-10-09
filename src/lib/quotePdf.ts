@@ -74,36 +74,6 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
     y = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('Quotation summary', margin, y);
-  y += 3;
-  doc.setFont('helvetica', 'normal');
-
-  const summaryRows: [string, string][] = [
-    ['Supply (materials & hardware)', fmt(result.materialsTotal)],
-  ];
-  if (result.install && result.installationTotal > 0) {
-    summaryRows.push(['Installation', fmt(result.installationTotal)]);
-  } else if (!result.install) {
-    summaryRows.push(['Installation', 'Not included']);
-  }
-  if (result.travelTotal > 0) {
-    summaryRows.push(['Travel', fmt(result.travelTotal)]);
-  }
-
-  autoTable(doc, {
-    startY: y,
-    head: [['Description', 'Amount']],
-    body: summaryRows,
-    styles: { fontSize: 9, cellPadding: 2.5 },
-    headStyles: { fillColor: [37, 99, 235] },
-    columnStyles: { 1: { halign: 'right' } },
-    margin: { left: margin, right: margin },
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 8;
-
   if (y > 250) {
     doc.addPage();
     y = margin;
@@ -148,7 +118,7 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
     showVat
       ? inclEntry
         ? `${currencyNote} Your prices were entered incl VAT; the breakdown above shows ex VAT, VAT, and total incl VAT.`
-        : `${currencyNote} Supply and installation subtotals are ex VAT; total incl VAT is shown above.`
+        : `${currencyNote} The total below is ex VAT; total incl VAT is shown where applicable.`
       : inclEntry
         ? `${currencyNote} Amounts are inclusive of VAT.`
         : `${currencyNote} Amounts are exclusive of VAT.`,
