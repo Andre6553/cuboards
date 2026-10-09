@@ -48,7 +48,7 @@ export async function fetchGelmarLivePrices(
     throw new Error(detail || 'no_prices');
   }
 
-  return { scrapedAt: data.scrapedAt, prices: data.prices!, warnings: data.warnings };
+  return { scrapedAt: data.scrapedAt, prices: data.prices! };
 }
 
 export function applyGelmarPricesToJob(
