@@ -4,22 +4,25 @@ import { DEFAULT_QUOTE_TERMS, UNIT_TYPE_LABELS } from './constants';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
 import { formatMoney, quoteCurrencyLine } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
+import { drawPdfBrandHeader, loadPdfLogoDataUrl } from './pdfBrand';
 import type { CutListResult, Job } from '../types';
 
 /** Client-facing quotation PDF — scope + summary totals (no supply breakdown or cut sizes). */
-export function exportClientQuotePdf(job: Job, result: CutListResult): void {
+export async function exportClientQuotePdf(job: Job, result: CutListResult): Promise<void> {
   const fmt = (n: number) => formatMoney(n, job.settings);
+  const logoDataUrl = await loadPdfLogoDataUrl();
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const margin = 18;
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentWidth = pageWidth - margin * 2;
   let y = margin;
 
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Quotation', margin, y);
-  doc.setFont('helvetica', 'normal');
-  y += 9;
+  y = drawPdfBrandHeader(doc, logoDataUrl, {
+    margin,
+    y,
+    documentTitle: 'Quotation',
+    logoHeightMm: 16,
+  });
 
   doc.setFontSize(10);
   doc.setTextColor(80);

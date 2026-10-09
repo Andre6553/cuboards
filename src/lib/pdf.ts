@@ -6,6 +6,7 @@ import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings
 import { exportClientQuotePdf } from './quotePdf';
 import { formatMoney, resolveQuoteCurrency } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
+import { drawPdfBrandHeader, loadPdfLogoDataUrl } from './pdfBrand';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
@@ -104,12 +105,13 @@ function drawSizeModeNote(doc: jsPDF, margin: number, y: number, job: Job, promi
 
 export type CutListPdfMode = 'factory' | 'full' | 'quote';
 
-export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListPdfMode = 'full'): void {
+export async function exportCutListPdf(job: Job, result: CutListResult, mode: CutListPdfMode = 'full'): Promise<void> {
   if (mode === 'quote') {
-    exportClientQuotePdf(job, result);
+    await exportClientQuotePdf(job, result);
     return;
   }
 
+  const logoDataUrl = await loadPdfLogoDataUrl();
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const margin = 14;
   let y = margin;
@@ -117,9 +119,12 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
   const fmt = (n: number) => formatMoney(n, job.settings);
   const curSym = resolveQuoteCurrency(job.settings).symbol;
 
-  doc.setFontSize(18);
-  doc.text(factory ? 'Cuboards — Factory cut list' : 'Cuboards — Full cut list', margin, y);
-  y += 8;
+  y = drawPdfBrandHeader(doc, logoDataUrl, {
+    margin,
+    y,
+    documentTitle: factory ? 'Factory cut list' : 'Full cut list',
+    logoHeightMm: 12,
+  });
 
   doc.setFontSize(10);
   doc.setTextColor(80);

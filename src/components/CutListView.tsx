@@ -144,7 +144,15 @@ export function CutListView({ job }: Props) {
               Full
             </button>
           </div>
-          <button type="button" className="btn btn-primary" onClick={() => exportCutListPdf(job, result, mode)}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              void exportCutListPdf(job, result, mode).catch(() => {
+                alert('Could not create PDF. Check your connection and try again.');
+              });
+            }}
+          >
             Download {factory ? 'factory' : quote ? 'client quote' : 'full'} PDF
           </button>
         </div>
