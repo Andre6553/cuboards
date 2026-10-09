@@ -173,7 +173,7 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
   y = renderGroupedSection(doc, y, margin, 'Board cut list', result.boardGroups);
   y = renderGroupedSection(doc, y, margin, 'Masonite cut list', result.masoniteGroups, false);
 
-  if (result.boardOffcuts.length > 0) {
+  if (!factory && result.boardOffcuts.length > 0) {
     if (y > 150) {
       doc.addPage();
       y = margin;

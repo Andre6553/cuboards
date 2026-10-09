@@ -29,7 +29,7 @@ Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF ex
 - **2026-10-09:** Mobile unit form: responsive `auto-fit` grids + drawer box hints moved out of grid so material/edging selects are full width on phone.
 - **2026-10-09:** Cut list tab **Client quote** + portrait PDF (`quotePdf.ts`) — scope, supply/install totals, exclusions; no panel sizes (Factory/Full unchanged).
 - **2026-10-09:** SA quote polish (2–8): VAT breakdown, board wastage %, backup reminder, mobile edging table, sheet presets, runner price note, editable quote terms; dashboard quote incl VAT when enabled.
-- **2026-10-09:** **Board offcuts** on factory/full cut list + PDF — from sheet nesting (`sheetLayout` free rects); board wastage % is quote sheet count only, not offcut geometry.
+- **2026-10-09:** **Board offcuts** on **full** cut list + full PDF only (not factory) — from sheet nesting; board wastage % is quote sheet count only, not offcut geometry.
 - **2026-10-09:** **NumberInput** — mobile-friendly numeric fields (clear/retype without snapping to 0); replaces `type="number"` on units/prices forms.
 - **2026-10-09:** **Quote currency** — Job settings dropdown (ZAR default + regional/common codes); `formatMoney` drives cut list, dashboard, full PDF, client quote PDF. No FX conversion — you enter amounts in that currency.
 - **2026-10-09:** **Hardware pricing mode** — per category (runners, hinges, screws, connecting fittings): checkbox *Use Gelmar catalog & live refresh* (default on). Off → custom product table (description + price; pack qty for screws/fittings). Stored on job + **My default prices** (`hardwarePricing` in `priceList.ts`). Unit dropdowns use custom catalog via `hardwarePricing.ts`.
