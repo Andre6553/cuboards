@@ -74,10 +74,10 @@ export function Dashboard({ jobs, onOpen, onJobsChange }: Props) {
 
   return (
     <div className="dashboard">
-      <header className="page-header">
+      <header className="page-header page-header--dashboard">
         <div>
-          <h1>Cuboards</h1>
-          <p className="subtitle">Kitchen & bedroom cupboard cut lists for installers</p>
+          <h1 className="visually-hidden">Cuboards</h1>
+          <p className="subtitle page-tagline">Kitchen & bedroom cupboard cut lists for installers</p>
         </div>
         <div className="header-actions">
           <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>

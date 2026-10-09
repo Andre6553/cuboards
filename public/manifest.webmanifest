@@ -1,0 +1,23 @@
+{
+  "name": "Cuboards",
+  "short_name": "Cuboards",
+  "description": "Kitchen and bedroom cupboard cut lists and quotes for installers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/logo-mark.png",
+      "sizes": "122x137",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "122x137",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

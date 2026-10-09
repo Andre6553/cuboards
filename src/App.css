@@ -1,7 +1,115 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-brand-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.app-brand-bar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+}
+
+.app-brand-home {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  color: inherit;
+}
+
+.app-brand-home:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.app-brand-home--static {
+  cursor: default;
+}
+
+.app-brand-context {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.cuboards-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.cuboards-logo-mark {
+  display: block;
+  height: 2.125rem;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.cuboards-logo-wordmark {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--brand);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cuboards-logo--icon-only .cuboards-logo-mark {
+  height: 2rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .app {
   max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem;
+  width: 100%;
+  flex: 1;
+}
+
+.page-header--dashboard {
+  margin-top: 0.25rem;
+}
+
+.page-tagline {
+  font-size: 1rem;
+  max-width: 28rem;
 }
 
 .page-header {
@@ -1214,6 +1322,19 @@
     padding: 1rem 0.75rem;
   }
 
+  .app-brand-bar-inner {
+    padding: 0.55rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .app-brand-bar--with-context .cuboards-logo-wordmark {
+    display: none;
+  }
+
+  .cuboards-logo-mark {
+    height: 1.85rem;
+  }
+
   .materials-board-table,
   .materials-board-table tbody,
   .materials-price-table,
@@ -1280,5 +1401,24 @@
   .materials-price-table tbody td select {
     width: 100%;
     min-width: 0;
+  }
+}
+
+@media (min-width: 769px) {
+  .app-brand-bar--with-context .cuboards-logo-wordmark {
+    display: inline;
+  }
+
+  .app-brand-context {
+    flex: 0 1 auto;
+    max-width: 50%;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .app-brand-context::before {
+    content: '·';
+    margin-right: 0.65rem;
+    color: var(--border);
   }
 }
