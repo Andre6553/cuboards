@@ -14,6 +14,7 @@ interface Props {
   /** Show pack size + job qty columns (screws, connecting fittings). */
   packMode?: boolean;
   defaultPriceUnit?: CustomHardwarePriceUnit;
+  currencySymbol?: string;
 }
 
 function patchItem(items: CustomHardwareItem[], id: string, patch: Partial<CustomHardwareItem>) {
@@ -29,6 +30,7 @@ export function CustomHardwareEditor({
   gelmarPanel,
   packMode,
   defaultPriceUnit = 'each',
+  currencySymbol = 'R',
 }: Props) {
   const addItem = () => {
     onItemsChange([
@@ -62,7 +64,7 @@ export function CustomHardwareEditor({
               <thead>
                 <tr>
                   <th>Description</th>
-                  <th>{packMode ? 'Price / pack (R)' : 'Price (R)'}</th>
+                  <th>{packMode ? `Price / pack (${currencySymbol})` : `Price (${currencySymbol})`}</th>
                   {packMode && <th>Pack size</th>}
                   {packMode && <th>Qty (packs) this job</th>}
                   <th></th>

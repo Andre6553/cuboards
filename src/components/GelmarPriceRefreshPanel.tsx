@@ -12,6 +12,7 @@ interface Props {
   checked: GelmarPriceChecked[];
   hint: ReactNode;
   buttonLabel?: string;
+  formatPrice?: (amount: number) => string;
 }
 
 export function GelmarPriceRefreshPanel({
@@ -25,6 +26,7 @@ export function GelmarPriceRefreshPanel({
   checked,
   hint,
   buttonLabel = 'Refresh Gelmar prices',
+  formatPrice = (n) => `R ${n.toFixed(2)}`,
 }: Props) {
   return (
     <>
@@ -49,7 +51,7 @@ export function GelmarPriceRefreshPanel({
         <ul className="gelmar-refresh-changes">
           {changes.map((c) => (
             <li key={c.id}>
-              {c.label}: R {c.oldPrice.toFixed(2)} → R {c.newPrice.toFixed(2)}
+              {c.label}: {formatPrice(c.oldPrice)} → {formatPrice(c.newPrice)}
             </li>
           ))}
         </ul>
@@ -60,7 +62,7 @@ export function GelmarPriceRefreshPanel({
           <ul className="gelmar-refresh-changes">
             {checked.map((c) => (
               <li key={c.id}>
-                {c.label}: R {c.price.toFixed(2)}
+                {c.label}: {formatPrice(c.price)}
               </li>
             ))}
           </ul>

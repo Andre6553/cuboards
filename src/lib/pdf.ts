@@ -4,6 +4,7 @@ import { CUT_SIZE_MODE_LABELS } from './constants';
 import { CUT_SIZE_MODE_CUTLIST_HINT } from './edgingCutSize';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
 import { exportClientQuotePdf } from './quotePdf';
+import { formatMoney, resolveQuoteCurrency } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
 import { grainLabel } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
@@ -113,6 +114,8 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
   const margin = 14;
   let y = margin;
   const factory = mode === 'factory';
+  const fmt = (n: number) => formatMoney(n, job.settings);
+  const curSym = resolveQuoteCurrency(job.settings).symbol;
 
   doc.setFontSize(18);
   doc.text(factory ? 'Cuboards — Factory cut list' : 'Cuboards — Full cut list', margin, y);
@@ -180,7 +183,7 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
 
     autoTable(doc, {
       startY: y,
-      head: factory ? [['Edging type', 'Thick']] : [['Edging', 'Thick', 'Total (m)', 'R/m', 'Cost']],
+      head: factory ? [['Edging type', 'Thick']] : [['Edging', 'Thick', 'Total (m)', `${curSym}/m`, 'Cost']],
       body: factory
         ? result.consolidatedEdging.map((e) => [e.edgingMaterialName, `${e.thickness} mm`])
         : [
@@ -188,10 +191,10 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
               e.edgingMaterialName,
               `${e.thickness} mm`,
               e.totalLm.toFixed(2),
-              `R ${e.pricePerMetre.toFixed(2)}`,
-              `R ${e.subtotal.toFixed(2)}`,
+              fmt(e.pricePerMetre),
+              fmt(e.subtotal),
             ]),
-            ['Edging total', '', edgingTotalLm.toFixed(2), '', `R ${edgingTotalCost.toFixed(2)}`],
+            ['Edging total', '', edgingTotalLm.toFixed(2), '', fmt(edgingTotalCost)],
           ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
@@ -212,7 +215,7 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
       startY: y,
       head: factory
         ? [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)']]
-        : [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)', 'R/m', 'Subtotal']],
+        : [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)', `${curSym}/m`, 'Subtotal']],
       body: factory
         ? [
             ...result.plasticKickplates.map((p) => [
@@ -233,10 +236,10 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
               `${p.stripHeight}×${p.stripWidth}`,
               p.cupboardQty.toString(),
               p.totalMetres.toFixed(2),
-              `R ${p.pricePerMetre.toFixed(2)}`,
-              `R ${p.subtotal.toFixed(2)}`,
+              fmt(p.pricePerMetre),
+              fmt(p.subtotal),
             ]),
-            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), '', `R ${(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre).toFixed(2)}`],
+            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), '', fmt(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre)],
           ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
@@ -264,10 +267,10 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
         h.unitName,
         h.qty.toString(),
         h.detail,
-        `R ${h.pricePerPair.toFixed(2)}`,
-        `R ${h.subtotal.toFixed(2)}`,
+        fmt(h.pricePerPair),
+        fmt(h.subtotal),
       ]),
-      foot: [['Hardware total', '', '', '', '', `R ${hardwareTotal.toFixed(2)}`]],
+      foot: [['Hardware total', '', '', '', '', fmt(hardwareTotal)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
       footStyles: { fillColor: [237, 242, 247], textColor: 20, fontStyle: 'bold' },
@@ -293,10 +296,10 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
         s.sku,
         s.totalScrews.toString(),
         `${s.packsNeeded} × ${s.packSize}`,
-        `R ${s.packPrice.toFixed(2)}`,
-        `R ${s.subtotal.toFixed(2)}`,
+        fmt(s.packPrice),
+        fmt(s.subtotal),
       ]),
-      foot: [['Screws & fittings total', '', '', '', '', `R ${screwsTotal.toFixed(2)}`]],
+      foot: [['Screws & fittings total', '', '', '', '', fmt(screwsTotal)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
       footStyles: { fillColor: [237, 242, 247], textColor: 20, fontStyle: 'bold' },
@@ -322,25 +325,25 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
         c.category,
         c.name,
         c.detail,
-        `R ${c.subtotal.toFixed(2)}`,
+        fmt(c.subtotal),
       ]),
-      ['', 'Material cost total', '', `R ${result.materialsTotal.toFixed(2)}`],
+      ['', 'Material cost total', '', fmt(result.materialsTotal)],
       [
         'install',
         'Installation cost total',
         result.install
           ? `${result.install.lines.length} unit(s)${result.install.minimumApplied > 0 ? ' · min job applied' : ''}`
           : 'Not included',
-        `R ${result.installationTotal.toFixed(2)}`,
+        fmt(result.installationTotal),
       ],
-      ['', 'Travel total', '', `R ${result.travelTotal.toFixed(2)}`],
+      ['', 'Travel total', '', fmt(result.travelTotal)],
       ...(resolveShowVatOnQuote(job.settings)
         ? (() => {
             const vat = calcVatTotalsForJob(result.grandTotal, job.settings);
             return [
-              ['', 'Subtotal ex VAT', '', `R ${vat.subtotalExVat.toFixed(2)}`],
-              ['', `VAT (${vat.ratePercent}%)`, '', `R ${vat.vatAmount.toFixed(2)}`],
-              ['', 'TOTAL INCL VAT', '', `R ${vat.totalInclVat.toFixed(2)}`],
+              ['', 'Subtotal ex VAT', '', fmt(vat.subtotalExVat)],
+              ['', `VAT (${vat.ratePercent}%)`, '', fmt(vat.vatAmount)],
+              ['', 'TOTAL INCL VAT', '', fmt(vat.totalInclVat)],
             ];
           })()
         : [
@@ -348,7 +351,7 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
               '',
               resolvePricesEnterAsInclVat(job.settings) ? 'GRAND TOTAL (incl VAT)' : 'GRAND TOTAL (ex VAT)',
               '',
-              `R ${result.grandTotal.toFixed(2)}`,
+              fmt(result.grandTotal),
             ],
           ]),
     ],

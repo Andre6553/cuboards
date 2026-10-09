@@ -1,3 +1,4 @@
+import { formatMoney } from '../lib/currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from '../lib/vat';
 import type { JobSettings } from '../types';
 
@@ -18,7 +19,7 @@ export function QuoteTotalsRows({ settings, grandTotal, compact }: Props) {
         <span></span>
         <span>{formatGrandTotalLabel(settings)}</span>
         <span></span>
-        <span>R {grandTotal.toFixed(2)}</span>
+        <span>{formatMoney(grandTotal, settings)}</span>
       </div>
     );
   }
@@ -29,19 +30,19 @@ export function QuoteTotalsRows({ settings, grandTotal, compact }: Props) {
         <span></span>
         <span>Subtotal ex VAT</span>
         <span></span>
-        <span>R {vat.subtotalExVat.toFixed(2)}</span>
+        <span>{formatMoney(vat.subtotalExVat, settings)}</span>
       </div>
       <div className="cost-row subtotal">
         <span></span>
         <span>VAT ({vat.ratePercent}%)</span>
         <span></span>
-        <span>R {vat.vatAmount.toFixed(2)}</span>
+        <span>{formatMoney(vat.vatAmount, settings)}</span>
       </div>
       <div className="cost-row total">
         <span></span>
         <span>Total incl VAT</span>
         <span></span>
-        <span>R {vat.totalInclVat.toFixed(2)}</span>
+        <span>{formatMoney(vat.totalInclVat, settings)}</span>
       </div>
     </>
   );

@@ -8,6 +8,7 @@ import { getConnectingFittingById } from '../lib/connectingFittingCatalog';
 import { UNIT_TYPE_LABELS } from '../lib/constants';
 import type { Unit } from '../types';
 import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS } from '../lib/edgingCutSize';
+import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
 import { grainLabel } from '../lib/sheetLayout';
@@ -99,6 +100,8 @@ export function CutListView({ job }: Props) {
   const showPricingDetail = !factory;
   const showTechnical = mode === 'full';
   const result = generateCutList(job);
+  const fmt = (n: number) => formatMoney(n, job.settings);
+  const currencySymbol = resolveQuoteCurrency(job.settings).symbol;
   const edgingWarnings = getDoorDrawerEdgingWarnings(job);
   const drawerWarnings = getDrawerCutListWarnings(job);
   const showPostformTopNotice = jobNeedsPostformTopQuote(job);
@@ -233,7 +236,7 @@ export function CutListView({ job }: Props) {
                       <th>Edging material</th>
                       <th>Thickness</th>
                       {!factory && <th>Total (m)</th>}
-                      {!factory && <th>R/m</th>}
+                      {!factory && <th>{currencySymbol}/m</th>}
                       {!factory && <th>Cost</th>}
                     </tr>
                   </thead>
@@ -243,8 +246,8 @@ export function CutListView({ job }: Props) {
                         <td>{e.edgingMaterialName}</td>
                         <td>{e.thickness} mm</td>
                         {!factory && <td>{e.totalLm.toFixed(2)}</td>}
-                        {!factory && <td>R {e.pricePerMetre.toFixed(2)}</td>}
-                        {!factory && <td>R {e.subtotal.toFixed(2)}</td>}
+                        {!factory && <td>{fmt(e.pricePerMetre)}</td>}
+                        {!factory && <td>{fmt(e.subtotal)}</td>}
                       </tr>
                     ))}
                     {!factory && (
@@ -258,7 +261,7 @@ export function CutListView({ job }: Props) {
                         <td></td>
                         <td>
                           <strong>
-                            R {result.consolidatedEdging.reduce((sum, e) => sum + e.subtotal, 0).toFixed(2)}
+                            {fmt(result.consolidatedEdging.reduce((sum, e) => sum + e.subtotal, 0))}
                           </strong>
                         </td>
                       </tr>
@@ -282,7 +285,7 @@ export function CutListView({ job }: Props) {
                       <th>Strip H×W (mm)</th>
                       <th>Cupboards</th>
                       <th>Total (m)</th>
-                      {!factory && <th>R/m</th>}
+                      {!factory && <th>{currencySymbol}/m</th>}
                       {!factory && <th>Subtotal</th>}
                     </tr>
                   </thead>
@@ -295,15 +298,15 @@ export function CutListView({ job }: Props) {
                         <td>{p.stripHeight} × {p.stripWidth}</td>
                         <td>{p.cupboardQty}</td>
                         <td>{p.totalMetres.toFixed(2)}</td>
-                        {!factory && <td>R {p.pricePerMetre.toFixed(2)}</td>}
-                        {!factory && <td>R {p.subtotal.toFixed(2)}</td>}
+                        {!factory && <td>{fmt(p.pricePerMetre)}</td>}
+                        {!factory && <td>{fmt(p.subtotal)}</td>}
                       </tr>
                     ))}
                     <tr className="total-row">
                       <td colSpan={5}><strong>Job total</strong></td>
                       <td><strong>{result.plasticKickplateTotalMetres.toFixed(2)}</strong></td>
                       {!factory && <td></td>}
-                      {!factory && <td><strong>R {(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre).toFixed(2)}</strong></td>}
+                      {!factory && <td><strong>{fmt(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre)}</strong></td>}
                     </tr>
                   </tbody>
                 </table>
@@ -336,13 +339,13 @@ export function CutListView({ job }: Props) {
                         <td>{h.unitName}</td>
                         <td>{h.qty}</td>
                         <td>{h.detail}</td>
-                        <td>R {h.pricePerPair.toFixed(2)}</td>
-                        <td>R {h.subtotal.toFixed(2)}</td>
+                        <td>{fmt(h.pricePerPair)}</td>
+                        <td>{fmt(h.subtotal)}</td>
                       </tr>
                     ))}
                     <tr className="total-row">
                       <td colSpan={5}><strong>Hardware total</strong></td>
-                      <td><strong>R {hardwareTotal.toFixed(2)}</strong></td>
+                      <td><strong>{fmt(hardwareTotal)}</strong></td>
                     </tr>
                   </tbody>
                 </table>
@@ -372,13 +375,13 @@ export function CutListView({ job }: Props) {
                         <td>{s.sku}</td>
                         <td title={s.usageDetail}>{s.totalScrews}</td>
                         <td>{s.packsNeeded} × {s.packSize}</td>
-                        <td>R {s.packPrice.toFixed(2)}</td>
-                        <td>R {s.subtotal.toFixed(2)}</td>
+                        <td>{fmt(s.packPrice)}</td>
+                        <td>{fmt(s.subtotal)}</td>
                       </tr>
                     ))}
                     <tr className="total-row">
                       <td colSpan={5}><strong>Screws &amp; fittings total</strong></td>
-                      <td><strong>R {screwsTotal.toFixed(2)}</strong></td>
+                      <td><strong>{fmt(screwsTotal)}</strong></td>
                     </tr>
                   </tbody>
                 </table>
@@ -414,11 +417,11 @@ export function CutListView({ job }: Props) {
                         <td>{line.unitName}</td>
                         <td>{UNIT_TYPE_LABELS[line.unitType]}</td>
                         <td>{line.cupboardQty}</td>
-                        <td>R {line.baseSubtotal.toFixed(2)}</td>
-                        <td>{line.doorLeaves > 0 ? `R ${line.doorSubtotal.toFixed(2)}` : '—'}</td>
-                        <td>{line.drawerCount > 0 ? `R ${line.drawerSubtotal.toFixed(2)}` : '—'}</td>
-                        <td>{line.wallPremium > 0 ? `R ${line.wallPremium.toFixed(2)}` : '—'}</td>
-                        <td>R {line.subtotal.toFixed(2)}</td>
+                        <td>{fmt(line.baseSubtotal)}</td>
+                        <td>{line.doorLeaves > 0 ? fmt(line.doorSubtotal) : '—'}</td>
+                        <td>{line.drawerCount > 0 ? fmt(line.drawerSubtotal) : '—'}</td>
+                        <td>{line.wallPremium > 0 ? fmt(line.wallPremium) : '—'}</td>
+                        <td>{fmt(line.subtotal)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -426,24 +429,24 @@ export function CutListView({ job }: Props) {
                     {!quote && (
                       <tr>
                         <td colSpan={7}>Labour subtotal</td>
-                        <td>R {result.install.laborSubtotal.toFixed(2)}</td>
+                        <td>{fmt(result.install.laborSubtotal)}</td>
                       </tr>
                     )}
                     {!quote && result.install.minimumApplied > 0 && (
                       <tr>
-                        <td colSpan={7}>Minimum job (R {result.install.minimumJob.toFixed(2)})</td>
-                        <td>+R {result.install.minimumApplied.toFixed(2)}</td>
+                        <td colSpan={7}>Minimum job ({fmt(result.install.minimumJob)})</td>
+                        <td>+{fmt(result.install.minimumApplied)}</td>
                       </tr>
                     )}
                     {!quote && result.install.travelFee > 0 && (
                       <tr>
                         <td colSpan={7}>Travel (quoted separately)</td>
-                        <td>R {result.install.travelFee.toFixed(2)}</td>
+                        <td>{fmt(result.install.travelFee)}</td>
                       </tr>
                     )}
                     <tr>
                       <td colSpan={7}><strong>Installation total</strong></td>
-                      <td><strong>R {result.install.installationTotal.toFixed(2)}</strong></td>
+                      <td><strong>{fmt(result.install.installationTotal)}</strong></td>
                     </tr>
                   </tfoot>
                 </table>
@@ -465,14 +468,14 @@ export function CutListView({ job }: Props) {
                 <span className="cost-cat">{c.category}</span>
                 <span>{c.name}</span>
                 <span className="cost-detail">{c.detail}</span>
-                <span>R {c.subtotal.toFixed(2)}</span>
+                <span>{fmt(c.subtotal)}</span>
               </div>
             ))}
             <div className="cost-row subtotal">
               <span></span>
               <span>Material cost total</span>
               <span></span>
-              <span>R {result.materialsTotal.toFixed(2)}</span>
+              <span>{fmt(result.materialsTotal)}</span>
             </div>
             <div className="cost-row subtotal">
               <span className="cost-cat">install</span>
@@ -482,13 +485,13 @@ export function CutListView({ job }: Props) {
                   ? `${result.install.lines.length} unit(s)${!quote && result.install.minimumApplied > 0 ? ' · min job applied' : ''}`
                   : 'Not included'}
               </span>
-              <span>R {result.installationTotal.toFixed(2)}</span>
+              <span>{fmt(result.installationTotal)}</span>
             </div>
             <div className="cost-row subtotal">
               <span></span>
               <span>Travel total</span>
               <span></span>
-              <span>R {result.travelTotal.toFixed(2)}</span>
+              <span>{fmt(result.travelTotal)}</span>
             </div>
             <QuoteTotalsRows settings={job.settings} grandTotal={result.grandTotal} />
           </div>

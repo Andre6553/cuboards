@@ -2,12 +2,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { DEFAULT_QUOTE_TERMS, UNIT_TYPE_LABELS } from './constants';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
+import { formatMoney, quoteCurrencyLine } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
 import type { CutListResult, Job } from '../types';
-
-function formatRand(n: number): string {
-  return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function supplyCategoryLabel(category: string): string {
   switch (category) {
@@ -26,6 +23,7 @@ function supplyCategoryLabel(category: string): string {
 
 /** Client-facing quotation PDF — line items and totals only (no panel cut sizes). */
 export function exportClientQuotePdf(job: Job, result: CutListResult): void {
+  const fmt = (n: number) => formatMoney(n, job.settings);
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const margin = 18;
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -105,9 +103,9 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
       ...supplyLines.map((c) => [
         supplyCategoryLabel(c.category),
         `${c.name} — ${c.detail}`,
-        formatRand(c.subtotal),
+        fmt(c.subtotal),
       ]),
-      ['', 'Materials & supply subtotal', formatRand(result.materialsTotal)],
+      ['', 'Materials & supply subtotal', fmt(result.materialsTotal)],
     ],
     styles: { fontSize: 9, cellPadding: 2.5 },
     headStyles: { fillColor: [37, 99, 235] },
@@ -137,9 +135,9 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
         ...result.install.lines.map((line) => [
           line.unitName,
           line.detail,
-          formatRand(line.subtotal),
+          fmt(line.subtotal),
         ]),
-        ['', 'Installation total', formatRand(result.installationTotal)],
+        ['', 'Installation total', fmt(result.installationTotal)],
       ],
       styles: { fontSize: 9, cellPadding: 2.5 },
       headStyles: { fillColor: [37, 99, 235] },
@@ -160,7 +158,7 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
     autoTable(doc, {
       startY: y,
       head: [['', 'Travel', 'Amount']],
-      body: [['', 'Travel fee', formatRand(result.travelTotal)]],
+      body: [['', 'Travel fee', fmt(result.travelTotal)]],
       styles: { fontSize: 9, cellPadding: 2.5 },
       theme: 'plain',
       columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
@@ -184,14 +182,14 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
     startY: y,
     body: showVat
       ? [
-          ['Subtotal ex VAT', formatRand(vat.subtotalExVat)],
-          [`VAT (${vat.ratePercent}%)`, formatRand(vat.vatAmount)],
-          ['Total incl VAT', formatRand(vat.totalInclVat)],
+          ['Subtotal ex VAT', fmt(vat.subtotalExVat)],
+          [`VAT (${vat.ratePercent}%)`, fmt(vat.vatAmount)],
+          ['Total incl VAT', fmt(vat.totalInclVat)],
         ]
       : [
           [
             inclEntry ? 'Total (incl VAT)' : 'Total (ex VAT)',
-            formatRand(result.grandTotal),
+            fmt(result.grandTotal),
           ],
         ],
     styles: { fontSize: 10, cellPadding: 3 },
@@ -209,14 +207,15 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
   doc.setFontSize(9);
   doc.setTextColor(60);
 
+  const currencyNote = quoteCurrencyLine(job.settings);
   const exclusions: string[] = [
     showVat
       ? inclEntry
-        ? 'All amounts in South African Rand (ZAR). Your prices were entered incl VAT; the breakdown above shows ex VAT, VAT, and total incl VAT.'
-        : 'All amounts in South African Rand (ZAR). Supply and installation subtotals are ex VAT; total incl VAT is shown above.'
+        ? `${currencyNote} Your prices were entered incl VAT; the breakdown above shows ex VAT, VAT, and total incl VAT.`
+        : `${currencyNote} Supply and installation subtotals are ex VAT; total incl VAT is shown above.`
       : inclEntry
-        ? 'All amounts in South African Rand (ZAR), inclusive of VAT.'
-        : 'All amounts in South African Rand (ZAR), exclusive of VAT.',
+        ? `${currencyNote} Amounts are inclusive of VAT.`
+        : `${currencyNote} Amounts are exclusive of VAT.`,
     'Panel cutting sizes and factory cut lists are prepared separately and are not attached.',
     'Appliances, plumbing, electrical work, granite templating, and delivery of third-party items are excluded unless agreed in writing.',
   ];

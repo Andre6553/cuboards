@@ -27,6 +27,13 @@ import {
   notifyGelmarRefreshFailure,
   type GelmarRefreshUiState,
 } from '../lib/gelmarPriceRefresh';
+import {
+  formatMoney,
+  priceInputLabel,
+  QUOTE_CURRENCIES,
+  ratePerUnitLabel,
+  resolveQuoteCurrency,
+} from '../lib/currency';
 
 import type {
   ConnectingFittingPrices,
@@ -174,6 +181,8 @@ export function MaterialsForm({
   const install = { ...DEFAULT_INSTALL_RATES, ...installRates };
   const terms = { ...DEFAULT_QUOTE_TERMS, ...quoteTerms };
   const patchTerms = (patch: Partial<QuoteTerms>) => onQuoteTermsChange({ ...terms, ...patch });
+  const fmt = (n: number) => formatMoney(n, settings);
+  const currencySymbol = resolveQuoteCurrency(settings).symbol;
 
   const sheetPresetKey =
     SHEET_SIZE_PRESETS.find(
@@ -411,7 +420,7 @@ export function MaterialsForm({
 
           <label>
 
-            Plastic foot price (R each)
+            {priceInputLabel(settings, 'Plastic foot price each')}
 
             <input type="number" value={settings.pricePerFoot} onChange={(e) => onSettingsChange({ ...settings, pricePerFoot: Number(e.target.value) })} />
 
@@ -437,6 +446,20 @@ export function MaterialsForm({
 
             </select>
 
+          </label>
+
+          <label>
+            Quote currency
+            <select
+              value={settings.quoteCurrency ?? 'ZAR'}
+              onChange={(e) => onSettingsChange({ ...settings, quoteCurrency: e.target.value })}
+            >
+              {QUOTE_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -630,7 +653,7 @@ export function MaterialsForm({
 
                 <th>Colour</th>
 
-                <th>Price / sheet (R)</th>
+                <th>{priceInputLabel(settings, 'Price / sheet')}</th>
 
                 <th>Grain</th>
 
@@ -728,7 +751,7 @@ export function MaterialsForm({
 
                 <th>Thickness (mm)</th>
 
-                <th>Price / metre (R)</th>
+                <th>{priceInputLabel(settings, 'Price / metre')}</th>
 
                 <th></th>
 
@@ -786,7 +809,7 @@ export function MaterialsForm({
 
           <label>Thickness (mm)<input type="number" value={masonite.thickness} onChange={(e) => onMasoniteChange({ ...masonite, thickness: Number(e.target.value) })} /></label>
 
-          <label>Price / sheet (R)<input type="number" value={masonite.pricePerSheet} onChange={(e) => onMasoniteChange({ ...masonite, pricePerSheet: Number(e.target.value) })} /></label>
+          <label>{priceInputLabel(settings, 'Price / sheet')}<input type="number" value={masonite.pricePerSheet} onChange={(e) => onMasoniteChange({ ...masonite, pricePerSheet: Number(e.target.value) })} /></label>
 
         </div>
 
@@ -836,7 +859,7 @@ export function MaterialsForm({
 
           <label>Strip width (mm)<input type="number" value={plasticKickplate.stripWidth} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, stripWidth: Number(e.target.value) })} /></label>
 
-          <label>Price / metre (R)<input type="number" value={plasticKickplate.pricePerMetre} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: Number(e.target.value) })} /></label>
+          <label>{priceInputLabel(settings, 'Price / metre')}<input type="number" value={plasticKickplate.pricePerMetre} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: Number(e.target.value) })} /></label>
 
         </div>
 
@@ -854,6 +877,7 @@ export function MaterialsForm({
           items={hardwarePricing.customCatalog.runners}
           onItemsChange={(items) => setCustomCatalog('runners', items)}
           defaultPriceUnit="pair"
+          currencySymbol={currencySymbol}
           gelmarPanel={
             <>
               <GelmarPriceRefreshPanel
@@ -865,6 +889,7 @@ export function MaterialsForm({
                 error={runnerRefresh.error}
                 changes={runnerRefresh.changes}
                 checked={runnerRefresh.checked}
+                formatPrice={fmt}
                 hint="Gelmar pair prices. Refresh pulls current prices from gelmar.co.za into this job. Override any price for your supplier."
               />
 
@@ -879,7 +904,7 @@ export function MaterialsForm({
                       <th>Category</th>
                       <th>SKU</th>
                       <th>Length</th>
-                      <th>R / pair</th>
+                      <th>{ratePerUnitLabel(settings, 'pair')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -923,6 +948,7 @@ export function MaterialsForm({
           items={hardwarePricing.customCatalog.hinges}
           onItemsChange={(items) => setCustomCatalog('hinges', items)}
           defaultPriceUnit="each"
+          currencySymbol={currencySymbol}
           gelmarPanel={
             <>
               <GelmarPriceRefreshPanel
@@ -934,6 +960,7 @@ export function MaterialsForm({
                 error={hingeRefresh.error}
                 changes={hingeRefresh.changes}
                 checked={hingeRefresh.checked}
+                formatPrice={fmt}
                 hint={
                   <>
                     Gelmar hinges from{' '}
@@ -956,7 +983,7 @@ export function MaterialsForm({
                       <th>Category</th>
                       <th>SKU</th>
                       <th>Spec</th>
-                      <th>R / each</th>
+                      <th>{ratePerUnitLabel(settings, 'each')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -999,6 +1026,7 @@ export function MaterialsForm({
           items={hardwarePricing.customCatalog.screws}
           onItemsChange={(items) => setCustomCatalog('screws', items)}
           packMode
+          currencySymbol={currencySymbol}
           gelmarPanel={
             <>
               <GelmarPriceRefreshPanel
@@ -1010,6 +1038,7 @@ export function MaterialsForm({
                 error={screwRefresh.error}
                 changes={screwRefresh.changes}
                 checked={screwRefresh.checked}
+                formatPrice={fmt}
                 hint="Gelmar screw pack prices. Refresh pulls pack prices from each product page on gelmar.co.za."
               />
 
@@ -1026,7 +1055,7 @@ export function MaterialsForm({
                       <th>SKU</th>
                       <th>Spec</th>
                       <th>Pack</th>
-                      <th>R / pack</th>
+                      <th>{ratePerUnitLabel(settings, 'pack')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1069,6 +1098,7 @@ export function MaterialsForm({
           items={hardwarePricing.customCatalog.connectingFittings}
           onItemsChange={(items) => setCustomCatalog('connectingFittings', items)}
           packMode
+          currencySymbol={currencySymbol}
           gelmarPanel={
             <>
               <GelmarPriceRefreshPanel
@@ -1080,6 +1110,7 @@ export function MaterialsForm({
                 error={fittingRefresh.error}
                 changes={fittingRefresh.changes}
                 checked={fittingRefresh.checked}
+                formatPrice={fmt}
                 hint="Gelmar connecting fitting pack prices. Refresh pulls pack prices from gelmar.co.za."
               />
 
@@ -1094,7 +1125,7 @@ export function MaterialsForm({
                       <th>SKU</th>
                       <th>Item</th>
                       <th>Pack</th>
-                      <th>R / pack</th>
+                      <th>{ratePerUnitLabel(settings, 'pack')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1179,42 +1210,42 @@ export function MaterialsForm({
         <div className="form-grid form-grid-3 sheet-settings-row">
 
           <label>
-            Kitchen base / cupboard (R)
+            {priceInputLabel(settings, 'Kitchen base / cupboard')}
             <input type="number" min={0} value={install.kitchenBasePerCupboard} onChange={(e) => patchInstall({ kitchenBasePerCupboard: Number(e.target.value) })} />
           </label>
 
           <label>
-            Wall unit / cupboard (R)
+            {priceInputLabel(settings, 'Wall unit / cupboard')}
             <input type="number" min={0} value={install.wallUnitPerCupboard} onChange={(e) => patchInstall({ wallUnitPerCupboard: Number(e.target.value) })} />
           </label>
 
           <label>
-            Bedroom / cupboard (R)
+            {priceInputLabel(settings, 'Bedroom / cupboard')}
             <input type="number" min={0} value={install.bedroomPerCupboard} onChange={(e) => patchInstall({ bedroomPerCupboard: Number(e.target.value) })} />
           </label>
 
           <label>
-            Per door leaf (R)
+            {priceInputLabel(settings, 'Per door leaf')}
             <input type="number" min={0} value={install.perDoorLeaf} onChange={(e) => patchInstall({ perDoorLeaf: Number(e.target.value) })} />
           </label>
 
           <label>
-            Per drawer (R)
+            {priceInputLabel(settings, 'Per drawer')}
             <input type="number" min={0} value={install.perDrawer} onChange={(e) => patchInstall({ perDrawer: Number(e.target.value) })} />
           </label>
 
           <label>
-            Wall-mount premium / cupboard (R)
+            {priceInputLabel(settings, 'Wall-mount premium / cupboard')}
             <input type="number" min={0} value={install.wallMountPremium} onChange={(e) => patchInstall({ wallMountPremium: Number(e.target.value) })} title="Added when unit mount type is wall" />
           </label>
 
           <label>
-            Minimum job (R)
+            {priceInputLabel(settings, 'Minimum job')}
             <input type="number" min={0} value={install.minimumJob} onChange={(e) => patchInstall({ minimumJob: Number(e.target.value) })} />
           </label>
 
           <label>
-            Travel fee (R)
+            {priceInputLabel(settings, 'Travel fee')}
             <input type="number" min={0} value={install.travelFee} onChange={(e) => patchInstall({ travelFee: Number(e.target.value) })} />
           </label>
 

@@ -88,6 +88,7 @@ export const DEFAULT_SETTINGS: JobSettings = {
   feetPerBaseUnit: 4,
   pricePerFoot: 25,
   cutSizeMode: 'final',
+  quoteCurrency: 'ZAR',
   vatRatePercent: 15,
   pricesEnterAsInclVat: false,
   showVatOnQuote: true,

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { Job } from '../types';
 import { generateCutList } from '../lib/calculator';
 import { formatLastBackup, getLastBackupIso, shouldShowBackupReminder } from '../lib/backupReminder';
+import { formatMoney } from '../lib/currency';
 import { displayGrandTotal } from './QuoteTotals';
 import { createNewJob, deleteJob, duplicateJob, exportAllJobsJson, exportJobJson, importJobsJson } from '../lib/storage';
 
@@ -20,9 +21,6 @@ function quoteTotal(job: Job): number | null {
     return null;
   }
 }
-
-const formatRand = (n: number) =>
-  `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 export function Dashboard({ jobs, onOpen, onJobsChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -133,7 +131,11 @@ export function Dashboard({ jobs, onOpen, onJobsChange }: Props) {
                     onKeyDown={(e) => e.key === 'Enter' && onOpen(job.id)}>
                     <h3>{job.client.name || 'Untitled job'}</h3>
                     <p className="job-meta">{job.client.ref && `Ref: ${job.client.ref} · `}{job.units.length} unit{job.units.length !== 1 ? 's' : ''}</p>
-                    <p className="job-total">{total != null ? `Quote ${formatRand(total)}` : 'No units on cut list yet'}</p>
+                    <p className="job-total">
+                      {total != null
+                        ? `Quote ${formatMoney(total, job.settings, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                        : 'No units on cut list yet'}
+                    </p>
                     <p className="job-date">Updated {new Date(job.updatedAt).toLocaleDateString()}</p>
                   </div>
                   <div className="job-card-actions">

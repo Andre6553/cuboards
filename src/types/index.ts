@@ -168,6 +168,8 @@ export interface JobSettings {
   pricePerFoot: number;
   /** final = cut list shows finished sizes; net = deduct edging tape thickness from edged sides */
   cutSizeMode: CutSizeMode;
+  /** ISO-style code for quote display (default ZAR). See `QUOTE_CURRENCIES` in `currency.ts`. */
+  quoteCurrency?: string;
   /** SA VAT rate for quotes (default 15). */
   vatRatePercent?: number;
   /** When true, board/hardware/install prices are entered incl VAT; quotes split out VAT. Default false (ex VAT). */
