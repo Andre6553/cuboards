@@ -1528,6 +1528,11 @@
   fill: #475569;
 }
 
+.sheet-map-label-size {
+  fill: #0f172a;
+  font-weight: 600;
+}
+
 .sheet-map-grain-arrow {
   fill: #64748b;
   font-family: 'Segoe UI', system-ui, sans-serif;

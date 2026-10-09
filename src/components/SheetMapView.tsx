@@ -15,6 +15,11 @@ function fitFontSize(label: string, boxW: number, boxH: number, scale = 1): numb
   return Math.max(5, Math.min(scale > 1 ? 20 : 14, base / lenFactor));
 }
 
+/** Same order as cut list: Length × Height (mm). On the sheet, length is along grain (horizontal). */
+function placementSizeLabel(widthMm: number, heightMm: number): string {
+  return `${Math.round(widthMm)} × ${Math.round(heightMm)}`;
+}
+
 /** Rip (horizontal) and crosscut (vertical) guides from panel-saw strip layout. */
 function guillotineCutLines(placements: SheetMapSheet['placements']): {
   ripY: number[];
@@ -136,8 +141,19 @@ function SheetDiagramSvg({
         const lines = p.label.split(' · ');
         const line1 = lines[0] ?? p.label;
         const line2 = lines[1];
+        const sizeText = placementSizeLabel(p.widthMm, p.heightMm);
         const minLabelW = expanded ? 28 : 55;
         const minLabelH = expanded ? 16 : 28;
+        const minSizeW = expanded ? 22 : 38;
+        const minSizeH = expanded ? 10 : 16;
+        const showName = p.widthMm > minLabelW && p.heightMm > minLabelH;
+        const showUnit = showName && line2 && p.heightMm > (expanded ? 40 : 52);
+        const showSize = p.widthMm > minSizeW && p.heightMm > minSizeH;
+        const grainLift = showPartGrainArrows && p.grainLocked && showName ? fontSize * 0.35 : 0;
+        const rowCount = (showName ? 1 : 0) + (showUnit ? 1 : 0) + (showSize ? 1 : 0);
+        const rowStep = fontSize * 1.05;
+        const blockTop = cy - grainLift - ((rowCount - 1) * rowStep) / 2;
+        let row = 0;
         return (
           <g key={`p-${i}`}>
             <rect
@@ -151,39 +167,49 @@ function SheetDiagramSvg({
             {showPartGrainArrows && p.grainLocked && p.widthMm > 36 && p.heightMm > 16 && (
               <line
                 x1={pad + p.xMm + 6}
-                y1={cy}
+                y1={cy - grainLift}
                 x2={pad + p.xMm + p.widthMm - 6}
-                y2={cy}
+                y2={cy - grainLift}
                 className="sheet-map-part-grain-line"
                 strokeWidth={expanded ? 1.4 : 1}
                 markerEnd={`url(#${patternId}-arrow)`}
               />
             )}
-            {p.widthMm > minLabelW && p.heightMm > minLabelH && (
-              <>
-                <text
-                  x={cx}
-                  y={cy - (line2 ? fontSize * 0.45 : 0) - (showPartGrainArrows && p.grainLocked ? fontSize * 0.35 : 0)}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="sheet-map-label"
-                  fontSize={fontSize}
-                >
-                  {line1}
-                </text>
-                {line2 && p.heightMm > (expanded ? 36 : 42) && (
-                  <text
-                    x={cx}
-                    y={cy + fontSize * 0.55}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="sheet-map-label sheet-map-label-sub"
-                    fontSize={fontSize * 0.85}
-                  >
-                    {line2}
-                  </text>
-                )}
-              </>
+            {showName && (
+              <text
+                x={cx}
+                y={blockTop + row++ * rowStep}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="sheet-map-label"
+                fontSize={fontSize}
+              >
+                {line1}
+              </text>
+            )}
+            {showUnit && (
+              <text
+                x={cx}
+                y={blockTop + row++ * rowStep}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="sheet-map-label sheet-map-label-sub"
+                fontSize={fontSize * 0.85}
+              >
+                {line2}
+              </text>
+            )}
+            {showSize && (
+              <text
+                x={cx}
+                y={blockTop + row++ * rowStep}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="sheet-map-label sheet-map-label-size"
+                fontSize={showName ? fontSize * 0.82 : fontSize * 0.9}
+              >
+                {sizeText}
+              </text>
             )}
           </g>
         );

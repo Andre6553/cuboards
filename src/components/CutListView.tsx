@@ -275,8 +275,9 @@ export function CutListView({ job }: Props) {
               <h3 className="section-title">Visual sheet maps</h3>
               <p className="hint">
                 Panel-saw style layout: rip strips across the sheet, then crosscut parts along the grain (straight cuts
-                only). Tap a sheet for full screen; wheel zoom, drag pan. Grain runs along the long side (→). Hatched
-                parts are grain-locked; dashed areas are keeper offcuts ({MIN_OFFCUT_MM} mm+).
+                only). Each part shows <strong>Length × Height (mm)</strong> like the cut list. Tap a sheet for full
+                screen; wheel zoom, drag pan. Grain runs along the long side (→). Hatched parts are grain-locked;
+                dashed areas are keeper offcuts ({MIN_OFFCUT_MM} mm+).
               </p>
               <SheetMapView groups={result.sheetMaps} />
             </>
