@@ -481,7 +481,7 @@ export function MaterialsForm({
 
         <div className="table-wrap">
 
-          <table className="data-table">
+          <table className="data-table materials-board-table">
 
             <thead>
 
@@ -511,17 +511,17 @@ export function MaterialsForm({
 
                 <tr key={m.id}>
 
-                  <td><input className="table-input" value={m.name} onChange={(e) => updateMaterial(m.id, 'name', e.target.value)} /></td>
+                  <td data-label="Material"><input className="table-input" value={m.name} onChange={(e) => updateMaterial(m.id, 'name', e.target.value)} /></td>
 
-                  <td><input className="table-input" value={m.colour} onChange={(e) => updateMaterial(m.id, 'colour', e.target.value)} /></td>
+                  <td data-label="Colour"><input className="table-input" value={m.colour} onChange={(e) => updateMaterial(m.id, 'colour', e.target.value)} /></td>
 
-                  <td><input className="table-input" type="number" value={m.pricePerSheet} onChange={(e) => updateMaterial(m.id, 'pricePerSheet', Number(e.target.value))} /></td>
+                  <td data-label="Price / sheet"><input className="table-input" type="number" value={m.pricePerSheet} onChange={(e) => updateMaterial(m.id, 'pricePerSheet', Number(e.target.value))} /></td>
 
-                  <td className="center"><input type="checkbox" checked={m.hasGrain} onChange={(e) => updateMaterial(m.id, 'hasGrain', e.target.checked)} /></td>
+                  <td className="center" data-label="Grain"><input type="checkbox" checked={m.hasGrain} onChange={(e) => updateMaterial(m.id, 'hasGrain', e.target.checked)} /></td>
 
-                  <td>
+                  <td data-label="Buy as">
                     <select
-                      className="table-input"
+                      className="table-input table-select"
                       value={m.sheetPurchaseUnit ?? 'quarter'}
                       onChange={(e) =>
                         updateMaterial(m.id, 'sheetPurchaseUnit', e.target.value as Material['sheetPurchaseUnit'])
@@ -533,9 +533,9 @@ export function MaterialsForm({
                     </select>
                   </td>
 
-                  <td>
+                  <td data-label="Edging tape">
 
-                    <select value={m.edgingMaterialId} onChange={(e) => updateMaterial(m.id, 'edgingMaterialId', e.target.value)}>
+                    <select className="table-input table-select" value={m.edgingMaterialId} onChange={(e) => updateMaterial(m.id, 'edgingMaterialId', e.target.value)}>
 
                       {edgingMaterials.map((e) => (
 
@@ -547,7 +547,7 @@ export function MaterialsForm({
 
                   </td>
 
-                  <td>
+                  <td data-label="">
 
                     {materials.length > 1 && (
 
