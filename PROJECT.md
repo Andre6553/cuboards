@@ -28,3 +28,4 @@ Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF ex
 - **2026-10-08:** Vercel serverless Gelmar APIs added for production Refresh; SPA rewrite excludes `/api/*`.
 - **2026-10-09:** Mobile unit form: responsive `auto-fit` grids + drawer box hints moved out of grid so material/edging selects are full width on phone.
 - **2026-10-09:** Cut list tab **Client quote** + portrait PDF (`quotePdf.ts`) — scope, supply/install totals, exclusions; no panel sizes (Factory/Full unchanged).
+- **2026-10-09:** SA quote polish (2–8): VAT breakdown, board wastage %, backup reminder, mobile edging table, sheet presets, runner price note, editable quote terms; dashboard quote incl VAT when enabled.
