@@ -11,7 +11,7 @@ import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS } from '../lib/edgingC
 import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
-import { grainLabel } from '../lib/sheetLayout';
+import { grainLabel, MIN_OFFCUT_MM, SAW_KERF_MM } from '../lib/sheetLayout';
 import type { CutListGroup, Job } from '../types';
 
 interface Props {
@@ -215,6 +215,44 @@ export function CutListView({ job }: Props) {
           <h3 className="section-title">Masonite cut list</h3>
           <p className="hint">Carcass backs and drawer bottoms — 2 mm smaller on length and width.</p>
           <GroupedCutTable groups={result.masoniteGroups} showEdging={false} />
+
+          <h3 className="section-title">Board offcuts (suggested keepers)</h3>
+          <p className="hint">
+            Leftover rectangles after nesting your panel sizes on {job.settings.sheetWidth} × {job.settings.sheetHeight}{' '}
+            mm melamine (masonite uses its own sheet size). Includes {SAW_KERF_MM} mm saw kerf between parts. Listed only
+            if both sides are at least {MIN_OFFCUT_MM} mm.
+            {' '}
+            <strong>Board wastage %</strong> (Prices &amp; settings) adds extra area when <em>counting sheets for the quote</em> — it
+            does not change panel sizes or this nest. Extra sheets from wastage are not shown here.
+          </p>
+          {result.boardOffcuts.length === 0 ? (
+            <p className="hint">No offcuts large enough to list — or no board parts on this job.</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Material</th>
+                    <th>Sheet #</th>
+                    <th>Size (W × L mm)</th>
+                    <th>Area (m²)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.boardOffcuts.map((o, i) => (
+                    <tr key={`${o.materialId}-${o.sheetIndex}-${i}`}>
+                      <td>{o.materialName}</td>
+                      <td>{o.sheetIndex}</td>
+                      <td>
+                        {o.widthMm} × {o.lengthMm}
+                      </td>
+                      <td>{(o.areaMm2 / 1_000_000).toFixed(3)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           </>
           )}
 

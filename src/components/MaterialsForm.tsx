@@ -626,7 +626,9 @@ export function MaterialsForm({
           />
         </label>
         <p className="hint">
-          Adds extra area before sheet count (e.g. 10% for offcuts and cutting waste). 0 = area estimate only.
+          Adds extra area before <strong>sheet count on the quote</strong> only (e.g. 10% for mistakes or unlisted waste). It
+          does not change panel sizes or the <strong>Board offcuts</strong> list on the cut list — that list comes from nesting
+          your actual parts. 0 = area estimate only.
         </p>
 
       </CollapsibleSection>

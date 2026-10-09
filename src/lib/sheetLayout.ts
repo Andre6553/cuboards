@@ -11,6 +11,9 @@ export function grainLabel(grain: CutPiece['grain']): string {
 /** Saw blade width allowed between parts on the sheet. */
 export const SAW_KERF_MM = 4;
 
+/** Smallest usable offcut (both dimensions) to list on the cut list. */
+export const MIN_OFFCUT_MM = 50;
+
 export interface LayoutPiece {
   /** Along the part's grain when `grainLocked` (e.g. door height). */
   length: number;
@@ -21,12 +24,24 @@ export interface LayoutPiece {
   label: string;
 }
 
+export interface LayoutOffcut {
+  /** 1-based sheet number in the nest for this material. */
+  sheetIndex: number;
+  /** Shorter usable side (mm). */
+  widthMm: number;
+  /** Longer usable side (mm). */
+  lengthMm: number;
+  areaMm2: number;
+}
+
 export interface SheetLayoutResult {
   sheetsUsed: number;
   /** Full sheets + rounded-up fraction of the last sheet (¼ steps). */
   sheetsToOrder: number;
   /** Parts that cannot fit on a sheet in the required grain direction. */
   unplaced: LayoutPiece[];
+  /** Leftover rectangles after nesting (not affected by board wastage %). */
+  offcuts: LayoutOffcut[];
 }
 
 interface Rect {
@@ -157,16 +172,36 @@ export function layoutSheets(
     }
   }
 
-  if (sheets.length === 0) return { sheetsUsed: 0, sheetsToOrder: 0, unplaced };
+  if (sheets.length === 0) return { sheetsUsed: 0, sheetsToOrder: 0, unplaced, offcuts: [] };
 
   const last = sheets[sheets.length - 1];
   const usedFraction = (Math.min(last.maxX, grainLen) * Math.min(last.maxY, crossLen)) / (grainLen * crossLen);
   const step = purchaseFraction > 0 ? purchaseFraction : 0.25;
   const lastSheet = Math.max(step, Math.ceil(usedFraction / step - 1e-9) * step);
 
+  const offcuts: LayoutOffcut[] = [];
+  sheets.forEach((sheet, idx) => {
+    for (const r of sheet.free) {
+      let w = Math.floor(r.w - kerf);
+      let h = Math.floor(r.h - kerf);
+      if (w <= 0 || h <= 0) continue;
+      if (w < MIN_OFFCUT_MM || h < MIN_OFFCUT_MM) continue;
+      const lengthMm = Math.max(w, h);
+      const widthMm = Math.min(w, h);
+      offcuts.push({
+        sheetIndex: idx + 1,
+        widthMm,
+        lengthMm,
+        areaMm2: widthMm * lengthMm,
+      });
+    }
+  });
+  offcuts.sort((a, b) => b.areaMm2 - a.areaMm2 || b.lengthMm - a.lengthMm);
+
   return {
     sheetsUsed: sheets.length,
     sheetsToOrder: sheets.length - 1 + Math.min(1, lastSheet),
     unplaced,
+    offcuts,
   };
 }

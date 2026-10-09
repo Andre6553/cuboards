@@ -430,6 +430,16 @@ export interface CutListGroup {
   items: ConsolidatedPiece[];
 }
 
+/** Usable leftover from sheet nesting (full / factory cut list). */
+export interface BoardOffcut {
+  materialId: string;
+  materialName: string;
+  sheetIndex: number;
+  widthMm: number;
+  lengthMm: number;
+  areaMm2: number;
+}
+
 export interface ConsolidatedEdging {
   edgingMaterialId: string;
   edgingMaterialName: string;
@@ -454,6 +464,8 @@ export interface CutListResult {
   costs: CostLine[];
   /** Grain-locked parts that don't fit the sheet in the required direction. */
   sheetWarnings: string[];
+  /** Suggested keeper offcuts from nesting panels on sheet sizes (not from wastage %). */
+  boardOffcuts: BoardOffcut[];
   install: InstallEstimate | null;
   materialsTotal: number;
   installationTotal: number;

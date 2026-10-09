@@ -6,7 +6,7 @@ import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings
 import { exportClientQuotePdf } from './quotePdf';
 import { formatMoney, resolveQuoteCurrency } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
-import { grainLabel } from './sheetLayout';
+import { grainLabel, MIN_OFFCUT_MM, SAW_KERF_MM } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
 function renderGroupedSection(
@@ -172,6 +172,41 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
 
   y = renderGroupedSection(doc, y, margin, 'Board cut list', result.boardGroups);
   y = renderGroupedSection(doc, y, margin, 'Masonite cut list', result.masoniteGroups, false);
+
+  if (result.boardOffcuts.length > 0) {
+    if (y > 150) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setFontSize(12);
+    doc.text('Board offcuts (suggested keepers)', margin, y);
+    y += 3;
+    doc.setFontSize(8);
+    doc.setTextColor(80);
+    const offcutNote = doc.splitTextToSize(
+      `Nesting on ${job.settings.sheetWidth}×${job.settings.sheetHeight} mm sheets, ${SAW_KERF_MM} mm kerf, min ${MIN_OFFCUT_MM} mm both sides. Board wastage % affects quote sheet count only — not this list.`,
+      270,
+    );
+    doc.text(offcutNote, margin, y);
+    y += offcutNote.length * 3.5 + 2;
+    doc.setTextColor(0);
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Material', 'Sheet #', 'W × L (mm)', 'Area (m²)']],
+      body: result.boardOffcuts.map((o) => [
+        o.materialName,
+        String(o.sheetIndex),
+        `${o.widthMm} × ${o.lengthMm}`,
+        (o.areaMm2 / 1_000_000).toFixed(3),
+      ]),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [45, 55, 72] },
+      margin: { left: margin, right: margin },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
 
   if (result.consolidatedEdging.length > 0) {
     const edgingTotalLm = result.consolidatedEdging.reduce((sum, e) => sum + e.totalLm, 0);
