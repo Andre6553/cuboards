@@ -271,9 +271,9 @@ export function CutListView({ job }: Props) {
             <>
               <h3 className="section-title">Visual sheet maps</h3>
               <p className="hint">
-                Nesting diagram for each full sheet — same layout as offcuts and sheet counts. Grain runs along the
-                long side (→). Shaded parts are grain-locked; dashed areas are suggested keeper offcuts (
-                {MIN_OFFCUT_MM} mm+).
+                Nesting diagram for each full sheet — tap a sheet to open full screen, then use Previous/Next or arrow
+                keys. Grain runs along the long side (→). Hatched parts are grain-locked; dashed areas are keeper
+                offcuts ({MIN_OFFCUT_MM} mm+).
               </p>
               <SheetMapView groups={result.sheetMaps} />
             </>
