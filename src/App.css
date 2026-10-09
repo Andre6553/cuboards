@@ -491,6 +491,16 @@
   flex: 1 1 20rem;
 }
 
+.storage-notice-warn {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.storage-backup-meta {
+  flex: 1 1 100%;
+  margin-top: 0.35rem !important;
+}
+
 .job-search {
   width: 100%;
   max-width: 28rem;
@@ -688,6 +698,11 @@
 .materials-board-table th:nth-child(5),
 .materials-board-table td:nth-child(5) {
   min-width: 8.5rem;
+}
+
+/* Mobile card layout for price tables (board + edging) */
+.materials-price-table {
+  /* shares responsive rules with materials-board-table below */
 }
 
 .center {
@@ -1195,15 +1210,19 @@
   }
 
   .materials-board-table,
-  .materials-board-table tbody {
+  .materials-board-table tbody,
+  .materials-price-table,
+  .materials-price-table tbody {
     display: block;
   }
 
-  .materials-board-table thead {
+  .materials-board-table thead,
+  .materials-price-table thead {
     display: none;
   }
 
-  .materials-board-table tbody tr {
+  .materials-board-table tbody tr,
+  .materials-price-table tbody tr {
     display: block;
     margin-bottom: 1rem;
     padding: 0.65rem 0.75rem;
@@ -1212,11 +1231,13 @@
     border-radius: 8px;
   }
 
-  .materials-board-table tbody tr:hover td {
+  .materials-board-table tbody tr:hover td,
+  .materials-price-table tbody tr:hover td {
     background: transparent;
   }
 
-  .materials-board-table tbody td {
+  .materials-board-table tbody td,
+  .materials-price-table tbody td {
     display: grid;
     grid-template-columns: minmax(6.5rem, 38%) 1fr;
     align-items: center;
@@ -1226,11 +1247,13 @@
     text-align: left;
   }
 
-  .materials-board-table tbody td:last-child {
+  .materials-board-table tbody td:last-child,
+  .materials-price-table tbody td:last-child {
     border-bottom: none;
   }
 
-  .materials-board-table tbody td[data-label]:not([data-label=''])::before {
+  .materials-board-table tbody td[data-label]:not([data-label=''])::before,
+  .materials-price-table tbody td[data-label]:not([data-label=''])::before {
     content: attr(data-label);
     font-weight: 600;
     font-size: 0.72rem;
@@ -1239,13 +1262,17 @@
     letter-spacing: 0.03em;
   }
 
-  .materials-board-table tbody td.center {
+  .materials-board-table tbody td.center,
+  .materials-price-table tbody td.center {
     text-align: left;
   }
 
   .materials-board-table tbody td .table-input,
   .materials-board-table tbody td .table-select,
-  .materials-board-table tbody td select {
+  .materials-board-table tbody td select,
+  .materials-price-table tbody td .table-input,
+  .materials-price-table tbody td .table-select,
+  .materials-price-table tbody td select {
     width: 100%;
     min-width: 0;
   }

@@ -18,7 +18,7 @@ Professional cut-list software for kitchen and bedroom cupboard installers.
 
 1. Install [Node.js](https://nodejs.org) (LTS) if not already installed
 2. Double-click **`Start Cuboards.bat`**
-3. Browser opens at `http://localhost:5173`
+3. Browser opens at `http://localhost:5199`
 
 ## Manual start
 

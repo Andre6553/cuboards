@@ -139,6 +139,20 @@ export interface JobSettings {
   pricePerFoot: number;
   /** final = cut list shows finished sizes; net = deduct edging tape thickness from edged sides */
   cutSizeMode: CutSizeMode;
+  /** SA VAT rate for quotes (default 15). All entered prices are ex VAT. */
+  vatRatePercent?: number;
+  /** Show ex VAT + VAT + incl VAT on cut list and client PDF. */
+  showVatOnQuote?: boolean;
+  /** Extra board area allowance when estimating sheets (e.g. 10 = +10%). */
+  boardWastagePercent?: number;
+}
+
+/** Client quotation footer — editable per job. */
+export interface QuoteTerms {
+  validityDays: number;
+  depositPercent: number;
+  paymentNote: string;
+  extraNotes: string;
 }
 
 export interface PlasticKickplateConfig {
@@ -308,6 +322,7 @@ export interface Job {
   screwPrices: ScrewPrices;
   connectingFittingPrices: ConnectingFittingPrices;
   installRates: InstallRates;
+  quoteTerms?: QuoteTerms;
   units: Unit[];
 }
 

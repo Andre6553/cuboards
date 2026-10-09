@@ -4,6 +4,7 @@ import { CUT_SIZE_MODE_LABELS } from './constants';
 import { CUT_SIZE_MODE_CUTLIST_HINT } from './edgingCutSize';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
 import { exportClientQuotePdf } from './quotePdf';
+import { calcVatTotals, resolveShowVatOnQuote, resolveVatRatePercent } from './vat';
 import { grainLabel } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
@@ -333,7 +334,16 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
         `R ${result.installationTotal.toFixed(2)}`,
       ],
       ['', 'Travel total', '', `R ${result.travelTotal.toFixed(2)}`],
-      ['', 'GRAND TOTAL', '', `R ${result.grandTotal.toFixed(2)}`],
+      ...(resolveShowVatOnQuote(job.settings)
+        ? (() => {
+            const vat = calcVatTotals(result.grandTotal, resolveVatRatePercent(job.settings));
+            return [
+              ['', 'Subtotal ex VAT', '', `R ${vat.subtotalExVat.toFixed(2)}`],
+              ['', `VAT (${vat.ratePercent}%)`, '', `R ${vat.vatAmount.toFixed(2)}`],
+              ['', 'TOTAL INCL VAT', '', `R ${vat.totalInclVat.toFixed(2)}`],
+            ];
+          })()
+        : [['', 'GRAND TOTAL (ex VAT)', '', `R ${result.grandTotal.toFixed(2)}`]]),
     ],
     styles: { fontSize: 9, cellPadding: 2 },
     headStyles: { fillColor: [45, 55, 72] },

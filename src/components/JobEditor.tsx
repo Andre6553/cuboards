@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Job } from '../types';
+import { DEFAULT_QUOTE_TERMS } from '../lib/constants';
 import { createDefaultUnit } from '../lib/calculator';
 import { loadPresets, unitFromPreset } from '../lib/presets';
 import { ClientForm } from './ClientForm';
@@ -129,6 +130,8 @@ export function JobEditor({ job, onChange, onBack }: Props) {
             onConnectingFittingPricesChange={(connectingFittingPrices) => onChange({ ...job, connectingFittingPrices })}
             onInstallRatesChange={(installRates) => onChange({ ...job, installRates })}
             onSettingsChange={(settings) => onChange({ ...job, settings })}
+            quoteTerms={{ ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms }}
+            onQuoteTermsChange={(quoteTerms) => onChange({ ...job, quoteTerms })}
           />
         </>
       )}

@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { UNIT_TYPE_LABELS } from './constants';
+import { DEFAULT_QUOTE_TERMS, UNIT_TYPE_LABELS } from './constants';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
+import { calcVatTotals, resolveShowVatOnQuote, resolveVatRatePercent } from './vat';
 import type { CutListResult, Job } from '../types';
 
 function formatRand(n: number): string {
@@ -177,20 +178,38 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
     y = margin;
   }
 
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentWidth, 14, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('Total quotation', margin + 4, y + 9);
-  doc.text(formatRand(result.grandTotal), pageWidth - margin - 4, y + 9, { align: 'right' });
-  y += 20;
+  const showVat = resolveShowVatOnQuote(job.settings);
+  const vat = calcVatTotals(result.grandTotal, resolveVatRatePercent(job.settings));
+  const terms = { ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms };
+
+  autoTable(doc, {
+    startY: y,
+    body: showVat
+      ? [
+          ['Subtotal ex VAT', formatRand(vat.subtotalExVat)],
+          [`VAT (${vat.ratePercent}%)`, formatRand(vat.vatAmount)],
+          ['Total incl VAT', formatRand(vat.totalInclVat)],
+        ]
+      : [['Total (ex VAT)', formatRand(result.grandTotal)]],
+    styles: { fontSize: 10, cellPadding: 3 },
+    theme: 'plain',
+    columnStyles: {
+      0: { fontStyle: 'bold' },
+      1: { halign: 'right', fontStyle: 'bold' },
+    },
+    margin: { left: margin, right: margin },
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  y = (doc as any).lastAutoTable.finalY + 10;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(60);
 
   const exclusions: string[] = [
-    'All amounts are in South African Rand (ZAR). VAT is not shown on this quotation.',
+    showVat
+      ? 'All amounts in South African Rand (ZAR). Supply and installation subtotals are ex VAT; total incl VAT is shown above.'
+      : 'All amounts in South African Rand (ZAR), exclusive of VAT.',
     'Panel cutting sizes and factory cut lists are prepared separately and are not attached.',
     'Appliances, plumbing, electrical work, granite templating, and delivery of third-party items are excluded unless agreed in writing.',
   ];
@@ -209,9 +228,28 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
   }
 
   const validUntil = new Date();
-  validUntil.setDate(validUntil.getDate() + 30);
+  validUntil.setDate(validUntil.getDate() + Math.max(1, terms.validityDays));
   y += 2;
   doc.text(`This quotation is valid until ${validUntil.toLocaleDateString('en-ZA')}.`, margin, y);
+  if (terms.depositPercent > 0) {
+    y += 4;
+    doc.text(`Deposit: ${terms.depositPercent}% to confirm order. ${terms.paymentNote}`.trim(), margin, y, {
+      maxWidth: contentWidth,
+    });
+  } else if (terms.paymentNote.trim()) {
+    y += 4;
+    doc.text(terms.paymentNote.trim(), margin, y, { maxWidth: contentWidth });
+  }
+  if (terms.extraNotes.trim()) {
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Additional terms', margin, y);
+    y += 4;
+    doc.setFont('helvetica', 'normal');
+    const extra = doc.splitTextToSize(terms.extraNotes.trim(), contentWidth);
+    doc.text(extra, margin, y);
+    y += extra.length * 3.8;
+  }
 
   if (job.client.notes?.trim()) {
     y += 6;

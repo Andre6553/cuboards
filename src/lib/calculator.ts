@@ -853,14 +853,19 @@ function calcCosts(
     piecesByMaterial.set(piece.materialId, list);
   }
 
+  const wastagePct = Math.max(0, job.settings.boardWastagePercent ?? 0);
+  const wastageFactor = 1 + wastagePct / 100;
+
   for (const m of job.materials) {
-    const totalAreaMm2 = byMaterial.get(m.id);
-    if (!totalAreaMm2) continue;
+    const rawAreaMm2 = byMaterial.get(m.id);
+    if (!rawAreaMm2) continue;
+    const totalAreaMm2 = rawAreaMm2 * wastageFactor;
     const purchaseUnit = resolveSheetPurchaseUnit(m);
     const purchaseFrac = sheetPurchaseFraction(m);
     const purchaseLabel = sheetPurchaseDetailLabel(purchaseUnit);
     let sheetsNeeded = estimateSheetsFromArea(totalAreaMm2, sheetArea, purchaseFrac);
-    let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} (${purchaseLabel})`;
+    const wastageNote = wastagePct > 0 ? ` · includes ${wastagePct}% cutting allowance` : '';
+    let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} (${purchaseLabel}${wastageNote})`;
 
     if (m.hasGrain) {
       const layout = layoutSheets(

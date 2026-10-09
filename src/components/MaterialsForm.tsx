@@ -4,7 +4,9 @@ import {
   CUT_SIZE_MODE_LABELS,
   DEFAULT_CONNECTING_FITTING_USAGE,
   DEFAULT_INSTALL_RATES,
+  DEFAULT_QUOTE_TERMS,
   DEFAULT_SCREW_USAGE,
+  SHEET_SIZE_PRESETS,
   GELMAR_CONNECTING_FITTINGS_SCRAPED_AT,
   GELMAR_HINGES_SCRAPED_AT,
   GELMAR_SCRAPED_AT,
@@ -26,7 +28,7 @@ import {
   type GelmarRefreshUiState,
 } from '../lib/gelmarPriceRefresh';
 
-import type { ConnectingFittingPrices, CutSizeMode, EdgingMaterial, HingePrices, InstallRates, Job, MasoniteConfig, Material, PlasticKickplateConfig, RunnerPrices, ScrewPrices } from '../types';
+import type { ConnectingFittingPrices, CutSizeMode, EdgingMaterial, HingePrices, InstallRates, Job, MasoniteConfig, Material, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices } from '../types';
 
 import { CollapsibleSection } from './CollapsibleSection';
 import { GelmarPriceRefreshPanel } from './GelmarPriceRefreshPanel';
@@ -55,6 +57,8 @@ interface Props {
 
   settings: Job['settings'];
 
+  quoteTerms: QuoteTerms;
+
   onMaterialsChange: (materials: Material[]) => void;
 
   onEdgingChange: (edging: EdgingMaterial[]) => void;
@@ -74,6 +78,8 @@ interface Props {
   onInstallRatesChange: (rates: InstallRates) => void;
 
   onSettingsChange: (settings: Job['settings']) => void;
+
+  onQuoteTermsChange: (terms: QuoteTerms) => void;
 
 }
 
@@ -121,9 +127,26 @@ export function MaterialsForm({
 
   onSettingsChange,
 
+  quoteTerms,
+
+  onQuoteTermsChange,
+
 }: Props) {
 
   const install = { ...DEFAULT_INSTALL_RATES, ...installRates };
+  const terms = { ...DEFAULT_QUOTE_TERMS, ...quoteTerms };
+  const patchTerms = (patch: Partial<QuoteTerms>) => onQuoteTermsChange({ ...terms, ...patch });
+
+  const sheetPresetKey =
+    SHEET_SIZE_PRESETS.find(
+      (p) => p.width > 0 && p.width === settings.sheetWidth && p.height === settings.sheetHeight,
+    )?.label ?? 'Custom';
+
+  const applySheetPreset = (label: string) => {
+    const preset = SHEET_SIZE_PRESETS.find((p) => p.label === label);
+    if (!preset || preset.width === 0) return;
+    onSettingsChange({ ...settings, sheetWidth: preset.width, sheetHeight: preset.height });
+  };
 
   const patchInstall = (patch: Partial<InstallRates>) => onInstallRatesChange({ ...install, ...patch });
 
@@ -378,7 +401,32 @@ export function MaterialsForm({
 
           </label>
 
+          <label>
+            VAT rate (%)
+            <input
+              type="number"
+              min={0}
+              max={30}
+              step={0.5}
+              value={settings.vatRatePercent ?? 15}
+              onChange={(e) => onSettingsChange({ ...settings, vatRatePercent: Number(e.target.value) })}
+            />
+          </label>
+
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={settings.showVatOnQuote !== false}
+              onChange={(e) => onSettingsChange({ ...settings, showVatOnQuote: e.target.checked })}
+            />
+            Show VAT breakdown on quotes
+          </label>
+
         </div>
+
+        <p className="hint">
+          Material and hardware prices are entered <strong>excluding VAT</strong>. Client quote and full PDF can show ex VAT + {settings.vatRatePercent ?? 15}% VAT + total incl VAT.
+        </p>
 
         <p className="hint">
 
@@ -397,6 +445,21 @@ export function MaterialsForm({
       <CollapsibleSection title="Sheet Size setting">
 
         <div className="sheet-settings-row">
+
+          <label>
+            Sheet size preset
+            <select
+              value={sheetPresetKey}
+              onChange={(e) => {
+                if (e.target.value === 'Custom') return;
+                applySheetPreset(e.target.value);
+              }}
+            >
+              {SHEET_SIZE_PRESETS.map((p) => (
+                <option key={p.label} value={p.label}>{p.label}</option>
+              ))}
+            </select>
+          </label>
 
           <label>
 
@@ -462,8 +525,23 @@ export function MaterialsForm({
 
         <p className="hint">
 
-          Board thickness applies to all carcass parts. Sheet size {settings.sheetWidth} × {settings.sheetHeight} mm is used for costing — estimated usage uses each board&apos;s <strong>Buy as</strong> setting (default sheet 2750 × 1830). For boards with <strong>Grain</strong> ticked, sheets are counted from a layout: grain runs along the sheet's long side, and sides, doors and drawer fronts are never rotated (grain top to bottom).
+          Board thickness applies to all carcass parts (many SA kitchens use <strong>18 mm</strong> on bases, <strong>16 mm</strong> on wall units — pick one thickness per job). Sheet size {settings.sheetWidth} × {settings.sheetHeight} mm is used for costing — estimated usage uses each board&apos;s <strong>Buy as</strong> setting. For boards with <strong>Grain</strong> ticked, sheets are counted from a layout: grain runs along the sheet&apos;s long side, and sides, doors and drawer fronts are never rotated (grain top to bottom).
 
+        </p>
+
+        <label>
+          Board cutting allowance (%)
+          <input
+            type="number"
+            min={0}
+            max={50}
+            step={1}
+            value={settings.boardWastagePercent ?? 0}
+            onChange={(e) => onSettingsChange({ ...settings, boardWastagePercent: Math.max(0, Number(e.target.value)) })}
+          />
+        </label>
+        <p className="hint">
+          Adds extra area before sheet count (e.g. 10% for offcuts and cutting waste). 0 = area estimate only.
         </p>
 
       </CollapsibleSection>
@@ -579,7 +657,7 @@ export function MaterialsForm({
 
         <div className="table-wrap">
 
-          <table className="data-table">
+          <table className="data-table materials-price-table">
 
             <thead>
 
@@ -603,13 +681,13 @@ export function MaterialsForm({
 
                 <tr key={e.id}>
 
-                  <td><input className="table-input" value={e.name} onChange={(ev) => updateEdging(e.id, 'name', ev.target.value)} /></td>
+                  <td data-label="Edging name"><input className="table-input" value={e.name} onChange={(ev) => updateEdging(e.id, 'name', ev.target.value)} /></td>
 
-                  <td><input className="table-input" type="number" step="0.1" value={e.thickness} onChange={(ev) => updateEdging(e.id, 'thickness', Number(ev.target.value))} /></td>
+                  <td data-label="Thickness"><input className="table-input" type="number" step="0.1" value={e.thickness} onChange={(ev) => updateEdging(e.id, 'thickness', Number(ev.target.value))} /></td>
 
-                  <td><input className="table-input" type="number" value={e.pricePerMetre} onChange={(ev) => updateEdging(e.id, 'pricePerMetre', Number(ev.target.value))} /></td>
+                  <td data-label="Price / m"><input className="table-input" type="number" value={e.pricePerMetre} onChange={(ev) => updateEdging(e.id, 'pricePerMetre', Number(ev.target.value))} /></td>
 
-                  <td>
+                  <td data-label="">
 
                     {edgingMaterials.length > 1 && (
 
@@ -718,6 +796,10 @@ export function MaterialsForm({
           checked={runnerRefresh.checked}
           hint="Gelmar pair prices. Refresh pulls current prices from gelmar.co.za into this job. Override any price for your supplier."
         />
+
+        <p className="hint">
+          <strong>Blum / Hettich</strong> rows below use fixed default prices — update manually or use Gelmar refresh above for local trade pricing.
+        </p>
 
         <div className="table-wrap gelmar-prices">
 
@@ -1042,6 +1124,38 @@ export function MaterialsForm({
             </tbody>
 
           </table>
+
+        </div>
+
+      </CollapsibleSection>
+
+
+
+      <CollapsibleSection title="Client quote — terms &amp; validity">
+
+        <p className="hint">Used on the Client quote PDF (Cut list → Client quote). Panel sizes are never included.</p>
+
+        <div className="form-grid form-grid-3">
+
+          <label>
+            Valid for (days)
+            <input type="number" min={1} max={365} value={terms.validityDays} onChange={(e) => patchTerms({ validityDays: Number(e.target.value) })} />
+          </label>
+
+          <label>
+            Deposit (%)
+            <input type="number" min={0} max={100} value={terms.depositPercent} onChange={(e) => patchTerms({ depositPercent: Number(e.target.value) })} />
+          </label>
+
+          <label className="span-2">
+            Payment terms
+            <input value={terms.paymentNote} onChange={(e) => patchTerms({ paymentNote: e.target.value })} placeholder="e.g. Balance on completion via EFT." />
+          </label>
+
+          <label className="span-2">
+            Extra terms (optional)
+            <textarea rows={2} value={terms.extraNotes} onChange={(e) => patchTerms({ extraNotes: e.target.value })} placeholder="Warranty, lead time, access to site…" />
+          </label>
 
         </div>
 

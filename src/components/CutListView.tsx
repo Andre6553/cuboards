@@ -9,6 +9,7 @@ import { UNIT_TYPE_LABELS } from '../lib/constants';
 import type { Unit } from '../types';
 import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS } from '../lib/edgingCutSize';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
+import { QuoteTotalsRows } from './QuoteTotals';
 import { grainLabel } from '../lib/sheetLayout';
 import type { CutListGroup, Job } from '../types';
 
@@ -487,12 +488,7 @@ export function CutListView({ job }: Props) {
               <span></span>
               <span>R {result.travelTotal.toFixed(2)}</span>
             </div>
-            <div className="cost-row total">
-              <span></span>
-              <span>Grand total</span>
-              <span></span>
-              <span>R {result.grandTotal.toFixed(2)}</span>
-            </div>
+            <QuoteTotalsRows settings={job.settings} grandTotalExVat={result.grandTotal} />
           </div>
           {showTechnical && showPostformTopNotice && (
             <p className="hint hint-inline warn">{POSTFORM_TOP_NOTICE}</p>

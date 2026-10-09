@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Job } from '../types';
 import { generateCutList } from '../lib/calculator';
+import { formatLastBackup, getLastBackupIso, shouldShowBackupReminder } from '../lib/backupReminder';
+import { displayGrandTotal } from './QuoteTotals';
 import { createNewJob, deleteJob, duplicateJob, exportAllJobsJson, exportJobJson, importJobsJson } from '../lib/storage';
 
 interface Props {
@@ -12,7 +14,8 @@ interface Props {
 function quoteTotal(job: Job): number | null {
   if (!job.units.some((u) => (u.unitQty ?? 0) > 0)) return null;
   try {
-    return generateCutList(job).grandTotal;
+    const result = generateCutList(job);
+    return displayGrandTotal(job.settings, result.grandTotal);
   } catch {
     return null;
   }
@@ -89,10 +92,14 @@ export function Dashboard({ jobs, onOpen, onJobsChange }: Props) {
         </div>
       </header>
 
-      <div className="storage-notice">
+      <div className={`storage-notice${shouldShowBackupReminder(jobs.length) ? ' storage-notice-warn' : ''}`}>
         <p>
           <strong>Your jobs are saved in this browser on this device only.</strong> Clearing browser data or using
-          another PC won't show them. Back up regularly.
+          another phone or PC won&apos;t show them. Download a JSON backup and keep it in WhatsApp, email, or OneDrive.
+        </p>
+        <p className="hint storage-backup-meta">
+          Last backup: {formatLastBackup(getLastBackupIso())}
+          {shouldShowBackupReminder(jobs.length) ? ' — please back up now.' : ''}
         </p>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => exportAllJobsJson(jobs)} disabled={jobs.length === 0}>
           Back up all jobs

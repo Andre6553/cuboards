@@ -1,4 +1,4 @@
-import type { ConnectingFittingPrices, EdgingMaterial, HingePrices, JobSettings, KitchenPlinthConfig, MasoniteConfig, Material, MountType, PlasticKickplateConfig, RunnerPrices, ScrewPrices, UnitType } from '../types';
+import type { ConnectingFittingPrices, EdgingMaterial, HingePrices, JobSettings, KitchenPlinthConfig, MasoniteConfig, Material, MountType, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices, UnitType } from '../types';
 import { CUT_SIZE_MODE_LABELS } from './edgingCutSize';
 import { BRAND_RUNNER_PRESETS, getDefaultRunnerPrices } from './runnerCatalog';
 import { getDefaultHingePrices } from './hingeCatalog';
@@ -88,7 +88,25 @@ export const DEFAULT_SETTINGS: JobSettings = {
   feetPerBaseUnit: 4,
   pricePerFoot: 25,
   cutSizeMode: 'final',
+  vatRatePercent: 15,
+  showVatOnQuote: true,
+  boardWastagePercent: 0,
 };
+
+export const DEFAULT_QUOTE_TERMS: QuoteTerms = {
+  validityDays: 30,
+  depositPercent: 50,
+  paymentNote: 'Balance on completion via EFT.',
+  extraNotes: '',
+};
+
+/** Common melamine sheet sizes in South Africa (costing). */
+export const SHEET_SIZE_PRESETS: { label: string; width: number; height: number }[] = [
+  { label: '2750 × 1830 mm (standard full sheet)', width: 2750, height: 1830 },
+  { label: '3650 × 1830 mm (long sheet)', width: 3650, height: 1830 },
+  { label: '2750 × 1600 mm', width: 2750, height: 1600 },
+  { label: 'Custom', width: 0, height: 0 },
+];
 
 export function isKitchenBase(type: UnitType): boolean {
   return type === 'kitchen_base';

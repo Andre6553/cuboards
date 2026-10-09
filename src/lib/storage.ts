@@ -20,6 +20,8 @@ import type { Client, DoorConfig, DoorGaps, DrawerConfig, EdgingMaterial, Job, M
 import { DEFAULT_DOOR_GAPS } from './doorRules';
 import { DEFAULT_DRAWER_GAPS, DEFAULT_FRONT_OVERHANG_MM, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
 import { syncFrontLayoutToUnit } from './frontLayout';
+import { recordJobsBackup } from './backupReminder';
+import { DEFAULT_QUOTE_TERMS } from './constants';
 import { loadPriceList } from './priceList';
 
 const STORAGE_KEY = 'cuboards_jobs';
@@ -150,6 +152,7 @@ export function migrateJob(job: Job): Job {
     screwPrices: { ...getDefaultScrewPrices(), ...job.screwPrices },
     connectingFittingPrices: { ...getDefaultConnectingFittingPrices(), ...job.connectingFittingPrices },
     installRates: { ...DEFAULT_INSTALL_RATES, ...job.installRates },
+    quoteTerms: { ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms },
     settings: {
       ...DEFAULT_SETTINGS,
       ...job.settings,
@@ -243,10 +246,12 @@ function downloadJson(data: unknown, filename: string): void {
 
 export function exportJobJson(job: Job): void {
   downloadJson(job, `cuboards-${job.client.ref || job.client.name || job.id}.json`);
+  recordJobsBackup();
 }
 
 export function exportAllJobsJson(jobs: Job[]): void {
   downloadJson(jobs, `cuboards-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  recordJobsBackup();
 }
 
 /** Accepts a single exported job or a full backup (array of jobs). */
