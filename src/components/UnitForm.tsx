@@ -794,14 +794,16 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
                 ))}
               </select>
             </label>
-            <p className="hint">
-              Box front/back ({EDGING_LABELS[DRAWER_BOX_FRONT_BACK_EDGING]}):{' '}
-              {drawerBoxFrontBackWidthNote(unit.width, settings.thickness, drawer.sideClearance ?? getRunnerClearances(drawer.runner).sideClearance)}
-            </p>
-            <p className="hint">
-              Box sides ({EDGING_LABELS[DRAWER_BOX_SIDE_EDGING]}):{' '}
-              {drawerBoxSideDepthNote(unit.depth, drawer.frontClearance ?? 20, drawer.backClearance ?? 5)} × box height
-            </p>
+          </div>
+          <p className="hint">
+            Box front/back ({EDGING_LABELS[DRAWER_BOX_FRONT_BACK_EDGING]}):{' '}
+            {drawerBoxFrontBackWidthNote(unit.width, settings.thickness, drawer.sideClearance ?? getRunnerClearances(drawer.runner).sideClearance)}
+          </p>
+          <p className="hint">
+            Box sides ({EDGING_LABELS[DRAWER_BOX_SIDE_EDGING]}):{' '}
+            {drawerBoxSideDepthNote(unit.depth, drawer.frontClearance ?? 20, drawer.backClearance ?? 5)} × box height
+          </p>
+          <div className="form-grid form-grid-4">
             <label>
               Drawer front material
               <MaterialSelect
