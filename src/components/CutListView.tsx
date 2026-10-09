@@ -123,7 +123,7 @@ export function CutListView({ job }: Props) {
             {factory
               ? 'For the cutting factory: panel sizes and edging types only. No metres, prices, kickplate, hinges, screws, or installation.'
               : quote
-                ? 'Client-facing summary: scope, supply, installation, and totals — no panel cut sizes. Download PDF to send.'
+                ? 'Client-facing summary: units in scope + lump-sum totals (supply not itemised) — no panel cut sizes.'
                 : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
           </p>
         </div>
@@ -436,7 +436,7 @@ export function CutListView({ job }: Props) {
             </>
           )}
 
-          {showPricingDetail && result.install && (
+          {showPricingDetail && result.install && !quote && (
             <>
               <h3 className="section-title">Installation estimate</h3>
               <div className="table-wrap">
@@ -501,40 +501,68 @@ export function CutListView({ job }: Props) {
           <h3 className="section-title">{quote ? 'Quotation summary' : 'Cost estimate'}</h3>
           {quote && (
             <p className="hint">
-              Supply and installation totals for the client. Download PDF for a clean quotation without cut sizes.
+              Supply is one total (boards, edging, hardware, etc.) — not shown line by line to the client. Installation and
+              travel shown if included. Download PDF matches this summary.
             </p>
           )}
           <div className="cost-summary cost-summary-wide">
-            {result.costs.map((c, i) => (
-              <div key={i} className="cost-row">
-                <span className="cost-cat">{c.category}</span>
-                <span>{c.name}</span>
-                <span className="cost-detail">{c.detail}</span>
-                <span>{fmt(c.subtotal)}</span>
-              </div>
-            ))}
-            <div className="cost-row subtotal">
-              <span></span>
-              <span>Material cost total</span>
-              <span></span>
-              <span>{fmt(result.materialsTotal)}</span>
-            </div>
-            <div className="cost-row subtotal">
-              <span className="cost-cat">install</span>
-              <span>Installation cost total</span>
-              <span className="cost-detail">
-                {result.install
-                  ? `${result.install.lines.length} unit(s)${!quote && result.install.minimumApplied > 0 ? ' · min job applied' : ''}`
-                  : 'Not included'}
-              </span>
-              <span>{fmt(result.installationTotal)}</span>
-            </div>
-            <div className="cost-row subtotal">
-              <span></span>
-              <span>Travel total</span>
-              <span></span>
-              <span>{fmt(result.travelTotal)}</span>
-            </div>
+            {quote ? (
+              <>
+                <div className="cost-row subtotal">
+                  <span></span>
+                  <span>Supply (materials &amp; hardware)</span>
+                  <span></span>
+                  <span>{fmt(result.materialsTotal)}</span>
+                </div>
+                <div className="cost-row subtotal">
+                  <span className="cost-cat">install</span>
+                  <span>Installation</span>
+                  <span className="cost-detail">{result.install ? 'Included' : 'Not included'}</span>
+                  <span>{fmt(result.installationTotal)}</span>
+                </div>
+                {result.travelTotal > 0 && (
+                  <div className="cost-row subtotal">
+                    <span></span>
+                    <span>Travel</span>
+                    <span></span>
+                    <span>{fmt(result.travelTotal)}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {result.costs.map((c, i) => (
+                  <div key={i} className="cost-row">
+                    <span className="cost-cat">{c.category}</span>
+                    <span>{c.name}</span>
+                    <span className="cost-detail">{c.detail}</span>
+                    <span>{fmt(c.subtotal)}</span>
+                  </div>
+                ))}
+                <div className="cost-row subtotal">
+                  <span></span>
+                  <span>Material cost total</span>
+                  <span></span>
+                  <span>{fmt(result.materialsTotal)}</span>
+                </div>
+                <div className="cost-row subtotal">
+                  <span className="cost-cat">install</span>
+                  <span>Installation cost total</span>
+                  <span className="cost-detail">
+                    {result.install
+                      ? `${result.install.lines.length} unit(s)${result.install.minimumApplied > 0 ? ' · min job applied' : ''}`
+                      : 'Not included'}
+                  </span>
+                  <span>{fmt(result.installationTotal)}</span>
+                </div>
+                <div className="cost-row subtotal">
+                  <span></span>
+                  <span>Travel total</span>
+                  <span></span>
+                  <span>{fmt(result.travelTotal)}</span>
+                </div>
+              </>
+            )}
             <QuoteTotalsRows settings={job.settings} grandTotal={result.grandTotal} />
           </div>
           {showTechnical && showPostformTopNotice && (

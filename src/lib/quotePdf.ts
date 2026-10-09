@@ -6,22 +6,7 @@ import { formatMoney, quoteCurrencyLine } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
 import type { CutListResult, Job } from '../types';
 
-function supplyCategoryLabel(category: string): string {
-  switch (category) {
-    case 'board':
-      return 'Board materials';
-    case 'masonite':
-      return 'Masonite / backing';
-    case 'edging':
-      return 'Edge banding';
-    case 'hardware':
-      return 'Hardware & fittings';
-    default:
-      return category;
-  }
-}
-
-/** Client-facing quotation PDF — line items and totals only (no panel cut sizes). */
+/** Client-facing quotation PDF — scope + summary totals (no supply breakdown or cut sizes). */
 export function exportClientQuotePdf(job: Job, result: CutListResult): void {
   const fmt = (n: number) => formatMoney(n, job.settings);
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -91,82 +76,33 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('Supply', margin, y);
+  doc.text('Quotation summary', margin, y);
   y += 3;
   doc.setFont('helvetica', 'normal');
 
-  const supplyLines = result.costs.filter((c) => c.category !== 'install');
+  const summaryRows: [string, string][] = [
+    ['Supply (materials & hardware)', fmt(result.materialsTotal)],
+  ];
+  if (result.install && result.installationTotal > 0) {
+    summaryRows.push(['Installation', fmt(result.installationTotal)]);
+  } else if (!result.install) {
+    summaryRows.push(['Installation', 'Not included']);
+  }
+  if (result.travelTotal > 0) {
+    summaryRows.push(['Travel', fmt(result.travelTotal)]);
+  }
+
   autoTable(doc, {
     startY: y,
-    head: [['Item', 'Description', 'Amount']],
-    body: [
-      ...supplyLines.map((c) => [
-        supplyCategoryLabel(c.category),
-        `${c.name} — ${c.detail}`,
-        fmt(c.subtotal),
-      ]),
-      ['', 'Materials & supply subtotal', fmt(result.materialsTotal)],
-    ],
+    head: [['Description', 'Amount']],
+    body: summaryRows,
     styles: { fontSize: 9, cellPadding: 2.5 },
     headStyles: { fillColor: [37, 99, 235] },
-    columnStyles: {
-      2: { halign: 'right' },
-    },
+    columnStyles: { 1: { halign: 'right' } },
     margin: { left: margin, right: margin },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   y = (doc as any).lastAutoTable.finalY + 8;
-
-  if (result.install && result.installationTotal > 0) {
-    if (y > 240) {
-      doc.addPage();
-      y = margin;
-    }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('Installation', margin, y);
-    y += 3;
-    doc.setFont('helvetica', 'normal');
-
-    autoTable(doc, {
-      startY: y,
-      head: [['Unit', 'Detail', 'Amount']],
-      body: [
-        ...result.install.lines.map((line) => [
-          line.unitName,
-          line.detail,
-          fmt(line.subtotal),
-        ]),
-        ['', 'Installation total', fmt(result.installationTotal)],
-      ],
-      styles: { fontSize: 9, cellPadding: 2.5 },
-      headStyles: { fillColor: [37, 99, 235] },
-      columnStyles: { 2: { halign: 'right' } },
-      margin: { left: margin, right: margin },
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 8;
-  } else if (!result.install) {
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text('Installation: not included in this quotation (supply only).', margin, y);
-    y += 6;
-    doc.setTextColor(0);
-  }
-
-  if (result.travelTotal > 0) {
-    autoTable(doc, {
-      startY: y,
-      head: [['', 'Travel', 'Amount']],
-      body: [['', 'Travel fee', fmt(result.travelTotal)]],
-      styles: { fontSize: 9, cellPadding: 2.5 },
-      theme: 'plain',
-      columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
-      margin: { left: margin, right: margin },
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 6;
-  }
 
   if (y > 250) {
     doc.addPage();
