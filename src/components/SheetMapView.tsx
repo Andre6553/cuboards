@@ -15,6 +15,32 @@ function fitFontSize(label: string, boxW: number, boxH: number, scale = 1): numb
   return Math.max(5, Math.min(scale > 1 ? 20 : 14, base / lenFactor));
 }
 
+/** Rip (horizontal) and crosscut (vertical) guides from panel-saw strip layout. */
+function guillotineCutLines(placements: SheetMapSheet['placements']): {
+  ripY: number[];
+  cross: { x: number; y: number; h: number }[];
+} {
+  const stripMap = new Map<number, SheetMapSheet['placements']>();
+  for (const p of placements) {
+    const list = stripMap.get(p.yMm) ?? [];
+    list.push(p);
+    stripMap.set(p.yMm, list);
+  }
+  const ripY: number[] = [];
+  const cross: { x: number; y: number; h: number }[] = [];
+  for (const [y, parts] of stripMap) {
+    const stripH = Math.max(...parts.map((p) => p.heightMm));
+    ripY.push(y + stripH);
+    const sorted = [...parts].sort((a, b) => a.xMm - b.xMm);
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const p = sorted[i];
+      cross.push({ x: p.xMm + p.widthMm, y, h: stripH });
+    }
+  }
+  ripY.sort((a, b) => a - b);
+  return { ripY, cross };
+}
+
 type DiagramProps = {
   sheet: SheetMapSheet;
   patternId: string;
@@ -44,6 +70,8 @@ function SheetDiagramSvg({
   const viewH = h + pad * 2 + grainBand;
 
   const hasGrainParts = sheet.placements.some((p) => p.grainLocked);
+  const cuts = guillotineCutLines(sheet.placements);
+  const cutStroke = expanded ? 1.2 : 0.75;
 
   return (
     <svg
@@ -160,6 +188,31 @@ function SheetDiagramSvg({
           </g>
         );
       })}
+
+      <g className="sheet-map-cut-guides" aria-hidden>
+        {cuts.ripY.map((y, i) => (
+          <line
+            key={`rip-${i}`}
+            x1={pad}
+            y1={pad + grainBand + y}
+            x2={pad + w}
+            y2={pad + grainBand + y}
+            className="sheet-map-cut-line sheet-map-cut-line--rip"
+            strokeWidth={cutStroke}
+          />
+        ))}
+        {cuts.cross.map((c, i) => (
+          <line
+            key={`cross-${i}`}
+            x1={pad + c.x}
+            y1={pad + grainBand + c.y}
+            x2={pad + c.x}
+            y2={pad + grainBand + c.y + c.h}
+            className="sheet-map-cut-line sheet-map-cut-line--cross"
+            strokeWidth={cutStroke}
+          />
+        ))}
+      </g>
 
       {!showSheetGrainBand && (
         <text

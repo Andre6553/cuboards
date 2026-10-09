@@ -78,19 +78,6 @@ export interface SheetLayoutResult {
   sheetDetails: LayoutSheetDetail[];
 }
 
-interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-interface Sheet {
-  free: Rect[];
-  maxX: number;
-  maxY: number;
-}
-
 interface Item {
   w: number;
   h: number;
@@ -99,65 +86,192 @@ interface Item {
   grainLocked: boolean;
 }
 
-function intersects(a: Rect, b: Rect): boolean {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+/** One rip strip: full grain length, fixed cross-grain height (panel-saw row). */
+interface GuillotineStrip {
+  y: number;
+  height: number;
+  cursorX: number;
 }
 
-function contains(outer: Rect, inner: Rect): boolean {
-  return (
-    inner.x >= outer.x &&
-    inner.y >= outer.y &&
-    inner.x + inner.w <= outer.x + outer.w &&
-    inner.y + inner.h <= outer.y + outer.h
-  );
+interface GuillotineSheet {
+  strips: GuillotineStrip[];
+  maxX: number;
+  maxY: number;
 }
 
-function placeRect(sheet: Sheet, placed: Rect): void {
-  const next: Rect[] = [];
-  for (const f of sheet.free) {
-    if (!intersects(f, placed)) {
-      next.push(f);
-      continue;
+function itemOrientations(item: Item): [number, number][] {
+  if (!item.canRotate || item.w === item.h) return [[item.w, item.h]];
+  return [
+    [item.w, item.h],
+    [item.h, item.w],
+  ];
+}
+
+function sheetUsedHeight(sheet: GuillotineSheet): number {
+  return sheet.strips.reduce((m, s) => Math.max(m, s.y + s.height), 0);
+}
+
+function pushOffcutFromRect(
+  offcuts: LayoutOffcut[],
+  sheetIndex: number,
+  w: number,
+  h: number,
+  kerf: number,
+): void {
+  const uw = Math.floor(w - kerf);
+  const uh = Math.floor(h - kerf);
+  if (uw <= 0 || uh <= 0) return;
+  if (uw < MIN_OFFCUT_MM || uh < MIN_OFFCUT_MM) return;
+  const lengthMm = Math.max(uw, uh);
+  const widthMm = Math.min(uw, uh);
+  offcuts.push({
+    sheetIndex,
+    widthMm,
+    lengthMm,
+    areaMm2: widthMm * lengthMm,
+  });
+}
+
+interface PlacementPlan {
+  sheetIndex: number;
+  x: number;
+  y: number;
+  iw: number;
+  ih: number;
+  /** Lower = better (existing strip before new strip before new sheet). */
+  rank: number;
+}
+
+function planPlacement(
+  sheets: GuillotineSheet[],
+  iw: number,
+  ih: number,
+  binW: number,
+  binH: number,
+): PlacementPlan | null {
+  let best: PlacementPlan | null = null;
+
+  const consider = (plan: PlacementPlan) => {
+    if (!best || plan.rank < best.rank) best = plan;
+  };
+
+  for (let si = 0; si < sheets.length; si++) {
+    const sheet = sheets[si];
+    for (let ti = 0; ti < sheet.strips.length; ti++) {
+      const strip = sheet.strips[ti];
+      if (ih > strip.height) continue;
+      if (strip.cursorX + iw > binW) continue;
+      consider({
+        sheetIndex: si,
+        x: strip.cursorX,
+        y: strip.y,
+        iw,
+        ih,
+        rank: si * 10 + ti,
+      });
     }
-    if (placed.x > f.x) next.push({ x: f.x, y: f.y, w: placed.x - f.x, h: f.h });
-    if (placed.x + placed.w < f.x + f.w) {
-      next.push({ x: placed.x + placed.w, y: f.y, w: f.x + f.w - (placed.x + placed.w), h: f.h });
-    }
-    if (placed.y > f.y) next.push({ x: f.x, y: f.y, w: f.w, h: placed.y - f.y });
-    if (placed.y + placed.h < f.y + f.h) {
-      next.push({ x: f.x, y: placed.y + placed.h, w: f.w, h: f.y + f.h - (placed.y + placed.h) });
+
+    const newY = sheetUsedHeight(sheet);
+    if (newY + ih <= binH && iw <= binW) {
+      consider({
+        sheetIndex: si,
+        x: 0,
+        y: newY,
+        iw,
+        ih,
+        rank: 100 + si,
+      });
     }
   }
-  sheet.free = next.filter((r, i) => !next.some((o, j) => j !== i && contains(o, r) && (j < i || !contains(r, o))));
-  sheet.maxX = Math.max(sheet.maxX, placed.x + placed.w);
-  sheet.maxY = Math.max(sheet.maxY, placed.y + placed.h);
-}
 
-function bestFit(sheet: Sheet, item: Item): Rect | null {
-  let best: Rect | null = null;
-  let bestShort = Infinity;
-  let bestLong = Infinity;
-  const orientations: [number, number][] = item.canRotate && item.w !== item.h
-    ? [[item.w, item.h], [item.h, item.w]]
-    : [[item.w, item.h]];
-  for (const f of sheet.free) {
-    for (const [w, h] of orientations) {
-      if (w > f.w || h > f.h) continue;
-      const short = Math.min(f.w - w, f.h - h);
-      const long = Math.max(f.w - w, f.h - h);
-      if (short < bestShort || (short === bestShort && long < bestLong)) {
-        best = { x: f.x, y: f.y, w, h };
-        bestShort = short;
-        bestLong = long;
-      }
-    }
+  const newSheetRank = 1000 + sheets.length;
+  if (ih <= binH && iw <= binW) {
+    consider({
+      sheetIndex: sheets.length,
+      x: 0,
+      y: 0,
+      iw,
+      ih,
+      rank: newSheetRank,
+    });
   }
+
   return best;
 }
 
+function applyPlan(
+  sheets: GuillotineSheet[],
+  plan: PlacementPlan,
+  item: Item,
+  kerf: number,
+  placementsBySheet: LayoutPlacement[][],
+): void {
+  while (sheets.length <= plan.sheetIndex) {
+    sheets.push({ strips: [], maxX: 0, maxY: 0 });
+  }
+  const sheet = sheets[plan.sheetIndex];
+
+  let strip = sheet.strips.find((s) => s.y === plan.y);
+  if (!strip) {
+    strip = { y: plan.y, height: plan.ih, cursorX: 0 };
+    sheet.strips.push(strip);
+    sheet.strips.sort((a, b) => a.y - b.y);
+  }
+
+  if (!placementsBySheet[plan.sheetIndex]) placementsBySheet[plan.sheetIndex] = [];
+  placementsBySheet[plan.sheetIndex].push({
+    x: plan.x,
+    y: plan.y,
+    widthMm: Math.max(0, plan.iw - kerf),
+    heightMm: Math.max(0, plan.ih - kerf),
+    label: item.label,
+    grainLocked: item.grainLocked,
+  });
+
+  strip.cursorX = Math.max(strip.cursorX, plan.x + plan.iw);
+  strip.height = Math.max(strip.height, plan.ih);
+  sheet.maxX = Math.max(sheet.maxX, plan.x + plan.iw);
+  sheet.maxY = Math.max(sheet.maxY, plan.y + plan.ih);
+}
+
+function guillotineOffcutRects(
+  sheet: GuillotineSheet,
+  binW: number,
+  binH: number,
+  kerf: number,
+): LayoutOffcutRect[] {
+  const rects: LayoutOffcutRect[] = [];
+  for (const strip of sheet.strips) {
+    const rw = binW - strip.cursorX;
+    if (rw >= MIN_OFFCUT_MM + kerf) {
+      const uw = Math.floor(rw - kerf);
+      const uh = Math.floor(strip.height - kerf);
+      if (uw >= MIN_OFFCUT_MM && uh >= MIN_OFFCUT_MM) {
+        rects.push({
+          x: strip.cursorX,
+          y: strip.y,
+          widthMm: uw,
+          heightMm: uh,
+        });
+      }
+    }
+  }
+  const usedY = sheetUsedHeight(sheet);
+  const bh = binH - usedY;
+  if (bh >= MIN_OFFCUT_MM + kerf) {
+    const uw = Math.floor(binW - kerf);
+    const uh = Math.floor(bh - kerf);
+    if (uw >= MIN_OFFCUT_MM && uh >= MIN_OFFCUT_MM) {
+      rects.push({ x: 0, y: usedY, widthMm: uw, heightMm: uh });
+    }
+  }
+  return rects;
+}
+
 /**
- * Lay parts onto full sheets. Sheet grain runs along the sheet's long side;
- * grain-locked parts keep their `length` on that axis, other parts may rotate.
+ * Lay parts onto full sheets using panel-saw style guillotine nesting:
+ * rip strips across the cross-grain (full sheet length), then crosscut parts along the grain.
+ * Sheet grain runs along the sheet's long side; grain-locked parts keep `length` on that axis.
  */
 export function layoutSheets(
   pieces: LayoutPiece[],
@@ -168,7 +282,6 @@ export function layoutSheets(
 ): SheetLayoutResult {
   const grainLen = Math.max(sheetWidth, sheetHeight);
   const crossLen = Math.min(sheetWidth, sheetHeight);
-  // Each part carries one kerf; the bin gets one extra so edge parts don't lose a blade width.
   const binW = grainLen + kerf;
   const binH = crossLen + kerf;
 
@@ -190,46 +303,26 @@ export function layoutSheets(
     }
   }
 
-  items.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || b.w * b.h - a.w * a.h);
+  items.sort((a, b) => b.h - a.h || b.w - a.w || b.w * b.h - a.w * a.h);
 
-  const sheets: Sheet[] = [];
+  const sheets: GuillotineSheet[] = [];
   const placementsBySheet: LayoutPlacement[][] = [];
 
-  const recordPlacement = (sheetIndex: number, spot: Rect, item: Item) => {
-    if (!placementsBySheet[sheetIndex]) placementsBySheet[sheetIndex] = [];
-    placementsBySheet[sheetIndex].push({
-      x: spot.x,
-      y: spot.y,
-      widthMm: Math.max(0, spot.w - kerf),
-      heightMm: Math.max(0, spot.h - kerf),
-      label: item.label,
-      grainLocked: item.grainLocked,
-    });
-  };
-
   for (const item of items) {
-    let placed = false;
-    for (let si = 0; si < sheets.length; si++) {
-      const sheet = sheets[si];
-      const spot = bestFit(sheet, item);
-      if (spot) {
-        placeRect(sheet, spot);
-        recordPlacement(si, spot, item);
-        placed = true;
-        break;
+    let bestPlan: PlacementPlan | null = null;
+    for (const [iw, ih] of itemOrientations(item)) {
+      const plan = planPlacement(sheets, iw, ih, binW, binH);
+      if (!plan) continue;
+      if (!bestPlan || plan.rank < bestPlan.rank) {
+        bestPlan = { ...plan, iw, ih };
+      } else if (plan.rank === bestPlan.rank && iw * ih < bestPlan.iw * bestPlan.ih) {
+        bestPlan = { ...plan, iw, ih };
       }
     }
-    if (!placed) {
-      const sheet: Sheet = { free: [{ x: 0, y: 0, w: binW, h: binH }], maxX: 0, maxY: 0 };
-      const spot = bestFit(sheet, item);
-      if (spot) {
-        placeRect(sheet, spot);
-        sheets.push(sheet);
-        recordPlacement(sheets.length - 1, spot, item);
-      } else {
-        sheets.push(sheet);
-      }
+    if (!bestPlan) {
+      continue;
     }
+    applyPlan(sheets, bestPlan, item, kerf, placementsBySheet);
   }
 
   if (sheets.length === 0) {
@@ -237,50 +330,28 @@ export function layoutSheets(
   }
 
   const last = sheets[sheets.length - 1];
-  const usedFraction = (Math.min(last.maxX, grainLen) * Math.min(last.maxY, crossLen)) / (grainLen * crossLen);
+  const usedFraction =
+    (Math.min(last.maxX, grainLen) * Math.min(last.maxY, crossLen)) / (grainLen * crossLen);
   const step = purchaseFraction > 0 ? purchaseFraction : 0.25;
   const lastSheet = Math.max(step, Math.ceil(usedFraction / step - 1e-9) * step);
 
   const offcuts: LayoutOffcut[] = [];
   sheets.forEach((sheet, idx) => {
-    for (const r of sheet.free) {
-      let w = Math.floor(r.w - kerf);
-      let h = Math.floor(r.h - kerf);
-      if (w <= 0 || h <= 0) continue;
-      if (w < MIN_OFFCUT_MM || h < MIN_OFFCUT_MM) continue;
-      const lengthMm = Math.max(w, h);
-      const widthMm = Math.min(w, h);
-      offcuts.push({
-        sheetIndex: idx + 1,
-        widthMm,
-        lengthMm,
-        areaMm2: widthMm * lengthMm,
-      });
+    for (const strip of sheet.strips) {
+      pushOffcutFromRect(offcuts, idx + 1, binW - strip.cursorX, strip.height, kerf);
     }
+    const usedY = sheetUsedHeight(sheet);
+    pushOffcutFromRect(offcuts, idx + 1, binW, binH - usedY, kerf);
   });
   offcuts.sort((a, b) => b.areaMm2 - a.areaMm2 || b.lengthMm - a.lengthMm);
 
-  const sheetDetails: LayoutSheetDetail[] = sheets.map((sheet, idx) => {
-    const offcutRects: LayoutOffcutRect[] = [];
-    for (const r of sheet.free) {
-      const w = Math.floor(r.w - kerf);
-      const h = Math.floor(r.h - kerf);
-      if (w < MIN_OFFCUT_MM || h < MIN_OFFCUT_MM) continue;
-      offcutRects.push({
-        x: r.x,
-        y: r.y,
-        widthMm: w,
-        heightMm: h,
-      });
-    }
-    return {
-      sheetIndex: idx + 1,
-      grainLengthMm: grainLen,
-      crossLengthMm: crossLen,
-      placements: placementsBySheet[idx] ?? [],
-      offcutRects,
-    };
-  });
+  const sheetDetails: LayoutSheetDetail[] = sheets.map((sheet, idx) => ({
+    sheetIndex: idx + 1,
+    grainLengthMm: grainLen,
+    crossLengthMm: crossLen,
+    placements: placementsBySheet[idx] ?? [],
+    offcutRects: guillotineOffcutRects(sheet, binW, binH, kerf),
+  }));
 
   return {
     sheetsUsed: sheets.length,

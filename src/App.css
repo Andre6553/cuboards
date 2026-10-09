@@ -1508,6 +1508,16 @@
   stroke-dasharray: 4 3;
 }
 
+.sheet-map-cut-line {
+  stroke: #dc2626;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.sheet-map-cut-line--rip {
+  stroke-dasharray: 6 4;
+}
+
 .sheet-map-label {
   fill: #1e293b;
   pointer-events: none;

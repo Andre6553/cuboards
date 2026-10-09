@@ -541,7 +541,8 @@ export function MaterialsForm({
 
         <p className="hint">
           <strong>Saw blade width</strong> is the kerf between cuts when nesting panels on a sheet — it affects sheet maps,
-          offcuts, and grain-board sheet counts on the quote. Panel sizes on the cut list stay as finished dimensions.
+          offcuts, and grain-board sheet counts on the quote. Nesting uses panel-saw strips (full-length rips, then
+          crosscuts). Panel sizes on the cut list stay as finished dimensions.
         </p>
 
       </CollapsibleSection>
