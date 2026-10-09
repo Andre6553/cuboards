@@ -1,4 +1,5 @@
 import type { Job, ScrewLine, Unit } from '../types';
+import { calcCustomPackLines, usesGelmarCatalog } from './hardwarePricing';
 import { getScrewById, SCREW_CATALOG } from './screwCatalog';
 import { isActiveDrawer, resolveFrontQty } from './drawerRules';
 
@@ -43,6 +44,10 @@ function usageDetailForScrew(screwId: string, totalScrews: number): string {
 
 /** Job-wide screw totals from all units on the cut list. */
 export function calcJobScrews(job: Job): ScrewLine[] {
+  if (!usesGelmarCatalog(job, 'screws')) {
+    return calcCustomPackLines(job, 'screws');
+  }
+
   const totals = new Map<string, number>();
 
   for (const unit of job.units) {

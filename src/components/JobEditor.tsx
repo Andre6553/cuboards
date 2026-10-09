@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Job } from '../types';
 import { DEFAULT_QUOTE_TERMS } from '../lib/constants';
+import { resolveHardwarePricing } from '../lib/hardwarePricing';
 import { createDefaultUnit } from '../lib/calculator';
 import { loadPresets, unitFromPreset } from '../lib/presets';
 import { ClientForm } from './ClientForm';
@@ -86,6 +87,7 @@ export function JobEditor({ job, onChange, onBack }: Props) {
           {job.units.map((unit) => (
             <UnitForm
               key={unit.id}
+              job={job}
               unit={unit}
               materials={job.materials}
               edgingMaterials={job.edgingMaterials}
@@ -120,6 +122,7 @@ export function JobEditor({ job, onChange, onBack }: Props) {
             connectingFittingPrices={job.connectingFittingPrices}
             installRates={job.installRates}
             settings={job.settings}
+            hardwarePricing={resolveHardwarePricing(job)}
             onMaterialsChange={(materials) => onChange({ ...job, materials })}
             onEdgingChange={(edgingMaterials) => onChange({ ...job, edgingMaterials })}
             onMasoniteChange={(masonite) => onChange({ ...job, masonite })}
@@ -132,6 +135,7 @@ export function JobEditor({ job, onChange, onBack }: Props) {
             onSettingsChange={(settings) => onChange({ ...job, settings })}
             quoteTerms={{ ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms }}
             onQuoteTermsChange={(quoteTerms) => onChange({ ...job, quoteTerms })}
+            onHardwarePricingChange={(hardwarePricing) => onChange({ ...job, hardwarePricing })}
           />
         </>
       )}

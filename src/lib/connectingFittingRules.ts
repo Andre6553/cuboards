@@ -4,6 +4,7 @@ import {
   CONNECTING_FITTING_ID_CORNER_BLOCK,
   getConnectingFittingById,
 } from './connectingFittingCatalog';
+import { calcCustomPackLines, usesGelmarCatalog } from './hardwarePricing';
 
 /** Corner blocks with cap — per cupboard. */
 export const DEFAULT_CONNECTING_FITTING_USAGE = {
@@ -12,6 +13,10 @@ export const DEFAULT_CONNECTING_FITTING_USAGE = {
 
 /** Job-wide connecting fitting totals. */
 export function calcJobConnectingFittings(job: Job): ScrewLine[] {
+  if (!usesGelmarCatalog(job, 'connectingFittings')) {
+    return calcCustomPackLines(job, 'connectingFittings');
+  }
+
   let totalPieces = 0;
   for (const unit of job.units) {
     const cupboards = Math.max(0, unit.unitQty ?? 0);

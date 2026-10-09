@@ -1,7 +1,14 @@
 import { useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
-import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, getHingeById, getHingeGroups, getRunnerClearances, getRunnerGroups, isFloorUnit, isKitchenBase, KICKPLATE_COVERAGE_LABELS, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, UNIT_TYPE_LABELS } from '../lib/constants';
-import { getRunnerById } from '../lib/runnerCatalog';
+import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, KICKPLATE_COVERAGE_LABELS, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, UNIT_TYPE_LABELS } from '../lib/constants';
+import {
+  getHingeByIdForJob,
+  getHingeGroupsForJob,
+  getRunnerByIdForJob,
+  getRunnerClearancesForJob,
+  getRunnerGroupsForJob,
+  usesGelmarCatalog,
+} from '../lib/hardwarePricing';
 import { doorSizeSummary, DEFAULT_DOOR_GAPS, hingesPerDoorLeafForDoor, resolveDoorGaps } from '../lib/doorRules';
 import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_FRONT_OVERHANG_MM, DEFAULT_GAP_TO_DOOR_MM, isActiveDrawer, activeDrawers, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveDrawerGaps, resolveFrontOverhang, resolveFrontQty, resolveGapToDoor, syncDrawerOpeningFromFront } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
@@ -13,6 +20,7 @@ import { CollapsibleSection } from './CollapsibleSection';
 import type { DoorConfig, DoorGaps, DrawerConfig, DrawerGaps, EdgingMaterial, EdgingPattern, Job, Material, Unit } from '../types';
 
 interface Props {
+  job: Job;
   unit: Unit;
   materials: Material[];
   edgingMaterials: EdgingMaterial[];
@@ -62,7 +70,7 @@ function EdgingTypeSelect({
   );
 }
 
-export function UnitForm({ unit, materials, edgingMaterials, settings, onChange, onRemove }: Props) {
+export function UnitForm({ job, unit, materials, edgingMaterials, settings, onChange, onRemove }: Props) {
   const [presets, setPresets] = useState(loadPresets);
   const layoutUnit = resolveFrontLayout(unit);
   const activeDrawerRows = activeDrawers(layoutUnit.drawers);
@@ -638,7 +646,7 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
                   }
                 }}
               >
-                {getHingeGroups().map((group) => (
+                {getHingeGroupsForJob(job).map((group) => (
                   <optgroup key={group.category} label={group.label}>
                     {group.hinges.map((h) => (
                       <option key={h.id} value={h.id} disabled={h.outOfStockOnline}>
@@ -647,15 +655,17 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
                     ))}
                   </optgroup>
                 ))}
-                <option value="custom">Custom hinge (manual price)</option>
+                {usesGelmarCatalog(job, 'hinges') && (
+                  <option value="custom">Custom hinge (manual price)</option>
+                )}
               </select>
               {door.hinge?.type === 'preset' && (() => {
-                const sel = getHingeById(door.hinge.presetId);
+                const sel = getHingeByIdForJob(job, door.hinge.presetId);
                 if (!sel) return null;
                 return (
                   <span className="field-hint">
                     {sel.name}
-                    {sel.url && (
+                    {usesGelmarCatalog(job, 'hinges') && sel.url && (
                       <>
                         {' · '}
                         <a href={sel.url} target="_blank" rel="noreferrer">Gelmar</a>
@@ -797,7 +807,7 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
           </div>
           <p className="hint">
             Box front/back ({EDGING_LABELS[DRAWER_BOX_FRONT_BACK_EDGING]}):{' '}
-            {drawerBoxFrontBackWidthNote(unit.width, settings.thickness, drawer.sideClearance ?? getRunnerClearances(drawer.runner).sideClearance)}
+            {drawerBoxFrontBackWidthNote(unit.width, settings.thickness, drawer.sideClearance ?? getRunnerClearancesForJob(job, drawer.runner).sideClearance)}
           </p>
           <p className="hint">
             Box sides ({EDGING_LABELS[DRAWER_BOX_SIDE_EDGING]}):{' '}
@@ -842,7 +852,7 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
                       runner: { type: 'custom', customSideClearance: drawer.sideClearance, customDepthDeduction: 25 },
                     });
                   } else {
-                    const entry = getRunnerById(e.target.value);
+                    const entry = getRunnerByIdForJob(job, e.target.value);
                     updateDrawer(drawer.id, {
                       runner: { type: 'preset', presetId: e.target.value },
                       sideClearance: entry?.sideClearance ?? drawer.sideClearance,
@@ -850,17 +860,19 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
                   }
                 }}
               >
-                {getRunnerGroups().map((group) => (
+                {getRunnerGroupsForJob(job).map((group) => (
                   <optgroup key={group.category} label={group.label}>
                     {group.runners.map((p) => (
                       <option key={p.id} value={p.id}>{p.shortName}</option>
                     ))}
                   </optgroup>
                 ))}
-                <option value="custom">Custom clearances</option>
+                {usesGelmarCatalog(job, 'runners') && (
+                  <option value="custom">Custom clearances</option>
+                )}
               </select>
               {drawer.runner.type === 'preset' && (() => {
-                const sel = getRunnerById(drawer.runner.presetId);
+                const sel = getRunnerByIdForJob(job, drawer.runner.presetId);
                 if (!sel?.lengthMm) return null;
                 const minDepth = sel.lengthMm + 26;
                 const tooShort = unit.depth < minDepth;
@@ -935,7 +947,7 @@ export function UnitForm({ unit, materials, edgingMaterials, settings, onChange,
                 type="number"
                 min={0}
                 step={0.1}
-                value={drawer.sideClearance ?? getRunnerClearances(drawer.runner).sideClearance}
+                value={drawer.sideClearance ?? getRunnerClearancesForJob(job, drawer.runner).sideClearance}
                 onChange={(e) => {
                   const sideClearance = Number(e.target.value);
                   updateDrawer(drawer.id, {

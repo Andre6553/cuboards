@@ -1,6 +1,12 @@
-import { defaultPlinth, EDGING_LABELS, getRunnerClearances, isFloorUnit, isKitchenBase } from './constants';
-import { getRunnerById } from './runnerCatalog';
-import { DEFAULT_HINGE_PRESET_ID, getHingeById } from './hingeCatalog';
+import { defaultPlinth, EDGING_LABELS, isFloorUnit, isKitchenBase } from './constants';
+import {
+  getHingeByIdForJob,
+  getRunnerByIdForJob,
+  getRunnerClearancesForJob,
+  resolveHingeUnitPrice,
+  resolveRunnerUnitPrice,
+} from './hardwarePricing';
+import { DEFAULT_HINGE_PRESET_ID } from './hingeCatalog';
 import { applyCutSizeMode, edgingRunMm, type LongAlong } from './edgingCutSize';
 import { doorPanelHeight, doorPanelWidth, DEFAULT_DOOR_GAPS, hingesPerDoorLeaf } from './doorRules';
 import { drawerFrontHeight, drawerFrontWidth, DEFAULT_DRAWER_GAPS, DEFAULT_FRONT_OVERHANG_MM, DEFAULT_GAP_TO_DOOR_MM, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveFrontQty, targetDrawerOpeningHeight } from './drawerRules';
@@ -470,14 +476,12 @@ function calcDoors(
     addEdging(edging, job, door.materialId, 'Door', unit.name, door.edgingPattern, w, h, totalQty, door.edgingMaterialId, 'length');
 
     const presetId = door.hinge?.type === 'preset' ? door.hinge.presetId ?? 'gelmar-200' : 'custom';
-    const catalogEntry = door.hinge?.type === 'preset' ? getHingeById(presetId) : undefined;
+    const catalogEntry = door.hinge?.type === 'preset' ? getHingeByIdForJob(job, presetId) : undefined;
     const presetName = stripSkuAndPrice(catalogEntry?.shortName ?? catalogEntry?.name ?? 'Custom hinge');
     const priceEach =
-      job.hingePrices[presetId] ??
-      catalogEntry?.defaultPrice ??
-      door.hinge?.customUnitPrice ??
-      job.hingePrices.custom ??
-      0;
+      door.hinge?.type === 'custom'
+        ? door.hinge.customUnitPrice ?? job.hingePrices.custom ?? 0
+        : resolveHingeUnitPrice(job, presetId);
     const finishedH = doorPanelHeight(door);
     const perLeaf = hingesPerDoorLeaf(finishedH);
     const hingeQty = door.qty * perLeaf * mult;
@@ -506,10 +510,10 @@ function calcDrawers(
 
   for (const drawer of drawers) {
     if (drawer.qty <= 0) continue;
-    const runner = getRunnerClearances(drawer.runner);
-    const sideClearance = drawer.sideClearance ?? runner.sideClearance;
     const presetId = drawer.runner.type === 'preset' ? drawer.runner.presetId ?? 'generic-13' : 'custom';
-    const catalogEntry = drawer.runner.type === 'preset' ? getRunnerById(presetId) : undefined;
+    const runner = getRunnerClearancesForJob(job, drawer.runner);
+    const sideClearance = drawer.sideClearance ?? runner.sideClearance;
+    const catalogEntry = drawer.runner.type === 'preset' ? getRunnerByIdForJob(job, presetId) : undefined;
     const presetName = stripSkuAndPrice(
       catalogEntry?.shortName ?? catalogEntry?.name ?? (drawer.runner.type === 'preset' ? 'Runner' : 'Custom runner'),
     );
@@ -678,7 +682,10 @@ function calcDrawers(
       'fixedLengthMm' in runner && runner.fixedLengthMm != null
         ? runner.fixedLengthMm
         : stockRunnerLengthMm(D, runner.runnerLengthOffset);
-    const pricePerPair = job.runnerPrices[presetId] ?? catalogEntry?.defaultPrice ?? job.runnerPrices['custom'] ?? 0;
+    const pricePerPair =
+      drawer.runner.type === 'custom'
+        ? job.runnerPrices.custom ?? 0
+        : resolveRunnerUnitPrice(job, presetId);
     const skuNote = catalogEntry?.sku ? ` · SKU ${catalogEntry.sku}` : '';
     hardware.push({
       description: 'Drawer runner pair',

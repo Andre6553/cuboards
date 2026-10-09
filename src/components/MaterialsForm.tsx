@@ -28,9 +28,25 @@ import {
   type GelmarRefreshUiState,
 } from '../lib/gelmarPriceRefresh';
 
-import type { ConnectingFittingPrices, CutSizeMode, EdgingMaterial, HingePrices, InstallRates, Job, MasoniteConfig, Material, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices } from '../types';
+import type {
+  ConnectingFittingPrices,
+  CutSizeMode,
+  CustomHardwareItem,
+  EdgingMaterial,
+  HardwarePricing,
+  HingePrices,
+  InstallRates,
+  Job,
+  MasoniteConfig,
+  Material,
+  PlasticKickplateConfig,
+  QuoteTerms,
+  RunnerPrices,
+  ScrewPrices,
+} from '../types';
 
 import { CollapsibleSection } from './CollapsibleSection';
+import { CustomHardwareEditor } from './CustomHardwareEditor';
 import { GelmarPriceRefreshPanel } from './GelmarPriceRefreshPanel';
 
 
@@ -59,6 +75,8 @@ interface Props {
 
   quoteTerms: QuoteTerms;
 
+  hardwarePricing: HardwarePricing;
+
   onMaterialsChange: (materials: Material[]) => void;
 
   onEdgingChange: (edging: EdgingMaterial[]) => void;
@@ -80,6 +98,8 @@ interface Props {
   onSettingsChange: (settings: Job['settings']) => void;
 
   onQuoteTermsChange: (terms: QuoteTerms) => void;
+
+  onHardwarePricingChange: (pricing: HardwarePricing) => void;
 
 }
 
@@ -131,7 +151,25 @@ export function MaterialsForm({
 
   onQuoteTermsChange,
 
+  hardwarePricing,
+
+  onHardwarePricingChange,
+
 }: Props) {
+
+  type CustomCat = keyof HardwarePricing['customCatalog'];
+
+  const setUseGelmar = (category: keyof HardwarePricing['useGelmarCatalog'], useGelmar: boolean) =>
+    onHardwarePricingChange({
+      ...hardwarePricing,
+      useGelmarCatalog: { ...hardwarePricing.useGelmarCatalog, [category]: useGelmar },
+    });
+
+  const setCustomCatalog = (category: CustomCat, items: CustomHardwareItem[]) =>
+    onHardwarePricingChange({
+      ...hardwarePricing,
+      customCatalog: { ...hardwarePricing.customCatalog, [category]: items },
+    });
 
   const install = { ...DEFAULT_INSTALL_RATES, ...installRates };
   const terms = { ...DEFAULT_QUOTE_TERMS, ...quoteTerms };
@@ -785,87 +823,68 @@ export function MaterialsForm({
 
       <CollapsibleSection title="Drawer runner prices — price per pair">
 
-        <GelmarPriceRefreshPanel
-          snapshotScrapedAt={GELMAR_SCRAPED_AT}
-          liveAt={runnerRefresh.liveAt}
-          refreshing={refreshingRunners}
-          onRefresh={refreshGelmarRunners}
-          note={runnerRefresh.note}
-          error={runnerRefresh.error}
-          changes={runnerRefresh.changes}
-          checked={runnerRefresh.checked}
-          hint="Gelmar pair prices. Refresh pulls current prices from gelmar.co.za into this job. Override any price for your supplier."
-        />
+        <CustomHardwareEditor
+          category="runners"
+          categoryLabel="drawer runners"
+          useGelmar={hardwarePricing.useGelmarCatalog.runners}
+          onUseGelmarChange={(v) => setUseGelmar('runners', v)}
+          items={hardwarePricing.customCatalog.runners}
+          onItemsChange={(items) => setCustomCatalog('runners', items)}
+          defaultPriceUnit="pair"
+          gelmarPanel={
+            <>
+              <GelmarPriceRefreshPanel
+                snapshotScrapedAt={GELMAR_SCRAPED_AT}
+                liveAt={runnerRefresh.liveAt}
+                refreshing={refreshingRunners}
+                onRefresh={refreshGelmarRunners}
+                note={runnerRefresh.note}
+                error={runnerRefresh.error}
+                changes={runnerRefresh.changes}
+                checked={runnerRefresh.checked}
+                hint="Gelmar pair prices. Refresh pulls current prices from gelmar.co.za into this job. Override any price for your supplier."
+              />
 
-        <p className="hint">
-          <strong>Blum / Hettich</strong> rows below use fixed default prices — update manually or use Gelmar refresh above for local trade pricing.
-        </p>
+              <p className="hint">
+                <strong>Blum / Hettich</strong> rows below use fixed default prices — update manually or use Gelmar refresh above for local trade pricing.
+              </p>
 
-        <div className="table-wrap gelmar-prices">
-
-          <table className="data-table data-table-compact">
-
-            <thead>
-
-              <tr>
-
-                <th>Category</th>
-
-                <th>SKU</th>
-
-                <th>Length</th>
-
-                <th>R / pair</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {getRunnerGroups()
-
-                .filter((g) => g.category !== 'brand')
-
-                .flatMap((g) =>
-
-                  g.runners.map((r) => (
-
-                    <tr key={r.id}>
-
-                      <td>{g.label.replace('Gelmar — ', '')}</td>
-
-                      <td>{r.sku ?? '—'}</td>
-
-                      <td>{r.lengthMm ? `${r.lengthMm} mm` : '—'}</td>
-
-                      <td>
-
-                        <input
-
-                          type="number"
-
-                          className="price-input-inline"
-
-                          value={runnerPrices[r.id] ?? r.defaultPrice}
-
-                          onChange={(e) => onRunnerPricesChange({ ...runnerPrices, [r.id]: Number(e.target.value) })}
-
-                        />
-
-                      </td>
-
+              <div className="table-wrap gelmar-prices">
+                <table className="data-table data-table-compact">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>SKU</th>
+                      <th>Length</th>
+                      <th>R / pair</th>
                     </tr>
-
-                  )),
-
-                )}
-
-            </tbody>
-
-          </table>
-
-        </div>
+                  </thead>
+                  <tbody>
+                    {getRunnerGroups()
+                      .filter((g) => g.category !== 'brand')
+                      .flatMap((g) =>
+                        g.runners.map((r) => (
+                          <tr key={r.id}>
+                            <td>{g.label.replace('Gelmar — ', '')}</td>
+                            <td>{r.sku ?? '—'}</td>
+                            <td>{r.lengthMm ? `${r.lengthMm} mm` : '—'}</td>
+                            <td>
+                              <input
+                                type="number"
+                                className="price-input-inline"
+                                value={runnerPrices[r.id] ?? r.defaultPrice}
+                                onChange={(e) => onRunnerPricesChange({ ...runnerPrices, [r.id]: Number(e.target.value) })}
+                              />
+                            </td>
+                          </tr>
+                        )),
+                      )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          }
+        />
 
       </CollapsibleSection>
 
@@ -873,93 +892,75 @@ export function MaterialsForm({
 
       <CollapsibleSection title="Cabinet hinge prices — price each">
 
-        <GelmarPriceRefreshPanel
-          snapshotScrapedAt={GELMAR_HINGES_SCRAPED_AT}
-          liveAt={hingeRefresh.liveAt}
-          refreshing={refreshingHinges}
-          onRefresh={refreshGelmarHinges}
-          note={hingeRefresh.note}
-          error={hingeRefresh.error}
-          changes={hingeRefresh.changes}
-          checked={hingeRefresh.checked}
-          hint={
+        <CustomHardwareEditor
+          category="hinges"
+          categoryLabel="cabinet hinges"
+          useGelmar={hardwarePricing.useGelmarCatalog.hinges}
+          onUseGelmarChange={(v) => setUseGelmar('hinges', v)}
+          items={hardwarePricing.customCatalog.hinges}
+          onItemsChange={(items) => setCustomCatalog('hinges', items)}
+          defaultPriceUnit="each"
+          gelmarPanel={
             <>
-              Gelmar hinges from{' '}
-              <a href="https://www.gelmar.co.za/hinges/gelmar-slide-on-4-hole.html" target="_blank" rel="noreferrer">
-                slide-on
-              </a>{' '}
-              &amp;{' '}
-              <a href="https://www.gelmar.co.za/hinges.html?cat=34_gelmar-soft-close-clip" target="_blank" rel="noreferrer">
-                soft close
-              </a>
-              . Refresh updates price each from gelmar.co.za. Override for your branch.
+              <GelmarPriceRefreshPanel
+                snapshotScrapedAt={GELMAR_HINGES_SCRAPED_AT}
+                liveAt={hingeRefresh.liveAt}
+                refreshing={refreshingHinges}
+                onRefresh={refreshGelmarHinges}
+                note={hingeRefresh.note}
+                error={hingeRefresh.error}
+                changes={hingeRefresh.changes}
+                checked={hingeRefresh.checked}
+                hint={
+                  <>
+                    Gelmar hinges from{' '}
+                    <a href="https://www.gelmar.co.za/hinges/gelmar-slide-on-4-hole.html" target="_blank" rel="noreferrer">
+                      slide-on
+                    </a>{' '}
+                    &amp;{' '}
+                    <a href="https://www.gelmar.co.za/hinges.html?cat=34_gelmar-soft-close-clip" target="_blank" rel="noreferrer">
+                      soft close
+                    </a>
+                    . Refresh updates price each from gelmar.co.za. Override for your branch.
+                  </>
+                }
+              />
+
+              <div className="table-wrap gelmar-prices">
+                <table className="data-table data-table-compact">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>SKU</th>
+                      <th>Spec</th>
+                      <th>R / each</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getHingeGroups().flatMap((g) =>
+                      g.hinges.map((h) => (
+                        <tr key={h.id}>
+                          <td>{g.label.replace('Gelmar — ', '')}</td>
+                          <td>{h.sku ?? '—'}</td>
+                          <td>{h.shortName.replace(/ · SKU \d+ · R [\d.]+$/, '')}</td>
+                          <td>
+                            <input
+                              type="number"
+                              className="price-input-inline"
+                              step={0.01}
+                              value={hingePrices[h.id] ?? h.defaultPrice}
+                              onChange={(e) => onHingePricesChange({ ...hingePrices, [h.id]: Number(e.target.value) })}
+                            />
+                          </td>
+                        </tr>
+                      )),
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </>
           }
         />
-
-        <div className="table-wrap gelmar-prices">
-
-          <table className="data-table data-table-compact">
-
-            <thead>
-
-              <tr>
-
-                <th>Category</th>
-
-                <th>SKU</th>
-
-                <th>Spec</th>
-
-                <th>R / each</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {getHingeGroups().flatMap((g) =>
-
-                g.hinges.map((h) => (
-
-                  <tr key={h.id}>
-
-                    <td>{g.label.replace('Gelmar — ', '')}</td>
-
-                    <td>{h.sku ?? '—'}</td>
-
-                    <td>{h.shortName.replace(/ · SKU \d+ · R [\d.]+$/, '')}</td>
-
-                    <td>
-
-                      <input
-
-                        type="number"
-
-                        className="price-input-inline"
-
-                        step={0.01}
-
-                        value={hingePrices[h.id] ?? h.defaultPrice}
-
-                        onChange={(e) => onHingePricesChange({ ...hingePrices, [h.id]: Number(e.target.value) })}
-
-                      />
-
-                    </td>
-
-                  </tr>
-
-                )),
-
-              )}
-
-            </tbody>
-
-          </table>
-
-        </div>
 
       </CollapsibleSection>
 
@@ -967,83 +968,69 @@ export function MaterialsForm({
 
       <CollapsibleSection title="Screw packs — Gelmar (price per pack)">
 
-        <GelmarPriceRefreshPanel
-          snapshotScrapedAt={GELMAR_SCREWS_SCRAPED_AT}
-          liveAt={screwRefresh.liveAt}
-          refreshing={refreshingScrews}
-          onRefresh={refreshGelmarScrews}
-          note={screwRefresh.note}
-          error={screwRefresh.error}
-          changes={screwRefresh.changes}
-          checked={screwRefresh.checked}
-          hint="Gelmar screw pack prices. Refresh pulls pack prices from each product page on gelmar.co.za."
+        <CustomHardwareEditor
+          category="screws"
+          categoryLabel="screw packs"
+          useGelmar={hardwarePricing.useGelmarCatalog.screws}
+          onUseGelmarChange={(v) => setUseGelmar('screws', v)}
+          items={hardwarePricing.customCatalog.screws}
+          onItemsChange={(items) => setCustomCatalog('screws', items)}
+          packMode
+          gelmarPanel={
+            <>
+              <GelmarPriceRefreshPanel
+                snapshotScrapedAt={GELMAR_SCREWS_SCRAPED_AT}
+                liveAt={screwRefresh.liveAt}
+                refreshing={refreshingScrews}
+                onRefresh={refreshGelmarScrews}
+                note={screwRefresh.note}
+                error={screwRefresh.error}
+                changes={screwRefresh.changes}
+                checked={screwRefresh.checked}
+                hint="Gelmar screw pack prices. Refresh pulls pack prices from each product page on gelmar.co.za."
+              />
+
+              <p className="hint">
+                Usage: chipboard {DEFAULT_SCREW_USAGE.chipboardPerCupboard}/cupboard · drywall 3.5×28 mm{' '}
+                {DEFAULT_SCREW_USAGE.drywall28PerDrawerFront}/drawer front · 3.5×32 mm {DEFAULT_SCREW_USAGE.drywall32PerCupboard}/cupboard · 6×32 mm{' '}
+                {DEFAULT_SCREW_USAGE.drywall6PerCupboard}/cupboard + {DEFAULT_SCREW_USAGE.drywall6PerDrawer}/drawer. Packs rounded up on cost estimate.
+              </p>
+
+              <div className="table-wrap gelmar-prices">
+                <table className="data-table data-table-compact">
+                  <thead>
+                    <tr>
+                      <th>SKU</th>
+                      <th>Spec</th>
+                      <th>Pack</th>
+                      <th>R / pack</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SCREW_CATALOG.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.sku}</td>
+                        <td>
+                          {s.diameterMm}×{s.lengthMm} mm
+                        </td>
+                        <td>{s.packSize}</td>
+                        <td>
+                          <input
+                            type="number"
+                            className="price-input-inline"
+                            step={0.01}
+                            value={screwPrices[s.id] ?? s.defaultPackPrice}
+                            onChange={(e) => onScrewPricesChange({ ...screwPrices, [s.id]: Number(e.target.value) })}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          }
         />
-
-        <p className="hint">
-          Usage: chipboard {DEFAULT_SCREW_USAGE.chipboardPerCupboard}/cupboard · drywall 3.5×28 mm {DEFAULT_SCREW_USAGE.drywall28PerDrawerFront}/drawer front ·
-          3.5×32 mm {DEFAULT_SCREW_USAGE.drywall32PerCupboard}/cupboard · 6×32 mm {DEFAULT_SCREW_USAGE.drywall6PerCupboard}/cupboard + {DEFAULT_SCREW_USAGE.drywall6PerDrawer}/drawer.
-          Packs rounded up on cost estimate.
-        </p>
-
-        <div className="table-wrap gelmar-prices">
-
-          <table className="data-table data-table-compact">
-
-            <thead>
-
-              <tr>
-
-                <th>SKU</th>
-
-                <th>Spec</th>
-
-                <th>Pack</th>
-
-                <th>R / pack</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {SCREW_CATALOG.map((s) => (
-
-                <tr key={s.id}>
-
-                  <td>{s.sku}</td>
-
-                  <td>{s.diameterMm}×{s.lengthMm} mm</td>
-
-                  <td>{s.packSize}</td>
-
-                  <td>
-
-                    <input
-
-                      type="number"
-
-                      className="price-input-inline"
-
-                      step={0.01}
-
-                      value={screwPrices[s.id] ?? s.defaultPackPrice}
-
-                      onChange={(e) => onScrewPricesChange({ ...screwPrices, [s.id]: Number(e.target.value) })}
-
-                    />
-
-                  </td>
-
-                </tr>
-
-              ))}
-
-            </tbody>
-
-          </table>
-
-        </div>
 
       </CollapsibleSection>
 
@@ -1051,81 +1038,69 @@ export function MaterialsForm({
 
       <CollapsibleSection title="Connecting fittings — Gelmar (price per pack)">
 
-        <GelmarPriceRefreshPanel
-          snapshotScrapedAt={GELMAR_CONNECTING_FITTINGS_SCRAPED_AT}
-          liveAt={fittingRefresh.liveAt}
-          refreshing={refreshingFittings}
-          onRefresh={refreshGelmarFittings}
-          note={fittingRefresh.note}
-          error={fittingRefresh.error}
-          changes={fittingRefresh.changes}
-          checked={fittingRefresh.checked}
-          hint="Gelmar connecting fitting pack prices. Refresh pulls pack prices from gelmar.co.za."
+        <CustomHardwareEditor
+          category="connectingFittings"
+          categoryLabel="connecting fittings"
+          useGelmar={hardwarePricing.useGelmarCatalog.connectingFittings}
+          onUseGelmarChange={(v) => setUseGelmar('connectingFittings', v)}
+          items={hardwarePricing.customCatalog.connectingFittings}
+          onItemsChange={(items) => setCustomCatalog('connectingFittings', items)}
+          packMode
+          gelmarPanel={
+            <>
+              <GelmarPriceRefreshPanel
+                snapshotScrapedAt={GELMAR_CONNECTING_FITTINGS_SCRAPED_AT}
+                liveAt={fittingRefresh.liveAt}
+                refreshing={refreshingFittings}
+                onRefresh={refreshGelmarFittings}
+                note={fittingRefresh.note}
+                error={fittingRefresh.error}
+                changes={fittingRefresh.changes}
+                checked={fittingRefresh.checked}
+                hint="Gelmar connecting fitting pack prices. Refresh pulls pack prices from gelmar.co.za."
+              />
+
+              <p className="hint">
+                Corner block with cap: {DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard · packs rounded up on cost estimate.
+              </p>
+
+              <div className="table-wrap gelmar-prices">
+                <table className="data-table data-table-compact">
+                  <thead>
+                    <tr>
+                      <th>SKU</th>
+                      <th>Item</th>
+                      <th>Pack</th>
+                      <th>R / pack</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CONNECTING_FITTING_CATALOG.map((f) => (
+                      <tr key={f.id}>
+                        <td>{f.sku}</td>
+                        <td>
+                          {f.lengthMm}×{f.widthMm}×{f.heightMm} mm corner block
+                        </td>
+                        <td>{f.packSize}</td>
+                        <td>
+                          <input
+                            type="number"
+                            className="price-input-inline"
+                            step={0.01}
+                            value={connectingFittingPrices[f.id] ?? f.defaultPackPrice}
+                            onChange={(e) =>
+                              onConnectingFittingPricesChange({ ...connectingFittingPrices, [f.id]: Number(e.target.value) })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          }
         />
-
-        <p className="hint">
-          Corner block with cap: {DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard · packs rounded up on cost estimate.
-        </p>
-
-        <div className="table-wrap gelmar-prices">
-
-          <table className="data-table data-table-compact">
-
-            <thead>
-
-              <tr>
-
-                <th>SKU</th>
-
-                <th>Item</th>
-
-                <th>Pack</th>
-
-                <th>R / pack</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {CONNECTING_FITTING_CATALOG.map((f) => (
-
-                <tr key={f.id}>
-
-                  <td>{f.sku}</td>
-
-                  <td>{f.lengthMm}×{f.widthMm}×{f.heightMm} mm corner block</td>
-
-                  <td>{f.packSize}</td>
-
-                  <td>
-
-                    <input
-
-                      type="number"
-
-                      className="price-input-inline"
-
-                      step={0.01}
-
-                      value={connectingFittingPrices[f.id] ?? f.defaultPackPrice}
-
-                      onChange={(e) => onConnectingFittingPricesChange({ ...connectingFittingPrices, [f.id]: Number(e.target.value) })}
-
-                    />
-
-                  </td>
-
-                </tr>
-
-              ))}
-
-            </tbody>
-
-          </table>
-
-        </div>
 
       </CollapsibleSection>
 

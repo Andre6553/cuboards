@@ -14,6 +14,7 @@ export type PriceList = Pick<
   | 'screwPrices'
   | 'connectingFittingPrices'
   | 'installRates'
+  | 'hardwarePricing'
 > & { savedAt: string };
 
 export function loadPriceList(): PriceList | null {
@@ -37,6 +38,7 @@ export function savePriceListFromJob(job: Job): PriceList {
     screwPrices: job.screwPrices,
     connectingFittingPrices: job.connectingFittingPrices,
     installRates: job.installRates,
+    hardwarePricing: job.hardwarePricing,
     savedAt: new Date().toISOString(),
   });
   localStorage.setItem(PRICE_LIST_KEY, JSON.stringify(list));
@@ -66,5 +68,6 @@ export function applyPriceListToJob(job: Job, list: PriceList): Job {
     screwPrices: { ...job.screwPrices, ...list.screwPrices },
     connectingFittingPrices: { ...job.connectingFittingPrices, ...list.connectingFittingPrices },
     installRates: { ...list.installRates },
+    hardwarePricing: list.hardwarePricing ? structuredClone(list.hardwarePricing) : job.hardwarePricing,
   };
 }

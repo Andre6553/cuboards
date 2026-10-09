@@ -62,6 +62,35 @@ export interface ConnectingFittingPrices {
   [fittingId: string]: number;
 }
 
+export type CustomHardwarePriceUnit = 'pair' | 'each' | 'pack';
+
+/** Installer-owned product line when not using Gelmar catalog pricing. */
+export interface CustomHardwareItem {
+  id: string;
+  description: string;
+  unitPrice: number;
+  priceUnit: CustomHardwarePriceUnit;
+  /** Pack size when priceUnit is pack (screws, fittings). */
+  packSize?: number;
+  /** Manual pack/qty count for this job (screws & fittings in custom mode). */
+  quoteQty?: number;
+}
+
+export interface HardwarePricing {
+  useGelmarCatalog: {
+    runners: boolean;
+    hinges: boolean;
+    screws: boolean;
+    connectingFittings: boolean;
+  };
+  customCatalog: {
+    runners: CustomHardwareItem[];
+    hinges: CustomHardwareItem[];
+    screws: CustomHardwareItem[];
+    connectingFittings: CustomHardwareItem[];
+  };
+}
+
 /** Installation labour rates — per job, editable in Materials. */
 export interface InstallRates {
   enabled: boolean;
@@ -321,6 +350,7 @@ export interface Job {
   hingePrices: HingePrices;
   screwPrices: ScrewPrices;
   connectingFittingPrices: ConnectingFittingPrices;
+  hardwarePricing?: HardwarePricing;
   installRates: InstallRates;
   quoteTerms?: QuoteTerms;
   units: Unit[];

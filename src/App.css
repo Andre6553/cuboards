@@ -311,6 +311,11 @@
   width: auto;
 }
 
+.hardware-source-toggle {
+  margin: 0.75rem 0 0.35rem;
+  font-weight: 600;
+}
+
 .hint {
   color: var(--muted);
   font-size: 0.85rem;

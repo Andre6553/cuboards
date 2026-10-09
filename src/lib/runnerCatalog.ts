@@ -194,7 +194,7 @@ export function getRunnerClearances(runner: {
       runnerLengthOffset: 26,
     };
   }
-  const entry = getRunnerById(runner.presetId);
+  const entry = getRunnerById(runner.presetId); // job-specific catalog: use getRunnerByIdForJob from hardwarePricing in UI
   if (!entry) {
     return { sideClearance: 13, depthDeduction: 25, runnerLengthOffset: 26 };
   }

@@ -23,6 +23,7 @@ import { syncFrontLayoutToUnit } from './frontLayout';
 import { recordJobsBackup } from './backupReminder';
 import { DEFAULT_QUOTE_TERMS } from './constants';
 import { loadPriceList } from './priceList';
+import { DEFAULT_HARDWARE_PRICING, resolveHardwarePricing } from './hardwarePricing';
 
 const STORAGE_KEY = 'cuboards_jobs';
 
@@ -108,6 +109,7 @@ export function createNewJob(): Job {
     screwPrices: { ...DEFAULT_SCREW_PRICES },
     connectingFittingPrices: { ...DEFAULT_CONNECTING_FITTING_PRICES },
     installRates: { ...DEFAULT_INSTALL_RATES },
+    hardwarePricing: structuredClone(DEFAULT_HARDWARE_PRICING),
     units: [],
   };
   const list = loadPriceList();
@@ -153,6 +155,7 @@ export function migrateJob(job: Job): Job {
     connectingFittingPrices: { ...getDefaultConnectingFittingPrices(), ...job.connectingFittingPrices },
     installRates: { ...DEFAULT_INSTALL_RATES, ...job.installRates },
     quoteTerms: { ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms },
+    hardwarePricing: resolveHardwarePricing(job),
     settings: {
       ...DEFAULT_SETTINGS,
       ...job.settings,
