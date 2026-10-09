@@ -450,6 +450,22 @@ export function MaterialsForm({
           </label>
 
           <label>
+            Saw blade width (mm)
+            <NumberInput
+              min={1}
+              max={25}
+              step={0.5}
+              value={settings.sawKerfMm ?? 4}
+              onChange={(n) =>
+                onSettingsChange({
+                  ...settings,
+                  sawKerfMm: Math.max(1, Math.min(25, n || 4)),
+                })
+              }
+            />
+          </label>
+
+          <label>
             Quote currency
             <select
               value={settings.quoteCurrency ?? 'ZAR'}
@@ -521,6 +537,11 @@ export function MaterialsForm({
 
             : 'Final size mode: cut list dimensions include edging — use as finished panel sizes after edge banding.'}
 
+        </p>
+
+        <p className="hint">
+          <strong>Saw blade width</strong> is the kerf between cuts when nesting panels on a sheet — it affects sheet maps,
+          offcuts, and grain-board sheet counts on the quote. Panel sizes on the cut list stay as finished dimensions.
         </p>
 
       </CollapsibleSection>

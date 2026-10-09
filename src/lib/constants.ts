@@ -93,6 +93,7 @@ export const DEFAULT_SETTINGS: JobSettings = {
   pricesEnterAsInclVat: false,
   showVatOnQuote: true,
   boardWastagePercent: 0,
+  sawKerfMm: 4,
 };
 
 export const DEFAULT_QUOTE_TERMS: QuoteTerms = {

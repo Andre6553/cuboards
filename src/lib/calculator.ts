@@ -39,7 +39,7 @@ import {
 } from './sheetCost';
 import { calcBoardOffcuts } from './sheetOffcuts';
 import { calcSheetMaps } from './sheetMaps';
-import { layoutSheets, SAW_KERF_MM } from './sheetLayout';
+import { layoutSheets, resolveSawKerfMm } from './sheetLayout';
 import { calcJobScrews } from './screwRules';
 import { calcJobConnectingFittings } from './connectingFittingRules';
 import { calcJobInstall } from './installRules';
@@ -870,6 +870,7 @@ function calcCosts(
 
   const wastagePct = Math.max(0, job.settings.boardWastagePercent ?? 0);
   const wastageFactor = 1 + wastagePct / 100;
+  const sawKerfMm = resolveSawKerfMm(job.settings);
 
   for (const m of job.materials) {
     const rawAreaMm2 = byMaterial.get(m.id);
@@ -893,7 +894,7 @@ function calcCosts(
         })),
         sheetWidth,
         sheetHeight,
-        SAW_KERF_MM,
+        sawKerfMm,
         purchaseFrac,
       );
       const unplacedArea = layout.unplaced.reduce((s, p) => s + p.length * p.width * p.qty, 0);
@@ -901,7 +902,7 @@ function calcCosts(
         sheetsNeeded,
         layout.sheetsToOrder + estimateSheetsFromArea(unplacedArea, sheetArea, purchaseFrac),
       );
-      detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · grain layout (${purchaseLabel}; sides, doors & drawer fronts grain top to bottom, ${SAW_KERF_MM} mm saw cut)`;
+      detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · grain layout (${purchaseLabel}; sides, doors & drawer fronts grain top to bottom, ${sawKerfMm} mm saw cut)`;
       for (const p of layout.unplaced) {
         sheetWarnings.push(
           `${m.name}: ${p.label} is longer than the ${Math.max(sheetWidth, sheetHeight)} mm sheet grain — it can't be cut with grain top to bottom.`,

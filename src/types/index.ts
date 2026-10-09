@@ -178,6 +178,8 @@ export interface JobSettings {
   showVatOnQuote?: boolean;
   /** Extra board area allowance when estimating sheets (e.g. 10 = +10%). */
   boardWastagePercent?: number;
+  /** Saw kerf between cuts on sheet nesting / offcuts (default 4 mm). */
+  sawKerfMm?: number;
 }
 
 /** Client quotation footer — editable per job. */

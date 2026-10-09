@@ -12,7 +12,7 @@ import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
 import { SheetMapView } from './SheetMapView';
-import { grainLabel, MIN_OFFCUT_MM, SAW_KERF_MM } from '../lib/sheetLayout';
+import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from '../lib/sheetLayout';
 import type { CutListGroup, Job } from '../types';
 
 interface Props {
@@ -117,6 +117,7 @@ export function CutListView({ job }: Props) {
   const screwsTotal = result.screws.reduce((sum, s) => sum + s.subtotal, 0);
   const sizeMode = job.settings.cutSizeMode ?? 'final';
   const hasGrainParts = result.pieces.some((p) => p.grain !== 'none');
+  const sawKerfMm = resolveSawKerfMm(job.settings);
 
   return (
     <section className="card cutlist-card">
@@ -232,7 +233,7 @@ export function CutListView({ job }: Props) {
               <h3 className="section-title">Board offcuts (suggested keepers)</h3>
               <p className="hint">
                 Leftover rectangles after nesting your panel sizes on {job.settings.sheetWidth} × {job.settings.sheetHeight}{' '}
-                mm melamine (masonite uses its own sheet size). Includes {SAW_KERF_MM} mm saw kerf between parts. Listed only
+                mm melamine (masonite uses its own sheet size). Includes {sawKerfMm} mm saw kerf between parts (Job settings). Listed only
                 if both sides are at least {MIN_OFFCUT_MM} mm.
                 {' '}
                 <strong>Board wastage %</strong> (Prices &amp; settings) adds extra area when <em>counting sheets for the quote</em> — it

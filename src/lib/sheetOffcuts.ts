@@ -1,6 +1,6 @@
 import type { BoardOffcut, CutPiece, Job } from '../types';
 import { cutPiecesToLayout } from './sheetLayoutPieces';
-import { layoutSheets, SAW_KERF_MM } from './sheetLayout';
+import { layoutSheets, resolveSawKerfMm } from './sheetLayout';
 import { sheetPurchaseFraction } from './sheetCost';
 
 const MASONITE_ID = 'masonite';
@@ -8,6 +8,7 @@ const MASONITE_ID = 'masonite';
 /** Nest panels on job sheet sizes and list usable offcuts (geometry only — not board wastage %). */
 export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
   const { sheetWidth, sheetHeight } = job.settings;
+  const sawKerfMm = resolveSawKerfMm(job.settings);
   const byMaterial = new Map<string, CutPiece[]>();
 
   for (const piece of pieces) {
@@ -27,7 +28,7 @@ export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
       cutPiecesToLayout(matPieces),
       sheetWidth,
       sheetHeight,
-      SAW_KERF_MM,
+      sawKerfMm,
       purchaseFrac,
     );
     for (const o of layout.offcuts) {
@@ -49,7 +50,7 @@ export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
       cutPiecesToLayout(masonitePieces),
       job.masonite.sheetWidth ?? 2440,
       job.masonite.sheetHeight ?? 1220,
-      SAW_KERF_MM,
+      sawKerfMm,
       purchaseFrac,
     );
     const label = `${job.masonite.name} (${job.masonite.colour})`;

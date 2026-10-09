@@ -8,8 +8,14 @@ export function grainLabel(grain: CutPiece['grain']): string {
   return '—';
 }
 
-/** Saw blade width allowed between parts on the sheet. */
+/** Default saw blade width between parts on the sheet (overridable per job). */
 export const SAW_KERF_MM = 4;
+
+export function resolveSawKerfMm(settings: { sawKerfMm?: number } | undefined): number {
+  const raw = settings?.sawKerfMm ?? SAW_KERF_MM;
+  if (!Number.isFinite(raw)) return SAW_KERF_MM;
+  return Math.max(1, Math.min(25, raw));
+}
 
 /** Smallest usable offcut (both dimensions) to list on the cut list. */
 export const MIN_OFFCUT_MM = 50;

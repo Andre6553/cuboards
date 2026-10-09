@@ -6,7 +6,7 @@ import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings
 import { exportClientQuotePdf } from './quotePdf';
 import { formatMoney, resolveQuoteCurrency } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
-import { grainLabel, MIN_OFFCUT_MM, SAW_KERF_MM } from './sheetLayout';
+import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
 function renderGroupedSection(
@@ -184,7 +184,7 @@ export function exportCutListPdf(job: Job, result: CutListResult, mode: CutListP
     doc.setFontSize(8);
     doc.setTextColor(80);
     const offcutNote = doc.splitTextToSize(
-      `Nesting on ${job.settings.sheetWidth}×${job.settings.sheetHeight} mm sheets, ${SAW_KERF_MM} mm kerf, min ${MIN_OFFCUT_MM} mm both sides. Board wastage % affects quote sheet count only — not this list.`,
+      `Nesting on ${job.settings.sheetWidth}×${job.settings.sheetHeight} mm sheets, ${resolveSawKerfMm(job.settings)} mm kerf, min ${MIN_OFFCUT_MM} mm both sides. Board wastage % affects quote sheet count only — not this list.`,
       270,
     );
     doc.text(offcutNote, margin, y);
