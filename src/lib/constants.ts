@@ -89,6 +89,7 @@ export const DEFAULT_SETTINGS: JobSettings = {
   pricePerFoot: 25,
   cutSizeMode: 'final',
   vatRatePercent: 15,
+  pricesEnterAsInclVat: false,
   showVatOnQuote: true,
   boardWastagePercent: 0,
 };

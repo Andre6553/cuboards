@@ -454,6 +454,15 @@ export function MaterialsForm({
           <label className="checkbox-label">
             <input
               type="checkbox"
+              checked={settings.pricesEnterAsInclVat === true}
+              onChange={(e) => onSettingsChange({ ...settings, pricesEnterAsInclVat: e.target.checked })}
+            />
+            My prices are entered <strong>including VAT</strong>
+          </label>
+
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
               checked={settings.showVatOnQuote !== false}
               onChange={(e) => onSettingsChange({ ...settings, showVatOnQuote: e.target.checked })}
             />
@@ -463,7 +472,21 @@ export function MaterialsForm({
         </div>
 
         <p className="hint">
-          Material and hardware prices are entered <strong>excluding VAT</strong>. Client quote and full PDF can show ex VAT + {settings.vatRatePercent ?? 15}% VAT + total incl VAT.
+          {settings.pricesEnterAsInclVat ? (
+            <>
+              Board, edging, hardware, and install rates are treated as <strong>incl VAT</strong>.
+              {settings.showVatOnQuote !== false
+                ? ' Client quote and PDF show ex VAT + VAT + total incl VAT (VAT is not added twice).'
+                : ' Quotes show the incl VAT total from your prices.'}
+            </>
+          ) : (
+            <>
+              Board, edging, hardware, and install rates are <strong>ex VAT</strong> (default).
+              {settings.showVatOnQuote !== false
+                ? ` Client quote and PDF add ${settings.vatRatePercent ?? 15}% VAT on top.`
+                : ' Quotes show ex VAT totals only.'}
+            </>
+          )}
         </p>
 
         <p className="hint">

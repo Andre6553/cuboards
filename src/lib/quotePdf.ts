@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { DEFAULT_QUOTE_TERMS, UNIT_TYPE_LABELS } from './constants';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
-import { calcVatTotals, resolveShowVatOnQuote, resolveVatRatePercent } from './vat';
+import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
 import type { CutListResult, Job } from '../types';
 
 function formatRand(n: number): string {
@@ -176,7 +176,8 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
   }
 
   const showVat = resolveShowVatOnQuote(job.settings);
-  const vat = calcVatTotals(result.grandTotal, resolveVatRatePercent(job.settings));
+  const vat = calcVatTotalsForJob(result.grandTotal, job.settings);
+  const inclEntry = resolvePricesEnterAsInclVat(job.settings);
   const terms = { ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms };
 
   autoTable(doc, {
@@ -187,7 +188,12 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
           [`VAT (${vat.ratePercent}%)`, formatRand(vat.vatAmount)],
           ['Total incl VAT', formatRand(vat.totalInclVat)],
         ]
-      : [['Total (ex VAT)', formatRand(result.grandTotal)]],
+      : [
+          [
+            inclEntry ? 'Total (incl VAT)' : 'Total (ex VAT)',
+            formatRand(result.grandTotal),
+          ],
+        ],
     styles: { fontSize: 10, cellPadding: 3 },
     theme: 'plain',
     columnStyles: {
@@ -205,8 +211,12 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
 
   const exclusions: string[] = [
     showVat
-      ? 'All amounts in South African Rand (ZAR). Supply and installation subtotals are ex VAT; total incl VAT is shown above.'
-      : 'All amounts in South African Rand (ZAR), exclusive of VAT.',
+      ? inclEntry
+        ? 'All amounts in South African Rand (ZAR). Your prices were entered incl VAT; the breakdown above shows ex VAT, VAT, and total incl VAT.'
+        : 'All amounts in South African Rand (ZAR). Supply and installation subtotals are ex VAT; total incl VAT is shown above.'
+      : inclEntry
+        ? 'All amounts in South African Rand (ZAR), inclusive of VAT.'
+        : 'All amounts in South African Rand (ZAR), exclusive of VAT.',
     'Panel cutting sizes and factory cut lists are prepared separately and are not attached.',
     'Appliances, plumbing, electrical work, granite templating, and delivery of third-party items are excluded unless agreed in writing.',
   ];

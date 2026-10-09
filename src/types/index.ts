@@ -168,8 +168,10 @@ export interface JobSettings {
   pricePerFoot: number;
   /** final = cut list shows finished sizes; net = deduct edging tape thickness from edged sides */
   cutSizeMode: CutSizeMode;
-  /** SA VAT rate for quotes (default 15). All entered prices are ex VAT. */
+  /** SA VAT rate for quotes (default 15). */
   vatRatePercent?: number;
+  /** When true, board/hardware/install prices are entered incl VAT; quotes split out VAT. Default false (ex VAT). */
+  pricesEnterAsInclVat?: boolean;
   /** Show ex VAT + VAT + incl VAT on cut list and client PDF. */
   showVatOnQuote?: boolean;
   /** Extra board area allowance when estimating sheets (e.g. 10 = +10%). */

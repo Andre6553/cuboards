@@ -1,23 +1,24 @@
-import { calcVatTotals, resolveShowVatOnQuote, resolveVatRatePercent } from '../lib/vat';
+import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from '../lib/vat';
 import type { JobSettings } from '../types';
 
 interface Props {
   settings: JobSettings;
-  grandTotalExVat: number;
+  /** Calculator grand total (ex or incl VAT depending on job setting). */
+  grandTotal: number;
   compact?: boolean;
 }
 
-export function QuoteTotalsRows({ settings, grandTotalExVat, compact }: Props) {
+export function QuoteTotalsRows({ settings, grandTotal, compact }: Props) {
   const showVat = resolveShowVatOnQuote(settings);
-  const vat = calcVatTotals(grandTotalExVat, resolveVatRatePercent(settings));
+  const vat = calcVatTotalsForJob(grandTotal, settings);
 
   if (!showVat) {
     return (
       <div className={`cost-row total${compact ? ' cost-row-compact' : ''}`}>
         <span></span>
-        <span>Grand total (ex VAT)</span>
+        <span>{formatGrandTotalLabel(settings)}</span>
         <span></span>
-        <span>R {grandTotalExVat.toFixed(2)}</span>
+        <span>R {grandTotal.toFixed(2)}</span>
       </div>
     );
   }
@@ -47,10 +48,11 @@ export function QuoteTotalsRows({ settings, grandTotalExVat, compact }: Props) {
 }
 
 export function formatGrandTotalLabel(settings: JobSettings): string {
-  return resolveShowVatOnQuote(settings) ? 'Total incl VAT' : 'Grand total (ex VAT)';
+  if (resolveShowVatOnQuote(settings)) return 'Total incl VAT';
+  return resolvePricesEnterAsInclVat(settings) ? 'Grand total (incl VAT)' : 'Grand total (ex VAT)';
 }
 
-export function displayGrandTotal(settings: JobSettings, grandTotalExVat: number): number {
-  if (!resolveShowVatOnQuote(settings)) return grandTotalExVat;
-  return calcVatTotals(grandTotalExVat, resolveVatRatePercent(settings)).totalInclVat;
+export function displayGrandTotal(settings: JobSettings, grandTotal: number): number {
+  if (!resolveShowVatOnQuote(settings)) return grandTotal;
+  return calcVatTotalsForJob(grandTotal, settings).totalInclVat;
 }

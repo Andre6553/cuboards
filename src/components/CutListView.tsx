@@ -490,7 +490,7 @@ export function CutListView({ job }: Props) {
               <span></span>
               <span>R {result.travelTotal.toFixed(2)}</span>
             </div>
-            <QuoteTotalsRows settings={job.settings} grandTotalExVat={result.grandTotal} />
+            <QuoteTotalsRows settings={job.settings} grandTotal={result.grandTotal} />
           </div>
           {showTechnical && showPostformTopNotice && (
             <p className="hint hint-inline warn">{POSTFORM_TOP_NOTICE}</p>

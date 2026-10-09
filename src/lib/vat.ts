@@ -11,6 +11,11 @@ export function resolveShowVatOnQuote(settings: JobSettings): boolean {
   return settings.showVatOnQuote !== false;
 }
 
+/** When true, all unit prices in Materials & hardware are treated as VAT-inclusive. */
+export function resolvePricesEnterAsInclVat(settings: JobSettings): boolean {
+  return settings.pricesEnterAsInclVat === true;
+}
+
 export interface VatTotals {
   subtotalExVat: number;
   vatAmount: number;
@@ -18,7 +23,7 @@ export interface VatTotals {
   ratePercent: number;
 }
 
-/** All Cuboards line totals are ex VAT; VAT is added for client-facing quotes. */
+/** Sum of line items when entered prices are ex VAT. */
 export function calcVatTotals(subtotalExVat: number, ratePercent: number): VatTotals {
   const rate = Math.max(0, ratePercent);
   const vatAmount = subtotalExVat * (rate / 100);
@@ -28,6 +33,26 @@ export function calcVatTotals(subtotalExVat: number, ratePercent: number): VatTo
     totalInclVat: subtotalExVat + vatAmount,
     ratePercent: rate,
   };
+}
+
+/**
+ * `grandTotal` is the calculator sum using your entered unit prices.
+ * Ex VAT entry → add VAT for client totals; incl VAT entry → extract ex VAT + VAT portion.
+ */
+export function calcVatTotalsForJob(grandTotal: number, settings: JobSettings): VatTotals {
+  const rate = resolveVatRatePercent(settings);
+  if (resolvePricesEnterAsInclVat(settings)) {
+    const divisor = 1 + rate / 100;
+    const subtotalExVat = grandTotal / divisor;
+    const vatAmount = grandTotal - subtotalExVat;
+    return {
+      subtotalExVat,
+      vatAmount,
+      totalInclVat: grandTotal,
+      ratePercent: rate,
+    };
+  }
+  return calcVatTotals(grandTotal, rate);
 }
 
 export function formatVatLine(totals: VatTotals): string {
