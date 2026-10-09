@@ -17,6 +17,7 @@ import { fillersFollowSideMaterial, resolveFillerMaterial } from '../lib/carcass
 import { kickplateRunLengthMm } from '../lib/kickplateRules';
 import { deletePreset, loadPresets, saveUnitAsPreset } from '../lib/presets';
 import { CollapsibleSection } from './CollapsibleSection';
+import { NumberInput } from './NumberInput';
 import type { DoorConfig, DoorGaps, DrawerConfig, DrawerGaps, EdgingMaterial, EdgingPattern, Job, Material, Unit } from '../types';
 
 interface Props {
@@ -230,11 +231,11 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         <input className="unit-name-input" value={unit.name} onChange={(e) => set('name', e.target.value)} />
         <label className="unit-qty-inline qty-highlight" onClick={stopSummaryToggle} onPointerDown={stopSummaryToggle}>
           Cupboard qty
-          <input
-            type="number"
+          <NumberInput
+            
             min={0}
             value={unit.unitQty}
-            onChange={(e) => set('unitQty', Math.max(0, Number(e.target.value)))}
+            onChange={(n) => set('unitQty', Math.max(0, n))}
           />
         </label>
         <div className="unit-header-actions">
@@ -274,15 +275,15 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           </label>
           <label>
             Width (mm)
-            <input type="number" value={unit.width} onChange={(e) => set('width', Number(e.target.value))} />
+            <NumberInput  value={unit.width} onChange={(n) => set('width', n)} />
           </label>
           <label>
             Height (mm)
-            <input type="number" value={unit.height} onChange={(e) => set('height', Number(e.target.value))} />
+            <NumberInput  value={unit.height} onChange={(n) => set('height', n)} />
           </label>
           <label>
             Depth (mm)
-            <input type="number" value={unit.depth} onChange={(e) => set('depth', Number(e.target.value))} />
+            <NumberInput  value={unit.depth} onChange={(n) => set('depth', n)} />
           </label>
         </div>
 
@@ -324,7 +325,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             )}
             <label>
               Kickplate height (mm)
-              <input type="number" min={80} max={200} value={unit.plinth.kickplateHeight} onChange={(e) => setPlinth('kickplateHeight', Number(e.target.value))} />
+              <NumberInput  min={80} max={200} value={unit.plinth.kickplateHeight} onChange={(n) => setPlinth('kickplateHeight', n)} />
             </label>
             <label className="checkbox-label">
               <input type="checkbox" checked={unit.plinth.feetRequired !== false} onChange={(e) => setPlinth('feetRequired', e.target.checked)} />
@@ -333,7 +334,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             {unit.plinth.feetRequired !== false && (
               <label>
                 Adjustable feet per cupboard
-                <input type="number" min={2} max={8} value={unit.plinth.feetPerUnit} onChange={(e) => setPlinth('feetPerUnit', Number(e.target.value))} />
+                <NumberInput  min={2} max={8} value={unit.plinth.feetPerUnit} onChange={(n) => setPlinth('feetPerUnit', n)} />
               </label>
             )}
           </div>
@@ -504,7 +505,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         </label>
         <label>
           Filler width (mm)
-          <input type="number" value={unit.carcass.fillerWidth} onChange={(e) => setCarcass('fillerWidth', Number(e.target.value))} />
+          <NumberInput  value={unit.carcass.fillerWidth} onChange={(n) => setCarcass('fillerWidth', n)} />
         </label>
       </div>
       {isFloor && (unit.carcass.backingType === 'melamine' || unit.carcass.countertopType === 'wooden') && (
@@ -524,7 +525,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         <div className="form-grid form-grid-3">
           <label>
             Shelf quantity
-            <input type="number" min={0} value={unit.carcass.shelfQty} onChange={(e) => setCarcass('shelfQty', Number(e.target.value))} />
+            <NumberInput  min={0} value={unit.carcass.shelfQty} onChange={(n) => setCarcass('shelfQty', n)} />
           </label>
           <label>
             Shelf material
@@ -584,7 +585,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => applyUnit({ ...unit, doors: unit.doors.filter((d) => d.id !== door.id) })}>Remove</button>
           </div>
           <div className="form-grid form-grid-4">
-            <label>Qty per cupboard<input type="number" min={1} value={door.qty} onChange={(e) => updateDoor(door.id, { qty: Number(e.target.value) })} /></label>
+            <label>Qty per cupboard<NumberInput  min={1} value={door.qty} onChange={(n) => updateDoor(door.id, { qty: n })} /></label>
             <label>
               Hinges / door
               <input
@@ -601,12 +602,12 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             </label>
             <label>
               Opening height (mm)
-              <input
-                type="number"
-                value={layoutDoor.openingHeight}
+              <NumberInput
+                className={doorOpeningAuto ? 'readonly' : undefined}
                 readOnly={doorOpeningAuto}
+                value={layoutDoor.openingHeight}
                 title={doorOpeningAuto ? (hasActiveDrawers ? 'Carcass height minus active drawer rows' : 'Full carcass height') : 'Split between door rows — scales with cupboard height'}
-                onChange={(e) => updateDoor(door.id, { openingHeight: Number(e.target.value) })}
+                onChange={(n) => updateDoor(door.id, { openingHeight: n })}
               />
             </label>
             <label>
@@ -680,24 +681,24 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           <div className="form-grid form-grid-5 door-gaps-grid">
             <label>
               Left
-              <input type="number" min={0} step={0.5} value={resolveDoorGaps(door).left} onChange={(e) => updateDoorGap(door.id, 'left', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).left} onChange={(n) => updateDoorGap(door.id, 'left', n)} />
             </label>
             <label>
               Right
-              <input type="number" min={0} step={0.5} value={resolveDoorGaps(door).right} onChange={(e) => updateDoorGap(door.id, 'right', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).right} onChange={(n) => updateDoorGap(door.id, 'right', n)} />
             </label>
             <label>
               Top
-              <input type="number" min={0} step={0.5} value={resolveDoorGaps(door).top} onChange={(e) => updateDoorGap(door.id, 'top', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).top} onChange={(n) => updateDoorGap(door.id, 'top', n)} />
             </label>
             <label>
               Bottom
-              <input type="number" min={0} step={0.5} value={resolveDoorGaps(door).bottom} onChange={(e) => updateDoorGap(door.id, 'bottom', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).bottom} onChange={(n) => updateDoorGap(door.id, 'bottom', n)} />
             </label>
             {door.qty > 1 && (
               <label>
                 Between doors
-                <input type="number" min={0} step={0.5} value={resolveDoorGaps(door).between} onChange={(e) => updateDoorGap(door.id, 'between', Number(e.target.value))} />
+                <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).between} onChange={(n) => updateDoorGap(door.id, 'between', n)} />
               </label>
             )}
           </div>
@@ -740,7 +741,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           <div className="form-grid form-grid-4">
             <label className={drawer.qty <= 0 ? 'qty-inactive' : ''}>
               Qty per cupboard
-              <input type="number" min={0} value={drawer.qty} onChange={(e) => setDrawerQty(drawer.id, Number(e.target.value))} />
+              <NumberInput  min={0} value={drawer.qty} onChange={(n) => setDrawerQty(drawer.id, n)} />
             </label>
             <label>
               Opening width (mm)
@@ -748,8 +749,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             </label>
             <label>
               Opening height (mm)
-              <input
-                type="number"
+              <NumberInput
                 className={isActiveDrawer(drawer) ? 'readonly' : ''}
                 min={minDrawerOpeningHeight(drawer, unit.doors.length > 0)}
                 max={unit.doors.length > 0 ? maxDrawerOpeningHeight(unit, drawer.id) : unit.height}
@@ -760,19 +760,19 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                     ? 'Auto: top gap + front (box + overhang) + bottom gap + gap to door'
                     : 'Inactive — set qty to 0; does not affect door'
                 }
-                onChange={(e) => setDrawerOpeningHeight(drawer.id, Number(e.target.value))}
+                onChange={(n) => setDrawerOpeningHeight(drawer.id, n)}
               />
             </label>
-            <label>Box height (mm)<input type="number" min={1} value={drawer.boxHeight} onChange={(e) => updateDrawer(drawer.id, { boxHeight: Number(e.target.value) })} /></label>
+            <label>Box height (mm)<NumberInput  min={1} value={drawer.boxHeight} onChange={(n) => updateDrawer(drawer.id, { boxHeight: n })} /></label>
             <label>
               Front over box (mm)
-              <input
-                type="number"
+              <NumberInput
+                
                 min={0}
                 step={0.5}
                 value={resolveFrontOverhang(drawer)}
                 title="Finished drawer front height = box height + this amount"
-                onChange={(e) => updateDrawer(drawer.id, { frontOverhangMm: Math.max(0, Number(e.target.value)) })}
+                onChange={(n) => updateDrawer(drawer.id, { frontOverhangMm: Math.max(0, n) })}
               />
             </label>
             <label>
@@ -888,10 +888,10 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             {drawer.runner.type === 'custom' && (
               <label>
                 Depth deduction (mm)
-                <input
-                  type="number"
+                <NumberInput
+                  
                   value={drawer.runner.customDepthDeduction ?? 25}
-                  onChange={(e) => updateDrawer(drawer.id, { runner: { ...drawer.runner, customDepthDeduction: Number(e.target.value) } })}
+                  onChange={(n) => updateDrawer(drawer.id, { runner: { ...drawer.runner, customDepthDeduction: n } })}
                 />
               </label>
             )}
@@ -900,30 +900,30 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           <div className="form-grid form-grid-5 door-gaps-grid">
             <label>
               Left
-              <input type="number" min={0} step={0.5} value={resolveDrawerGaps(drawer).left} onChange={(e) => updateDrawerGap(drawer.id, 'left', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDrawerGaps(drawer).left} onChange={(n) => updateDrawerGap(drawer.id, 'left', n)} />
             </label>
             <label>
               Right
-              <input type="number" min={0} step={0.5} value={resolveDrawerGaps(drawer).right} onChange={(e) => updateDrawerGap(drawer.id, 'right', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDrawerGaps(drawer).right} onChange={(n) => updateDrawerGap(drawer.id, 'right', n)} />
             </label>
             <label>
               Top
-              <input type="number" min={0} step={0.5} value={resolveDrawerGaps(drawer).top} onChange={(e) => updateDrawerGap(drawer.id, 'top', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDrawerGaps(drawer).top} onChange={(n) => updateDrawerGap(drawer.id, 'top', n)} />
             </label>
             <label>
               Bottom
-              <input type="number" min={0} step={0.5} value={resolveDrawerGaps(drawer).bottom} onChange={(e) => updateDrawerGap(drawer.id, 'bottom', Number(e.target.value))} />
+              <NumberInput  min={0} step={0.5} value={resolveDrawerGaps(drawer).bottom} onChange={(n) => updateDrawerGap(drawer.id, 'bottom', n)} />
             </label>
             {resolveFrontQty(drawer) > 1 && (
               <label>
                 Between fronts
-                <input type="number" min={0} step={0.5} value={resolveDrawerGaps(drawer).between} onChange={(e) => updateDrawerGap(drawer.id, 'between', Number(e.target.value))} />
+                <NumberInput  min={0} step={0.5} value={resolveDrawerGaps(drawer).between} onChange={(n) => updateDrawerGap(drawer.id, 'between', n)} />
               </label>
             )}
             {unit.doors.length > 0 && (
               <label>
                 Gap to door
-                <input type="number" min={0} step={0.5} value={resolveGapToDoor(drawer)} onChange={(e) => updateDrawer(drawer.id, { gapToDoorMm: Math.max(0, Number(e.target.value)) })} />
+                <NumberInput  min={0} step={0.5} value={resolveGapToDoor(drawer)} onChange={(n) => updateDrawer(drawer.id, { gapToDoorMm: Math.max(0, n) })} />
               </label>
             )}
           </div>
@@ -943,13 +943,13 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           <div className="form-grid form-grid-3 drawer-clearances">
             <label>
               Side clearance (mm)
-              <input
-                type="number"
+              <NumberInput
+                
                 min={0}
                 step={0.1}
                 value={drawer.sideClearance ?? getRunnerClearancesForJob(job, drawer.runner).sideClearance}
-                onChange={(e) => {
-                  const sideClearance = Number(e.target.value);
+                onChange={(n) => {
+                  const sideClearance = n;
                   updateDrawer(drawer.id, {
                     sideClearance,
                     runner:
@@ -960,8 +960,8 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                 }}
               />
             </label>
-            <label>Front clearance (mm)<input type="number" min={0} value={drawer.frontClearance} onChange={(e) => updateDrawer(drawer.id, { frontClearance: Number(e.target.value) })} /></label>
-            <label>Back clearance (mm)<input type="number" min={0} value={drawer.backClearance} onChange={(e) => updateDrawer(drawer.id, { backClearance: Number(e.target.value) })} /></label>
+            <label>Front clearance (mm)<NumberInput  min={0} value={drawer.frontClearance} onChange={(n) => updateDrawer(drawer.id, { frontClearance: n })} /></label>
+            <label>Back clearance (mm)<NumberInput  min={0} value={drawer.backClearance} onChange={(n) => updateDrawer(drawer.id, { backClearance: n })} /></label>
           </div>
         </div>
         );

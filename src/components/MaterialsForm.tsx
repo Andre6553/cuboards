@@ -53,6 +53,7 @@ import type {
 } from '../types';
 
 import { CollapsibleSection } from './CollapsibleSection';
+import { NumberInput } from './NumberInput';
 import { CustomHardwareEditor } from './CustomHardwareEditor';
 import { GelmarPriceRefreshPanel } from './GelmarPriceRefreshPanel';
 
@@ -390,7 +391,7 @@ export function MaterialsForm({
 
             Door/drawer gap (mm)
 
-            <input type="number" value={settings.defaultGap} onChange={(e) => onSettingsChange({ ...settings, defaultGap: Number(e.target.value) })} />
+            <NumberInput  value={settings.defaultGap} onChange={(n) => onSettingsChange({ ...settings, defaultGap: n })} />
 
           </label>
 
@@ -398,7 +399,7 @@ export function MaterialsForm({
 
             Default filler width (mm)
 
-            <input type="number" value={settings.defaultFillerWidth} onChange={(e) => onSettingsChange({ ...settings, defaultFillerWidth: Number(e.target.value) })} />
+            <NumberInput  value={settings.defaultFillerWidth} onChange={(n) => onSettingsChange({ ...settings, defaultFillerWidth: n })} />
 
           </label>
 
@@ -406,7 +407,7 @@ export function MaterialsForm({
 
             Default kickplate height (mm)
 
-            <input type="number" value={settings.defaultKickplateHeight} onChange={(e) => onSettingsChange({ ...settings, defaultKickplateHeight: Number(e.target.value) })} />
+            <NumberInput  value={settings.defaultKickplateHeight} onChange={(n) => onSettingsChange({ ...settings, defaultKickplateHeight: n })} />
 
           </label>
 
@@ -414,7 +415,7 @@ export function MaterialsForm({
 
             Feet per kitchen base
 
-            <input type="number" min={2} max={8} value={settings.feetPerBaseUnit} onChange={(e) => onSettingsChange({ ...settings, feetPerBaseUnit: Number(e.target.value) })} />
+            <NumberInput  min={2} max={8} value={settings.feetPerBaseUnit} onChange={(n) => onSettingsChange({ ...settings, feetPerBaseUnit: n })} />
 
           </label>
 
@@ -422,7 +423,7 @@ export function MaterialsForm({
 
             {priceInputLabel(settings, 'Plastic foot price each')}
 
-            <input type="number" value={settings.pricePerFoot} onChange={(e) => onSettingsChange({ ...settings, pricePerFoot: Number(e.target.value) })} />
+            <NumberInput  value={settings.pricePerFoot} onChange={(n) => onSettingsChange({ ...settings, pricePerFoot: n })} />
 
           </label>
 
@@ -464,13 +465,13 @@ export function MaterialsForm({
 
           <label>
             VAT rate (%)
-            <input
-              type="number"
+            <NumberInput
+              
               min={0}
               max={30}
               step={0.5}
               value={settings.vatRatePercent ?? 15}
-              onChange={(e) => onSettingsChange({ ...settings, vatRatePercent: Number(e.target.value) })}
+              onChange={(n) => onSettingsChange({ ...settings, vatRatePercent: n })}
             />
           </label>
 
@@ -571,9 +572,9 @@ export function MaterialsForm({
 
             <div className="sheet-size-pair">
 
-              <input
+              <NumberInput
 
-                type="number"
+                
 
                 min={100}
 
@@ -581,15 +582,15 @@ export function MaterialsForm({
 
                 title="Sheet length"
 
-                onChange={(e) => onSettingsChange({ ...settings, sheetWidth: Math.max(100, Number(e.target.value) || 2750) })}
+                onChange={(n) => onSettingsChange({ ...settings, sheetWidth: Math.max(100, n || 2750) })}
 
               />
 
               <span className="sheet-size-sep">×</span>
 
-              <input
+              <NumberInput
 
-                type="number"
+                
 
                 min={100}
 
@@ -597,7 +598,7 @@ export function MaterialsForm({
 
                 title="Sheet width"
 
-                onChange={(e) => onSettingsChange({ ...settings, sheetHeight: Math.max(100, Number(e.target.value) || 1830) })}
+                onChange={(n) => onSettingsChange({ ...settings, sheetHeight: Math.max(100, n || 1830) })}
 
               />
 
@@ -615,13 +616,13 @@ export function MaterialsForm({
 
         <label>
           Board cutting allowance (%)
-          <input
-            type="number"
+          <NumberInput
+            
             min={0}
             max={50}
             step={1}
             value={settings.boardWastagePercent ?? 0}
-            onChange={(e) => onSettingsChange({ ...settings, boardWastagePercent: Math.max(0, Number(e.target.value)) })}
+            onChange={(n) => onSettingsChange({ ...settings, boardWastagePercent: Math.max(0, n) })}
           />
         </label>
         <p className="hint">
@@ -677,7 +678,7 @@ export function MaterialsForm({
 
                   <td data-label="Colour"><input className="table-input" value={m.colour} onChange={(e) => updateMaterial(m.id, 'colour', e.target.value)} /></td>
 
-                  <td data-label="Price / sheet"><input className="table-input" type="number" value={m.pricePerSheet} onChange={(e) => updateMaterial(m.id, 'pricePerSheet', Number(e.target.value))} /></td>
+                  <td data-label="Price / sheet"><NumberInput className="table-input"  value={m.pricePerSheet} onChange={(n) => updateMaterial(m.id, 'pricePerSheet', n)} /></td>
 
                   <td className="center" data-label="Grain"><input type="checkbox" checked={m.hasGrain} onChange={(e) => updateMaterial(m.id, 'hasGrain', e.target.checked)} /></td>
 
@@ -767,9 +768,9 @@ export function MaterialsForm({
 
                   <td data-label="Edging name"><input className="table-input" value={e.name} onChange={(ev) => updateEdging(e.id, 'name', ev.target.value)} /></td>
 
-                  <td data-label="Thickness"><input className="table-input" type="number" step="0.1" value={e.thickness} onChange={(ev) => updateEdging(e.id, 'thickness', Number(ev.target.value))} /></td>
+                  <td data-label="Thickness"><NumberInput className="table-input"  step="0.1" value={e.thickness} onChange={(n) => updateEdging(e.id, 'thickness', n)} /></td>
 
-                  <td data-label="Price / m"><input className="table-input" type="number" value={e.pricePerMetre} onChange={(ev) => updateEdging(e.id, 'pricePerMetre', Number(ev.target.value))} /></td>
+                  <td data-label="Price / m"><NumberInput className="table-input"  value={e.pricePerMetre} onChange={(n) => updateEdging(e.id, 'pricePerMetre', n)} /></td>
 
                   <td data-label="">
 
@@ -807,33 +808,29 @@ export function MaterialsForm({
 
           <label>Colour<input value={masonite.colour} onChange={(e) => onMasoniteChange({ ...masonite, colour: e.target.value })} placeholder="e.g. Brown, White" /></label>
 
-          <label>Thickness (mm)<input type="number" value={masonite.thickness} onChange={(e) => onMasoniteChange({ ...masonite, thickness: Number(e.target.value) })} /></label>
+          <label>Thickness (mm)<NumberInput  value={masonite.thickness} onChange={(n) => onMasoniteChange({ ...masonite, thickness: n })} /></label>
 
-          <label>{priceInputLabel(settings, 'Price / sheet')}<input type="number" value={masonite.pricePerSheet} onChange={(e) => onMasoniteChange({ ...masonite, pricePerSheet: Number(e.target.value) })} /></label>
+          <label>{priceInputLabel(settings, 'Price / sheet')}<NumberInput  value={masonite.pricePerSheet} onChange={(n) => onMasoniteChange({ ...masonite, pricePerSheet: n })} /></label>
 
         </div>
 
         <label className="sheet-size-field">
           Masonite sheet size (mm)
           <div className="sheet-size-pair">
-            <input
-              type="number"
+            <NumberInput
+              
               min={100}
               value={masonite.sheetWidth ?? 2440}
               title="Sheet length"
-              onChange={(e) =>
-                onMasoniteChange({ ...masonite, sheetWidth: Math.max(100, Number(e.target.value) || 2440) })
-              }
+              onChange={(n) => onMasoniteChange({ ...masonite, sheetWidth: Math.max(100, n || 2440) })}
             />
             <span className="sheet-size-sep">×</span>
-            <input
-              type="number"
+            <NumberInput
+              
               min={100}
               value={masonite.sheetHeight ?? 1220}
               title="Sheet width"
-              onChange={(e) =>
-                onMasoniteChange({ ...masonite, sheetHeight: Math.max(100, Number(e.target.value) || 1220) })
-              }
+              onChange={(n) => onMasoniteChange({ ...masonite, sheetHeight: Math.max(100, n || 1220) })}
             />
           </div>
         </label>
@@ -855,11 +852,11 @@ export function MaterialsForm({
 
           <label>Name<input value={plasticKickplate.name} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, name: e.target.value })} /></label>
 
-          <label>Strip height (mm)<input type="number" value={plasticKickplate.stripHeight} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, stripHeight: Number(e.target.value) })} /></label>
+          <label>Strip height (mm)<NumberInput  value={plasticKickplate.stripHeight} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, stripHeight: n })} /></label>
 
-          <label>Strip width (mm)<input type="number" value={plasticKickplate.stripWidth} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, stripWidth: Number(e.target.value) })} /></label>
+          <label>Strip width (mm)<NumberInput  value={plasticKickplate.stripWidth} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, stripWidth: n })} /></label>
 
-          <label>{priceInputLabel(settings, 'Price / metre')}<input type="number" value={plasticKickplate.pricePerMetre} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: Number(e.target.value) })} /></label>
+          <label>{priceInputLabel(settings, 'Price / metre')}<NumberInput  value={plasticKickplate.pricePerMetre} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: n })} /></label>
 
         </div>
 
@@ -917,11 +914,11 @@ export function MaterialsForm({
                             <td>{r.sku ?? '—'}</td>
                             <td>{r.lengthMm ? `${r.lengthMm} mm` : '—'}</td>
                             <td>
-                              <input
-                                type="number"
+                              <NumberInput
+                                
                                 className="price-input-inline"
                                 value={runnerPrices[r.id] ?? r.defaultPrice}
-                                onChange={(e) => onRunnerPricesChange({ ...runnerPrices, [r.id]: Number(e.target.value) })}
+                                onChange={(n) => onRunnerPricesChange({ ...runnerPrices, [r.id]: n })}
                               />
                             </td>
                           </tr>
@@ -994,12 +991,12 @@ export function MaterialsForm({
                           <td>{h.sku ?? '—'}</td>
                           <td>{h.shortName.replace(/ · SKU \d+ · R [\d.]+$/, '')}</td>
                           <td>
-                            <input
-                              type="number"
+                            <NumberInput
+                              
                               className="price-input-inline"
                               step={0.01}
                               value={hingePrices[h.id] ?? h.defaultPrice}
-                              onChange={(e) => onHingePricesChange({ ...hingePrices, [h.id]: Number(e.target.value) })}
+                              onChange={(n) => onHingePricesChange({ ...hingePrices, [h.id]: n })}
                             />
                           </td>
                         </tr>
@@ -1067,12 +1064,12 @@ export function MaterialsForm({
                         </td>
                         <td>{s.packSize}</td>
                         <td>
-                          <input
-                            type="number"
+                          <NumberInput
+                            
                             className="price-input-inline"
                             step={0.01}
                             value={screwPrices[s.id] ?? s.defaultPackPrice}
-                            onChange={(e) => onScrewPricesChange({ ...screwPrices, [s.id]: Number(e.target.value) })}
+                            onChange={(n) => onScrewPricesChange({ ...screwPrices, [s.id]: n })}
                           />
                         </td>
                       </tr>
@@ -1137,13 +1134,13 @@ export function MaterialsForm({
                         </td>
                         <td>{f.packSize}</td>
                         <td>
-                          <input
-                            type="number"
+                          <NumberInput
+                            
                             className="price-input-inline"
                             step={0.01}
                             value={connectingFittingPrices[f.id] ?? f.defaultPackPrice}
-                            onChange={(e) =>
-                              onConnectingFittingPricesChange({ ...connectingFittingPrices, [f.id]: Number(e.target.value) })
+                            onChange={(n) =>
+                              onConnectingFittingPricesChange({ ...connectingFittingPrices, [f.id]: n })
                             }
                           />
                         </td>
@@ -1168,12 +1165,12 @@ export function MaterialsForm({
 
           <label>
             Valid for (days)
-            <input type="number" min={1} max={365} value={terms.validityDays} onChange={(e) => patchTerms({ validityDays: Number(e.target.value) })} />
+            <NumberInput  min={1} max={365} value={terms.validityDays} onChange={(n) => patchTerms({ validityDays: n })} />
           </label>
 
           <label>
             Deposit (%)
-            <input type="number" min={0} max={100} value={terms.depositPercent} onChange={(e) => patchTerms({ depositPercent: Number(e.target.value) })} />
+            <NumberInput  min={0} max={100} value={terms.depositPercent} onChange={(n) => patchTerms({ depositPercent: n })} />
           </label>
 
           <label className="span-2">
@@ -1211,42 +1208,42 @@ export function MaterialsForm({
 
           <label>
             {priceInputLabel(settings, 'Kitchen base / cupboard')}
-            <input type="number" min={0} value={install.kitchenBasePerCupboard} onChange={(e) => patchInstall({ kitchenBasePerCupboard: Number(e.target.value) })} />
+            <NumberInput  min={0} value={install.kitchenBasePerCupboard} onChange={(n) => patchInstall({ kitchenBasePerCupboard: n })} />
           </label>
 
           <label>
             {priceInputLabel(settings, 'Wall unit / cupboard')}
-            <input type="number" min={0} value={install.wallUnitPerCupboard} onChange={(e) => patchInstall({ wallUnitPerCupboard: Number(e.target.value) })} />
+            <NumberInput  min={0} value={install.wallUnitPerCupboard} onChange={(n) => patchInstall({ wallUnitPerCupboard: n })} />
           </label>
 
           <label>
             {priceInputLabel(settings, 'Bedroom / cupboard')}
-            <input type="number" min={0} value={install.bedroomPerCupboard} onChange={(e) => patchInstall({ bedroomPerCupboard: Number(e.target.value) })} />
+            <NumberInput  min={0} value={install.bedroomPerCupboard} onChange={(n) => patchInstall({ bedroomPerCupboard: n })} />
           </label>
 
           <label>
             {priceInputLabel(settings, 'Per door leaf')}
-            <input type="number" min={0} value={install.perDoorLeaf} onChange={(e) => patchInstall({ perDoorLeaf: Number(e.target.value) })} />
+            <NumberInput  min={0} value={install.perDoorLeaf} onChange={(n) => patchInstall({ perDoorLeaf: n })} />
           </label>
 
           <label>
             {priceInputLabel(settings, 'Per drawer')}
-            <input type="number" min={0} value={install.perDrawer} onChange={(e) => patchInstall({ perDrawer: Number(e.target.value) })} />
+            <NumberInput  min={0} value={install.perDrawer} onChange={(n) => patchInstall({ perDrawer: n })} />
           </label>
 
           <label>
             {priceInputLabel(settings, 'Wall-mount premium / cupboard')}
-            <input type="number" min={0} value={install.wallMountPremium} onChange={(e) => patchInstall({ wallMountPremium: Number(e.target.value) })} title="Added when unit mount type is wall" />
+            <NumberInput  min={0} value={install.wallMountPremium} onChange={(n) => patchInstall({ wallMountPremium: n })} title="Added when unit mount type is wall" />
           </label>
 
           <label>
             {priceInputLabel(settings, 'Minimum job')}
-            <input type="number" min={0} value={install.minimumJob} onChange={(e) => patchInstall({ minimumJob: Number(e.target.value) })} />
+            <NumberInput  min={0} value={install.minimumJob} onChange={(n) => patchInstall({ minimumJob: n })} />
           </label>
 
           <label>
             {priceInputLabel(settings, 'Travel fee')}
-            <input type="number" min={0} value={install.travelFee} onChange={(e) => patchInstall({ travelFee: Number(e.target.value) })} />
+            <NumberInput  min={0} value={install.travelFee} onChange={(n) => patchInstall({ travelFee: n })} />
           </label>
 
         </div>

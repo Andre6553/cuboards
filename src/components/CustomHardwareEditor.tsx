@@ -1,5 +1,6 @@
 import type { CustomHardwareItem, CustomHardwarePriceUnit, HardwarePricing } from '../types';
 import { newCustomHardwareItem } from '../lib/hardwarePricing';
+import { NumberInput } from './NumberInput';
 
 type Category = keyof HardwarePricing['customCatalog'];
 
@@ -89,34 +90,34 @@ export function CustomHardwareEditor({
                       />
                     </td>
                     <td data-label="Price">
-                      <input
+                      <NumberInput
                         className="table-input"
-                        type="number"
+                        
                         min={0}
                         step={0.01}
                         value={item.unitPrice}
-                        onChange={(e) => onItemsChange(patchItem(items, item.id, { unitPrice: Number(e.target.value) }))}
+                        onChange={(n) => onItemsChange(patchItem(items, item.id, { unitPrice: n }))}
                       />
                     </td>
                     {packMode && (
                       <td data-label="Pack size">
-                        <input
+                        <NumberInput
                           className="table-input"
-                          type="number"
+                          
                           min={1}
                           value={item.packSize ?? 1}
-                          onChange={(e) => onItemsChange(patchItem(items, item.id, { packSize: Number(e.target.value) }))}
+                          onChange={(n) => onItemsChange(patchItem(items, item.id, { packSize: n }))}
                         />
                       </td>
                     )}
                     {packMode && (
                       <td data-label="Qty packs">
-                        <input
+                        <NumberInput
                           className="table-input"
-                          type="number"
+                          
                           min={0}
                           value={item.quoteQty ?? 0}
-                          onChange={(e) => onItemsChange(patchItem(items, item.id, { quoteQty: Number(e.target.value) }))}
+                          onChange={(n) => onItemsChange(patchItem(items, item.id, { quoteQty: n }))}
                         />
                       </td>
                     )}
