@@ -715,7 +715,7 @@ function consolidatePieces(
     const pattern = p.edgingPattern ?? 'none';
     const edgingMaterialId = p.edgingMaterialId ?? resolveEdgingMaterialId(job, p.materialId);
     const edgingKey = edgingGroupKey(job, pattern, edgingMaterialId);
-    const key = `${p.materialId}|${p.width}|${p.length}|${p.grain}|${edgingKey}`;
+    const key = `${p.partName}|${p.materialId}|${p.width}|${p.length}|${p.grain}|${edgingKey}`;
     const edgingLabel = formatEdgingLabel(job, pattern, edgingMaterialId);
     const groupKey = `${p.materialName}|${edgingKey}`;
     const existing = map.get(key);
@@ -723,6 +723,7 @@ function consolidatePieces(
       existing.totalQty += p.qty;
     } else {
       map.set(key, {
+        partName: p.partName,
         materialName: p.materialName,
         width: p.width,
         length: p.length,
@@ -783,7 +784,11 @@ function groupBoardCutList(consolidated: ConsolidatedPiece[]): CutListGroup[] {
     .map(({ materialName, tapeKey, items }) => ({
       heading: `${materialName} — ${tapeHeading(tapeKey)}`,
       items: items.sort(
-        (a, b) => a.edgingLabel.localeCompare(b.edgingLabel) || b.length - a.length || b.width - a.width,
+        (a, b) =>
+          a.partName.localeCompare(b.partName) ||
+          a.edgingLabel.localeCompare(b.edgingLabel) ||
+          b.length - a.length ||
+          b.width - a.width,
       ),
     }));
 }

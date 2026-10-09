@@ -35,6 +35,7 @@ function GroupedCutTable({ groups, showEdging = true }: { groups: CutListGroup[]
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th>Part</th>
                     <th>Length × Height (mm)</th>
                     <th>Qty</th>
                     {showGrain && <th>Grain</th>}
@@ -44,6 +45,7 @@ function GroupedCutTable({ groups, showEdging = true }: { groups: CutListGroup[]
                 <tbody>
                   {group.items.map((p, i) => (
                     <tr key={i}>
+                      <td>{p.partName}</td>
                       <td>{p.length} × {p.width}</td>
                       <td><strong>{p.totalQty}</strong></td>
                       {showGrain && <td>{grainLabel(p.grain)}</td>}

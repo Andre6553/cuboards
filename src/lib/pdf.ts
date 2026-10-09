@@ -40,7 +40,7 @@ function renderGroupedSection(
     doc.setTextColor(0);
 
     const showGrain = group.items.some((p) => p.grain !== 'none');
-    const head = ['Length×Height (mm)', 'Qty'];
+    const head = ['Part', 'Length×Height (mm)', 'Qty'];
     if (showGrain) head.push('Grain');
     if (showEdging) head.push('Edging');
 
@@ -48,7 +48,7 @@ function renderGroupedSection(
       startY: y,
       head: [head],
       body: group.items.map((p) => {
-        const row = [`${p.length} × ${p.width}`, p.totalQty.toString()];
+        const row = [p.partName, `${p.length} × ${p.width}`, p.totalQty.toString()];
         if (showGrain) row.push(grainLabel(p.grain));
         if (showEdging) row.push(p.edgingLabel);
         return row;

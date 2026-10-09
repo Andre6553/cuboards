@@ -411,6 +411,7 @@ export interface CostLine {
 }
 
 export interface ConsolidatedPiece {
+  partName: string;
   materialName: string;
   width: number;
   length: number;

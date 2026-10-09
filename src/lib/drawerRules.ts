@@ -135,9 +135,10 @@ export function drawerSizeSummary(
     ? `Opening row ${drawer.openingHeight} mm (T${gaps.top}+front ${finishedHeight}+B${gaps.bottom}+${gapToDoor} to door)`
     : `Opening row ${drawer.openingHeight} mm`;
   const cutPart = formatPanelCutSizeSummary(panel);
+  const totalFronts = perCupboard * frontQty;
   const qtyPart = frontQty > 1
-    ? `${perCupboard}× per cupboard · ${frontQty} fronts/row · `
-    : `${perCupboard}× per cupboard · `;
+    ? `${totalFronts} drawer fronts on cut list (${perCupboard} boxes × ${frontQty} wide) · `
+    : `${totalFronts} drawer front${totalFronts === 1 ? '' : 's'} on cut list (${perCupboard} per cupboard) · `;
   return (
     `${qtyPart}` +
     `finished ${finishedWidth} × ${finishedHeight} mm (box ${drawer.boxHeight} + ${overhang} mm overhang) · ` +
