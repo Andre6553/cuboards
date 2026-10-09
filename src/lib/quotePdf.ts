@@ -139,10 +139,7 @@ export function exportClientQuotePdf(job: Job, result: CutListResult): void {
           line.detail,
           formatRand(line.subtotal),
         ]),
-        ...(result.install.minimumApplied > 0
-          ? [['', `Minimum job (R ${result.install.minimumJob.toFixed(2)})`, formatRand(result.install.minimumApplied)]]
-          : []),
-        ['', 'Installation subtotal', formatRand(result.installationTotal)],
+        ['', 'Installation total', formatRand(result.installationTotal)],
       ],
       styles: { fontSize: 9, cellPadding: 2.5 },
       headStyles: { fillColor: [37, 99, 235] },

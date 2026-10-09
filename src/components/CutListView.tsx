@@ -423,17 +423,19 @@ export function CutListView({ job }: Props) {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr>
-                      <td colSpan={7}>Labour subtotal</td>
-                      <td>R {result.install.laborSubtotal.toFixed(2)}</td>
-                    </tr>
-                    {result.install.minimumApplied > 0 && (
+                    {!quote && (
+                      <tr>
+                        <td colSpan={7}>Labour subtotal</td>
+                        <td>R {result.install.laborSubtotal.toFixed(2)}</td>
+                      </tr>
+                    )}
+                    {!quote && result.install.minimumApplied > 0 && (
                       <tr>
                         <td colSpan={7}>Minimum job (R {result.install.minimumJob.toFixed(2)})</td>
                         <td>+R {result.install.minimumApplied.toFixed(2)}</td>
                       </tr>
                     )}
-                    {result.install.travelFee > 0 && (
+                    {!quote && result.install.travelFee > 0 && (
                       <tr>
                         <td colSpan={7}>Travel (quoted separately)</td>
                         <td>R {result.install.travelFee.toFixed(2)}</td>
@@ -477,7 +479,7 @@ export function CutListView({ job }: Props) {
               <span>Installation cost total</span>
               <span className="cost-detail">
                 {result.install
-                  ? `${result.install.lines.length} unit(s)${result.install.minimumApplied > 0 ? ' · min job applied' : ''}`
+                  ? `${result.install.lines.length} unit(s)${!quote && result.install.minimumApplied > 0 ? ' · min job applied' : ''}`
                   : 'Not included'}
               </span>
               <span>R {result.installationTotal.toFixed(2)}</span>
