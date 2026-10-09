@@ -38,6 +38,7 @@ import {
   SHEET_PURCHASE_FRACTION,
 } from './sheetCost';
 import { calcBoardOffcuts } from './sheetOffcuts';
+import { calcSheetMaps } from './sheetMaps';
 import { layoutSheets, SAW_KERF_MM } from './sheetLayout';
 import { calcJobScrews } from './screwRules';
 import { calcJobConnectingFittings } from './connectingFittingRules';
@@ -1021,6 +1022,7 @@ export function generateCutList(job: Job): CutListResult {
   const screws = [...calcJobScrews(job), ...calcJobConnectingFittings(job)];
   const sheetWarnings: string[] = [];
   const boardOffcuts = calcBoardOffcuts(job, pieces);
+  const sheetMaps = calcSheetMaps(job, pieces);
   const materialCosts = calcCosts(job, pieces, edging, hardware, plasticKickplateTotalMetres, screws, sheetWarnings);
   const install = calcJobInstall(job);
   const materialsTotal = materialCosts.reduce((sum, c) => sum + c.subtotal, 0);
@@ -1042,6 +1044,7 @@ export function generateCutList(job: Job): CutListResult {
     costs: materialCosts,
     sheetWarnings,
     boardOffcuts,
+    sheetMaps,
     install,
     materialsTotal,
     installationTotal,

@@ -1,18 +1,9 @@
 import type { BoardOffcut, CutPiece, Job } from '../types';
+import { cutPiecesToLayout } from './sheetLayoutPieces';
 import { layoutSheets, SAW_KERF_MM } from './sheetLayout';
 import { sheetPurchaseFraction } from './sheetCost';
 
 const MASONITE_ID = 'masonite';
-
-function piecesToLayout(pieces: CutPiece[]) {
-  return pieces.map((p) => ({
-    length: p.length,
-    width: p.width,
-    qty: p.qty,
-    grainLocked: p.grain !== 'none',
-    label: `${p.partName} (${p.unitName}) ${p.length} × ${p.width}`,
-  }));
-}
 
 /** Nest panels on job sheet sizes and list usable offcuts (geometry only — not board wastage %). */
 export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
@@ -33,7 +24,7 @@ export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
     if (!matPieces?.length) continue;
     const purchaseFrac = sheetPurchaseFraction(m);
     const layout = layoutSheets(
-      piecesToLayout(matPieces),
+      cutPiecesToLayout(matPieces),
       sheetWidth,
       sheetHeight,
       SAW_KERF_MM,
@@ -55,7 +46,7 @@ export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
   if (masonitePieces.length > 0) {
     const purchaseFrac = 0.25;
     const layout = layoutSheets(
-      piecesToLayout(masonitePieces),
+      cutPiecesToLayout(masonitePieces),
       job.masonite.sheetWidth ?? 2440,
       job.masonite.sheetHeight ?? 1220,
       SAW_KERF_MM,

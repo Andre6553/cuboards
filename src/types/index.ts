@@ -430,6 +430,36 @@ export interface CutListGroup {
   items: ConsolidatedPiece[];
 }
 
+export interface SheetMapPlacement {
+  xMm: number;
+  yMm: number;
+  widthMm: number;
+  heightMm: number;
+  label: string;
+  grainLocked: boolean;
+}
+
+export interface SheetMapOffcutRect {
+  xMm: number;
+  yMm: number;
+  widthMm: number;
+  heightMm: number;
+}
+
+export interface SheetMapSheet {
+  sheetIndex: number;
+  grainLengthMm: number;
+  crossLengthMm: number;
+  placements: SheetMapPlacement[];
+  offcutRects: SheetMapOffcutRect[];
+}
+
+export interface SheetMapGroup {
+  materialId: string;
+  materialName: string;
+  sheets: SheetMapSheet[];
+}
+
 /** Usable leftover from sheet nesting (full / factory cut list). */
 export interface BoardOffcut {
   materialId: string;
@@ -466,6 +496,8 @@ export interface CutListResult {
   sheetWarnings: string[];
   /** Suggested keeper offcuts from nesting panels on sheet sizes (not from wastage %). */
   boardOffcuts: BoardOffcut[];
+  /** Per-sheet nesting diagrams (factory / full cut list). */
+  sheetMaps: SheetMapGroup[];
   install: InstallEstimate | null;
   materialsTotal: number;
   installationTotal: number;

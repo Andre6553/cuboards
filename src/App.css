@@ -1404,6 +1404,96 @@
   }
 }
 
+.sheet-map-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.sheet-map-material {
+  margin: 0;
+}
+
+.sheet-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 1rem;
+}
+
+.sheet-map-figure {
+  margin: 0;
+}
+
+.sheet-map-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+
+.sheet-map-dims {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.sheet-map-grain-hint {
+  font-weight: 400;
+}
+
+.sheet-map-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sheet-map-sheet-outline {
+  fill: #fafafa;
+  stroke: #334155;
+  stroke-width: 1.2;
+}
+
+.sheet-map-part {
+  fill: #dbeafe;
+  stroke: #2563eb;
+  stroke-width: 0.8;
+}
+
+.sheet-map-part--grain {
+  fill: #e0e7ff;
+}
+
+.sheet-map-offcut {
+  fill: #f8fafc;
+  stroke: #94a3b8;
+  stroke-width: 0.6;
+  stroke-dasharray: 4 3;
+}
+
+.sheet-map-label {
+  fill: #1e293b;
+  pointer-events: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.sheet-map-label-sub {
+  fill: #475569;
+}
+
+.sheet-map-grain-arrow {
+  fill: #64748b;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
 @media (min-width: 769px) {
   .app-brand-bar--with-context .cuboards-logo-wordmark {
     display: inline;

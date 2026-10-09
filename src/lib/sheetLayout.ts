@@ -34,6 +34,32 @@ export interface LayoutOffcut {
   areaMm2: number;
 }
 
+export interface LayoutPlacement {
+  x: number;
+  y: number;
+  widthMm: number;
+  heightMm: number;
+  label: string;
+  grainLocked: boolean;
+}
+
+export interface LayoutOffcutRect {
+  x: number;
+  y: number;
+  widthMm: number;
+  heightMm: number;
+}
+
+export interface LayoutSheetDetail {
+  sheetIndex: number;
+  /** Grain runs along this axis (mm). */
+  grainLengthMm: number;
+  crossLengthMm: number;
+  placements: LayoutPlacement[];
+  /** Usable free rectangles (both sides ≥ MIN_OFFCUT_MM), for diagrams. */
+  offcutRects: LayoutOffcutRect[];
+}
+
 export interface SheetLayoutResult {
   sheetsUsed: number;
   /** Full sheets + rounded-up fraction of the last sheet (¼ steps). */
@@ -42,6 +68,8 @@ export interface SheetLayoutResult {
   unplaced: LayoutPiece[];
   /** Leftover rectangles after nesting (not affected by board wastage %). */
   offcuts: LayoutOffcut[];
+  /** Per-sheet part positions for visual maps (same nest as offcuts). */
+  sheetDetails: LayoutSheetDetail[];
 }
 
 interface Rect {
@@ -61,6 +89,8 @@ interface Item {
   w: number;
   h: number;
   canRotate: boolean;
+  label: string;
+  grainLocked: boolean;
 }
 
 function intersects(a: Rect, b: Rect): boolean {
@@ -148,18 +178,37 @@ export function layoutSheets(
       unplaced.push(p);
       continue;
     }
-    for (let i = 0; i < p.qty; i++) items.push({ w, h, canRotate: !p.grainLocked });
+    const label = p.label.trim() || `${p.length}×${p.width}`;
+    for (let i = 0; i < p.qty; i++) {
+      items.push({ w, h, canRotate: !p.grainLocked, label, grainLocked: p.grainLocked });
+    }
   }
 
   items.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || b.w * b.h - a.w * a.h);
 
   const sheets: Sheet[] = [];
+  const placementsBySheet: LayoutPlacement[][] = [];
+
+  const recordPlacement = (sheetIndex: number, spot: Rect, item: Item) => {
+    if (!placementsBySheet[sheetIndex]) placementsBySheet[sheetIndex] = [];
+    placementsBySheet[sheetIndex].push({
+      x: spot.x,
+      y: spot.y,
+      widthMm: Math.max(0, spot.w - kerf),
+      heightMm: Math.max(0, spot.h - kerf),
+      label: item.label,
+      grainLocked: item.grainLocked,
+    });
+  };
+
   for (const item of items) {
     let placed = false;
-    for (const sheet of sheets) {
+    for (let si = 0; si < sheets.length; si++) {
+      const sheet = sheets[si];
       const spot = bestFit(sheet, item);
       if (spot) {
         placeRect(sheet, spot);
+        recordPlacement(si, spot, item);
         placed = true;
         break;
       }
@@ -167,12 +216,19 @@ export function layoutSheets(
     if (!placed) {
       const sheet: Sheet = { free: [{ x: 0, y: 0, w: binW, h: binH }], maxX: 0, maxY: 0 };
       const spot = bestFit(sheet, item);
-      if (spot) placeRect(sheet, spot);
-      sheets.push(sheet);
+      if (spot) {
+        placeRect(sheet, spot);
+        sheets.push(sheet);
+        recordPlacement(sheets.length - 1, spot, item);
+      } else {
+        sheets.push(sheet);
+      }
     }
   }
 
-  if (sheets.length === 0) return { sheetsUsed: 0, sheetsToOrder: 0, unplaced, offcuts: [] };
+  if (sheets.length === 0) {
+    return { sheetsUsed: 0, sheetsToOrder: 0, unplaced, offcuts: [], sheetDetails: [] };
+  }
 
   const last = sheets[sheets.length - 1];
   const usedFraction = (Math.min(last.maxX, grainLen) * Math.min(last.maxY, crossLen)) / (grainLen * crossLen);
@@ -198,10 +254,33 @@ export function layoutSheets(
   });
   offcuts.sort((a, b) => b.areaMm2 - a.areaMm2 || b.lengthMm - a.lengthMm);
 
+  const sheetDetails: LayoutSheetDetail[] = sheets.map((sheet, idx) => {
+    const offcutRects: LayoutOffcutRect[] = [];
+    for (const r of sheet.free) {
+      const w = Math.floor(r.w - kerf);
+      const h = Math.floor(r.h - kerf);
+      if (w < MIN_OFFCUT_MM || h < MIN_OFFCUT_MM) continue;
+      offcutRects.push({
+        x: r.x,
+        y: r.y,
+        widthMm: w,
+        heightMm: h,
+      });
+    }
+    return {
+      sheetIndex: idx + 1,
+      grainLengthMm: grainLen,
+      crossLengthMm: crossLen,
+      placements: placementsBySheet[idx] ?? [],
+      offcutRects,
+    };
+  });
+
   return {
     sheetsUsed: sheets.length,
     sheetsToOrder: sheets.length - 1 + Math.min(1, lastSheet),
     unplaced,
     offcuts,
+    sheetDetails,
   };
 }

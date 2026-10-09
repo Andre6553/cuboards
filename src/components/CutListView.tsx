@@ -11,6 +11,7 @@ import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS } from '../lib/edgingC
 import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
+import { SheetMapView } from './SheetMapView';
 import { grainLabel, MIN_OFFCUT_MM, SAW_KERF_MM } from '../lib/sheetLayout';
 import type { CutListGroup, Job } from '../types';
 
@@ -100,6 +101,7 @@ export function CutListView({ job }: Props) {
   const showPricingDetail = !factory;
   const showTechnical = mode === 'full';
   const result = generateCutList(job);
+  const showSheetMaps = showCutLists && result.sheetMaps.length > 0;
   const fmt = (n: number) => formatMoney(n, job.settings);
   const currencySymbol = resolveQuoteCurrency(job.settings).symbol;
   const edgingWarnings = getDoorDrawerEdgingWarnings(job);
@@ -262,6 +264,18 @@ export function CutListView({ job }: Props) {
                   </table>
                 </div>
               )}
+            </>
+          )}
+
+          {showSheetMaps && (
+            <>
+              <h3 className="section-title">Visual sheet maps</h3>
+              <p className="hint">
+                Nesting diagram for each full sheet — same layout as offcuts and sheet counts. Grain runs along the
+                long side (→). Shaded parts are grain-locked; dashed areas are suggested keeper offcuts (
+                {MIN_OFFCUT_MM} mm+).
+              </p>
+              <SheetMapView groups={result.sheetMaps} />
             </>
           )}
           </>
