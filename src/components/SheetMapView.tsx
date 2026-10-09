@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SheetMapGroup, SheetMapSheet } from '../types';
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 10;
+
+function clampZoom(z: number): number {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+}
 
 function fitFontSize(label: string, boxW: number, boxH: number, scale = 1): number {
   const base = Math.min(boxW, boxH) * 0.22 * scale;
   const lenFactor = Math.max(1, label.length / 14);
-  return Math.max(5, Math.min(14, base / lenFactor));
+  return Math.max(5, Math.min(scale > 1 ? 20 : 14, base / lenFactor));
 }
 
 type DiagramProps = {
@@ -95,8 +102,8 @@ function SheetDiagramSvg({
         const lines = p.label.split(' · ');
         const line1 = lines[0] ?? p.label;
         const line2 = lines[1];
-        const minLabelW = expanded ? 40 : 55;
-        const minLabelH = expanded ? 22 : 28;
+        const minLabelW = expanded ? 28 : 55;
+        const minLabelH = expanded ? 16 : 28;
         return (
           <g key={`p-${i}`}>
             <rect
@@ -219,6 +226,36 @@ function SheetMapLightbox({
   const hasPrev = index > 0;
   const hasNext = index < total - 1;
 
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  const applyZoomStep = useCallback((factor: number, focal?: { x: number; y: number }) => {
+    const el = canvasRef.current;
+    const px = focal?.x ?? (el ? el.clientWidth / 2 : 0);
+    const py = focal?.y ?? (el ? el.clientHeight / 2 : 0);
+    setZoom((prevZoom) => {
+      const nextZoom = clampZoom(prevZoom * factor);
+      if (nextZoom <= MIN_ZOOM) {
+        setPan({ x: 0, y: 0 });
+        return MIN_ZOOM;
+      }
+      setPan((prevPan) => {
+        const wx = (px - prevPan.x) / prevZoom;
+        const wy = (py - prevPan.y) / prevZoom;
+        return { x: px - wx * nextZoom, y: py - wy * nextZoom };
+      });
+      return nextZoom;
+    });
+  }, []);
+
   const goPrev = useCallback(() => {
     if (hasPrev) onChangeIndex(index - 1);
   }, [hasPrev, index, onChangeIndex]);
@@ -228,10 +265,17 @@ function SheetMapLightbox({
   }, [hasNext, index, onChangeIndex]);
 
   useEffect(() => {
+    resetView();
+  }, [index, resetView]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft') goPrev();
-      if (e.key === 'ArrowRight') goNext();
+      if (e.key === 'ArrowLeft' && !e.shiftKey) goPrev();
+      if (e.key === 'ArrowRight' && !e.shiftKey) goNext();
+      if (e.key === '+' || e.key === '=') applyZoomStep(1.15);
+      if (e.key === '-') applyZoomStep(1 / 1.15);
+      if (e.key === '0') resetView();
     };
     window.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
@@ -240,9 +284,45 @@ function SheetMapLightbox({
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [onClose, goPrev, goNext]);
+  }, [onClose, goPrev, goNext, applyZoomStep, resetView]);
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      applyZoomStep(factor, { x: e.clientX - rect.left, y: e.clientY - rect.top });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [index, applyZoomStep]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+    setDragging(true);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragging || zoom <= MIN_ZOOM) return;
+    setPan({
+      x: dragStart.current.panX + (e.clientX - dragStart.current.x),
+      y: dragStart.current.panY + (e.clientY - dragStart.current.y),
+    });
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setDragging(false);
+  };
 
   const patternId = `grain-fs-${slide.materialId}-${slide.sheet.sheetIndex}-${index}`;
+  const zoomPct = Math.round(zoom * 100);
 
   return (
     <div className="sheet-map-lightbox" role="dialog" aria-modal="true" aria-labelledby="sheet-map-lightbox-title">
@@ -274,15 +354,28 @@ function SheetMapLightbox({
             ‹
           </button>
 
-          <div className="sheet-map-lightbox-canvas">
-            <SheetDiagramSvg
-              sheet={slide.sheet}
-              patternId={patternId}
-              expanded
-              showSheetGrainBand
-              showPartGrainArrows
-              className="sheet-map-svg--fullscreen"
-            />
+          <div
+            ref={canvasRef}
+            className={`sheet-map-lightbox-canvas${dragging ? ' sheet-map-lightbox-canvas--dragging' : ''}`}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onDoubleClick={resetView}
+          >
+            <div
+              className="sheet-map-zoom-layer"
+              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
+            >
+              <SheetDiagramSvg
+                sheet={slide.sheet}
+                patternId={patternId}
+                expanded
+                showSheetGrainBand
+                showPartGrainArrows
+                className="sheet-map-svg--fullscreen"
+              />
+            </div>
           </div>
 
           <button
@@ -300,7 +393,19 @@ function SheetMapLightbox({
           <button type="button" className="btn btn-secondary btn-sm" onClick={goPrev} disabled={!hasPrev}>
             ← Previous
           </button>
-          <span className="sheet-map-lightbox-foot-hint">Esc to close · ← → to navigate</span>
+          <div className="sheet-map-zoom-controls">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyZoomStep(1 / 1.2)} aria-label="Zoom out">
+              −
+            </button>
+            <span className="sheet-map-zoom-readout">{zoomPct}%</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyZoomStep(1.2)} aria-label="Zoom in">
+              +
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetView} disabled={zoom <= 1 && pan.x === 0 && pan.y === 0}>
+              Fit
+            </button>
+          </div>
+          <span className="sheet-map-lightbox-foot-hint">Scroll to zoom · drag to pan · double-click fit</span>
           <button type="button" className="btn btn-secondary btn-sm" onClick={goNext} disabled={!hasNext}>
             Next →
           </button>
