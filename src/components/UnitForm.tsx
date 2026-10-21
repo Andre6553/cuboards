@@ -10,7 +10,7 @@ import {
   usesGelmarCatalog,
 } from '../lib/hardwarePricing';
 import { doorSizeSummary, DEFAULT_DOOR_GAPS, hingesPerDoorLeafForDoor, resolveDoorGaps } from '../lib/doorRules';
-import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_FRONT_OVERHANG_MM, DEFAULT_GAP_TO_DOOR_MM, isActiveDrawer, activeDrawers, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveDrawerGaps, resolveFrontOverhang, resolveFrontQty, resolveGapToDoor, syncDrawerOpeningFromFront } from '../lib/drawerRules';
+import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiveDrawer, activeDrawers, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveDrawerGaps, resolveFrontQty, resolveGapToDoor, syncDrawerOpeningFromFront } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
 import { fillersFollowSideMaterial, resolveFillerMaterial } from '../lib/carcassRules';
@@ -172,7 +172,6 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       frontMaterialId: defaultMat,
       bottomType: 'masonite',
       boxHeight: 120,
-      frontOverhangMm: DEFAULT_FRONT_OVERHANG_MM,
       frontQty: 1,
       runner: { type: 'preset', presetId: 'blum-tandem' },
       openingWidth: unit.width,
@@ -711,6 +710,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       <p className="hint">
         Cut list mode: <strong>{CUT_SIZE_MODE_LABELS[settings.cutSizeMode ?? 'final']}</strong>
         Drawer front height = (carcass H − top gap − bottom gap − 4 mm between each stacked front) ÷ qty per cupboard.
+        Box height is what you enter; it does not change when front height is recalculated.
         {(settings.cutSizeMode ?? 'final') === 'net'
           ? ' Cut list board size deducts edging thickness.'
           : ' Cut list shows finished size after edge banding.'}
@@ -758,16 +758,13 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                 onChange={(n) => setDrawerOpeningHeight(drawer.id, n)}
               />
             </label>
-            <label>Box height (mm)<NumberInput  min={1} value={drawer.boxHeight} onChange={(n) => updateDrawer(drawer.id, { boxHeight: n })} /></label>
             <label>
-              Front over box (mm)
+              Box height (mm)
               <NumberInput
-                
-                min={0}
-                step={0.5}
-                value={resolveFrontOverhang(drawer)}
-                title="Drawer box height = calculated front height minus this overhang"
-                onChange={(n) => updateDrawer(drawer.id, { frontOverhangMm: Math.max(0, n) })}
+                min={1}
+                value={drawer.boxHeight}
+                title="Drawer box front/back/sides on cut list — you set this; drawer front height is calculated from carcass separately"
+                onChange={(n) => updateDrawer(drawer.id, { boxHeight: Math.max(1, n) })}
               />
             </label>
             <label>
@@ -925,8 +922,8 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           <p className="hint">
             {isActiveDrawer(drawer) ? (
               <>
-                Front panel = box {drawer.boxHeight} + {resolveFrontOverhang(drawer)} mm = {drawer.boxHeight + resolveFrontOverhang(drawer)} mm.
-                Opening row = top + front + bottom gaps{unit.doors.length > 0 ? ` + ${resolveGapToDoor(drawer)} mm to door` : ''} = {layoutDrawer.openingHeight} mm.
+                Drawer front height comes from carcass ÷ qty (see summary below). Box height = {drawer.boxHeight} mm on cut list.
+                Opening row = top + stacked fronts + bottom gaps{unit.doors.length > 0 ? ` + ${resolveGapToDoor(drawer)} mm to door` : ''} = {layoutDrawer.openingHeight} mm.
               </>
             ) : (
               <>Qty 0 — drawer not on cut list. Door uses full carcass height ({unit.height} mm opening).</>

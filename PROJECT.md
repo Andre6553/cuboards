@@ -23,7 +23,7 @@ Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF ex
 - **2026-10-21:** Drawer box front/back no longer subtract 2×T for box sides — width = carcass internal − 2×runner clearance (e.g. 500 mm unit → **442 mm** @ 16 mm T, 13 mm clearance). Drop-in bottom inner width uses that minus 2×T.
 - **2026-10-21:** Carcass **Side (left/right)** always **1 long** on front edge; removed “side visible” toggles (old `leftVisible`/`rightVisible` in JSON ignored).
 - **2026-10-21:** Cut list merges rows with the same board, **Length × Height**, grain, and edging — qty summed; part names joined (e.g. Side left/right, drawer front/back).
-- **2026-10-21:** **Drawer front** height = `(carcass H − top gap − bottom gap − (total fronts − 1)×4 mm) ÷ total stacked fronts` (no extra fixed 10 mm on top of top gap). Box height = front − overhang on cut list.
+- **2026-10-21:** **Drawer front** height = `(carcass H − top gap − bottom gap − (total fronts − 1)×4 mm) ÷ total stacked fronts`. **Box height** = user **Box height (mm)** field only (removed Front over box / auto box from front).
 - **2026-10-21 (deferred):** Mixed drawer front heights (e.g. 3× fixed + 1× fill remainder) — today all stacked fronts equal-split; Andre to spec/build later (fixed mm per row + auto remainder row).
 - **2026-10-21:** Cut list panel sizes round to **nearest whole mm** (factory / panel saw — no 140.8-style decimals).
 - **2026-10-06:** Cut list has **Factory** (panel sizes + edging types only; no metres, kickplate, prices, hinges, screws, or installation) and **Full** (quote sheet). PDF: `factory-cutlist-…` / `full-cutlist-…`.

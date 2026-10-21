@@ -9,7 +9,6 @@ export const DEFAULT_DRAWER_GAPS: DrawerGaps = {
   between: 2,
 };
 
-export const DEFAULT_FRONT_OVERHANG_MM = 10;
 export const DEFAULT_GAP_TO_DOOR_MM = 2;
 
 /** Vertical gap between stacked drawer fronts on one cupboard. */
@@ -33,10 +32,6 @@ export function activeDrawers(drawers: DrawerConfig[]): DrawerConfig[] {
 
 export function resolveDrawerGaps(drawer: DrawerConfig): DrawerGaps {
   return drawer.gaps ?? DEFAULT_DRAWER_GAPS;
-}
-
-export function resolveFrontOverhang(drawer: DrawerConfig): number {
-  return drawer.frontOverhangMm ?? DEFAULT_FRONT_OVERHANG_MM;
 }
 
 /** Drawer fronts side by side in one row (not qty per cupboard). */
@@ -84,17 +79,6 @@ export function drawerFrontPanelHeight(
   return Math.round(Math.max(0, (usable - betweenTotal) / totalSlots));
 }
 
-/** Drawer box panel height = front height minus overhang above box. */
-export function drawerBoxHeightFromFront(
-  drawer: DrawerConfig,
-  carcassHeight: number,
-  allDrawers: DrawerConfig[] = [drawer],
-): number {
-  const front = drawerFrontPanelHeight(drawer, carcassHeight, allDrawers);
-  if (front <= 0) return Math.max(1, drawer.boxHeight);
-  return Math.round(Math.max(1, front - resolveFrontOverhang(drawer)));
-}
-
 /**
  * Carcass row height for an active drawer row.
  * top + (qty × front + gaps between fronts) + bottom + (gap to door when a door is below).
@@ -115,8 +99,7 @@ export function targetDrawerOpeningHeight(
     return round1(gaps.top + stackMm + gaps.bottom + gapToDoor);
   }
 
-  const panel = drawer.boxHeight + resolveFrontOverhang(drawer);
-  return round1(gaps.top + panel + gaps.bottom + gapToDoor);
+  return round1(gaps.top + drawer.boxHeight + gaps.bottom + gapToDoor);
 }
 
 /** Set opening row height from front stack + gaps (+ gap to door). Inactive drawers (qty 0) unchanged. */
@@ -188,11 +171,10 @@ export function drawerSizeSummary(
   }
   const gaps = resolveDrawerGaps(drawer);
   const stackGaps = resolveDrawerStackGaps(allDrawers);
-  const overhang = resolveFrontOverhang(drawer);
   const gapToDoor = hasDoorBelow ? resolveGapToDoor(drawer) : 0;
   const finishedWidth = drawerFrontWidth(drawer);
   const finishedHeight = drawerFrontHeight(drawer, carcassHeight, allDrawers);
-  const boxH = drawerBoxHeightFromFront(drawer, carcassHeight, allDrawers);
+  const boxH = Math.round(Math.max(1, drawer.boxHeight));
   const panel = panelCutSizes(
     ctx as Job,
     resolveDrawerFrontMaterialId(drawer),
@@ -218,7 +200,7 @@ export function drawerSizeSummary(
   return (
     `${qtyPart}` +
     `finished ${finishedWidth} × ${finishedHeight} mm · ${heightFormula} · ` +
-    `box ${boxH} mm (front − ${overhang} mm overhang) · ` +
+    `box ${boxH} mm (Box height field) · ` +
     `L${gaps.left} R${gaps.right} mm · ${rowPart}${gapToDoor ? ` + ${gapToDoor} mm to door` : ''}${betweenWide} · ${cutPart}`
   );
 }

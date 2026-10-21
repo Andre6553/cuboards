@@ -286,8 +286,8 @@ export interface DrawerConfig {
   materialId?: string;
   bottomType: BottomType;
   boxHeight: number;
-  /** Finished drawer front is this much taller than the box (default 10 mm). */
-  frontOverhangMm: number;
+  /** @deprecated Ignored — box height is set on `boxHeight`. Kept for old saved jobs. */
+  frontOverhangMm?: number;
   runner: DrawerRunner;
   /** Visible front opening width (mm) — set per row when unit has doors + drawers. */
   openingWidth: number;

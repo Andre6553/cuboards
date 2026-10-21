@@ -45,7 +45,6 @@ export function defaultDrawerOpeningHeight(unit: Unit): number {
     frontMaterialId: '',
     bottomType: 'masonite',
     boxHeight: existing[0]?.boxHeight ?? 120,
-    frontOverhangMm: existing[0]?.frontOverhangMm ?? 10,
     gapToDoorMm: existing[0]?.gapToDoorMm ?? 2,
     runner: { type: 'preset', presetId: 'blum-tandem' },
     openingWidth: unit.width,

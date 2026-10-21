@@ -10,11 +10,9 @@ import { DEFAULT_HINGE_PRESET_ID } from './hingeCatalog';
 import { applyCutSizeMode, edgingRunMm, type LongAlong } from './edgingCutSize';
 import { doorPanelHeight, doorPanelWidth, DEFAULT_DOOR_GAPS, hingesPerDoorLeaf } from './doorRules';
 import {
-  drawerBoxHeightFromFront,
   drawerFrontHeight,
   drawerFrontWidth,
   DEFAULT_DRAWER_GAPS,
-  DEFAULT_FRONT_OVERHANG_MM,
   DEFAULT_GAP_TO_DOOR_MM,
   resolveDrawerBoxMaterialId,
   resolveDrawerFrontMaterialId,
@@ -532,7 +530,7 @@ function calcDrawers(
     const frontClearance = drawer.frontClearance ?? 20;
     const backClearance = drawer.backClearance ?? 5;
     const sideDepth = drawerBoxSideDepth(D, frontClearance, backClearance);
-    const boxH = drawerBoxHeightFromFront(drawer, unit.height, drawers);
+    const boxH = Math.round(Math.max(1, drawer.boxHeight));
     const drawerMult = drawer.qty * mult;
     const frontPieceQty = drawerMult * resolveFrontQty(drawer);
     const facadeW = drawerFrontWidth(drawer);
@@ -1107,7 +1105,6 @@ export function createDefaultDrawer(unit: Unit, job: Job, materialId: string): D
     frontMaterialId: materialId,
     bottomType: 'masonite',
     boxHeight: 120,
-    frontOverhangMm: DEFAULT_FRONT_OVERHANG_MM,
     gapToDoorMm: DEFAULT_GAP_TO_DOOR_MM,
     runner: { type: 'preset', presetId: 'blum-tandem' },
     openingWidth: unit.width,

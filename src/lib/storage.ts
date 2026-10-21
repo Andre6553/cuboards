@@ -18,7 +18,7 @@ import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
 import { getDefaultScrewPrices } from './screwCatalog';
 import type { Client, DoorConfig, DoorGaps, DrawerConfig, EdgingMaterial, Job, Material, Unit } from '../types';
 import { DEFAULT_DOOR_GAPS } from './doorRules';
-import { DEFAULT_DRAWER_GAPS, DEFAULT_FRONT_OVERHANG_MM, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
+import { DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
 import { syncFrontLayoutToUnit } from './frontLayout';
 import { recordJobsBackup } from './backupReminder';
 import { DEFAULT_QUOTE_TERMS } from './constants';
@@ -68,7 +68,6 @@ function migrateDrawer(
       boxMaterialId,
       frontMaterialId,
       sideClearance,
-      frontOverhangMm: d.frontOverhangMm ?? DEFAULT_FRONT_OVERHANG_MM,
       frontQty: d.frontQty ?? 1,
       gapToDoorMm: d.gapToDoorMm ?? DEFAULT_GAP_TO_DOOR_MM,
       openingWidth: d.openingWidth ?? unit.width,
