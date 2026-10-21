@@ -710,7 +710,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       </p>
       <p className="hint">
         Cut list mode: <strong>{CUT_SIZE_MODE_LABELS[settings.cutSizeMode ?? 'final']}</strong>
-        Drawer front height = (carcass H − 10 mm − top/bottom gaps − 4 mm between each stacked front) ÷ qty per cupboard.
+        Drawer front height = (carcass H − top gap − bottom gap − 4 mm between each stacked front) ÷ qty per cupboard.
         {(settings.cutSizeMode ?? 'final') === 'net'
           ? ' Cut list board size deducts edging thickness.'
           : ' Cut list shows finished size after edge banding.'}

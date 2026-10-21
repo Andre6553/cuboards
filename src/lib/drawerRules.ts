@@ -12,9 +12,6 @@ export const DEFAULT_DRAWER_GAPS: DrawerGaps = {
 export const DEFAULT_FRONT_OVERHANG_MM = 10;
 export const DEFAULT_GAP_TO_DOOR_MM = 2;
 
-/** Deducted from carcass height before splitting drawer fronts (e.g. top reveal). */
-export const DRAWER_CARCASS_HEIGHT_DEDUCTION_MM = 10;
-
 /** Vertical gap between stacked drawer fronts on one cupboard. */
 export const DRAWER_STACK_GAP_MM = 4;
 
@@ -69,7 +66,8 @@ export function resolveDrawerStackGaps(allDrawers: DrawerConfig[]): DrawerGaps {
 /**
  * Finished drawer front height (one fascia) from carcass height.
  *
- * (carcass H − 10 mm − top − bottom − (totalFronts − 1) × 4 mm) ÷ totalFronts
+ * (carcass H − top gap − bottom gap − (totalFronts − 1) × 4 mm) ÷ totalFronts
+ * (Top/bottom once each — e.g. top 10 mm is not deducted twice.)
  * Width still uses opening width minus L/R (and between when frontQty &gt; 1).
  */
 export function drawerFrontPanelHeight(
@@ -81,8 +79,7 @@ export function drawerFrontPanelHeight(
   const totalSlots = totalDrawerFrontSlots(allDrawers);
   if (totalSlots <= 0) return 0;
   const gaps = resolveDrawerStackGaps(allDrawers);
-  const usable =
-    carcassHeight - DRAWER_CARCASS_HEIGHT_DEDUCTION_MM - gaps.top - gaps.bottom;
+  const usable = carcassHeight - gaps.top - gaps.bottom;
   const betweenTotal = Math.max(0, totalSlots - 1) * DRAWER_STACK_GAP_MM;
   return round1(Math.max(0, (usable - betweenTotal) / totalSlots));
 }
@@ -217,7 +214,7 @@ export function drawerSizeSummary(
     ? `${totalFronts} drawer fronts on cut list (${perCupboard} high × ${frontQty} wide) · `
     : `${totalFronts} drawer front${totalFronts === 1 ? '' : 's'} on cut list (${perCupboard} per cupboard) · `;
   const heightFormula =
-    `(H ${carcassHeight} − ${DRAWER_CARCASS_HEIGHT_DEDUCTION_MM} − T${stackGaps.top} B${stackGaps.bottom} − ${Math.max(0, totalSlots - 1)}×${DRAWER_STACK_GAP_MM} mm) ÷ ${totalSlots} fronts`;
+    `(H ${carcassHeight} − T${stackGaps.top} − B${stackGaps.bottom} − ${Math.max(0, totalSlots - 1)}×${DRAWER_STACK_GAP_MM} mm) ÷ ${totalSlots} fronts`;
   return (
     `${qtyPart}` +
     `finished ${finishedWidth} × ${finishedHeight} mm · ${heightFormula} · ` +
