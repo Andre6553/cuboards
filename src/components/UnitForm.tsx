@@ -14,7 +14,11 @@ import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiv
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
 import { fillersFollowSideMaterial, resolveFillerMaterial } from '../lib/carcassRules';
-import { defaultVisibleBackPanel, resolveVisibleBackPanelMaterialId } from '../lib/visibleBackPanel';
+import {
+  defaultVisibleBackPanel,
+  resolveVisibleBackPanelEdging,
+  resolveVisibleBackPanelMaterialId,
+} from '../lib/visibleBackPanel';
 import { kickplateRunLengthMm } from '../lib/kickplateRules';
 import { deletePreset, loadPresets, saveUnitAsPreset } from '../lib/presets';
 import { CollapsibleSection } from './CollapsibleSection';
@@ -494,13 +498,17 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               />
               Visible back panel (external)
             </label>
-            {unit.carcass.visibleBackPanel?.enabled && (
+            {unit.carcass.visibleBackPanel?.enabled && (() => {
+              const backMatId = resolveVisibleBackPanelMaterialId(unit, materials);
+              const resolvedEdging = resolveVisibleBackPanelEdging(unit, backMatId, materials);
+              const vbp = unit.carcass.visibleBackPanel!;
+              return (
               <div className="form-grid form-grid-3">
                 <label>
                   Back panel width (mm)
                   <NumberInput
                     min={1}
-                    value={unit.carcass.visibleBackPanel.widthMm}
+                    value={vbp.widthMm}
                     onChange={(n) => setVisibleBackPanel({ widthMm: Math.max(1, n) })}
                   />
                 </label>
@@ -508,14 +516,14 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                   Back panel height (mm)
                   <NumberInput
                     min={1}
-                    value={unit.carcass.visibleBackPanel.heightMm}
+                    value={vbp.heightMm}
                     onChange={(n) => setVisibleBackPanel({ heightMm: Math.max(1, n) })}
                   />
                 </label>
                 <label>
                   Material
                   <select
-                    value={unit.carcass.visibleBackPanel.materialId ?? ''}
+                    value={vbp.materialId ?? ''}
                     onChange={(e) => setVisibleBackPanel({ materialId: e.target.value || undefined })}
                   >
                     <option value="">Same as door / drawer front</option>
@@ -524,8 +532,31 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                     ))}
                   </select>
                 </label>
+                <label>
+                  Edging pattern
+                  <select
+                    value={vbp.edgingPattern ?? resolvedEdging.pattern}
+                    onChange={(e) => setVisibleBackPanel({ edgingPattern: e.target.value as EdgingPattern })}
+                  >
+                    {Object.entries(EDGING_LABELS).filter(([k]) => k !== 'none').map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Edging type
+                  <select
+                    value={vbp.edgingMaterialId ?? resolvedEdging.edgingMaterialId}
+                    onChange={(e) => setVisibleBackPanel({ edgingMaterialId: e.target.value })}
+                  >
+                    {edgingMaterials.map((e) => (
+                      <option key={e.id} value={e.id}>{e.name} ({e.thickness} mm)</option>
+                    ))}
+                  </select>
+                </label>
               </div>
-            )}
+              );
+            })()}
             <p className="hint">
               {unit.carcass.visibleBackPanel?.enabled ? (
                 <>
@@ -536,7 +567,13 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                   {materials.find((m) => m.id === resolveVisibleBackPanelMaterialId(unit, materials))?.hasGrain
                     ? ' · grain top to bottom (same as doors/drawers)'
                     : ''}
-                  {' '}· edging matches door/drawer front.
+                  {' '}· edging{' '}
+                  {EDGING_LABELS[resolveVisibleBackPanelEdging(unit, resolveVisibleBackPanelMaterialId(unit, materials), materials).pattern] ?? '—'}
+                  {' '}(
+                  {edgingMaterials.find(
+                    (e) => e.id === resolveVisibleBackPanelEdging(unit, resolveVisibleBackPanelMaterialId(unit, materials), materials).edgingMaterialId,
+                  )?.name ?? '—'}
+                  ).
                 </>
               ) : (
                 <>Optional finished back when the carcass has no internal backing. Defaults to cupboard width × height.</>
@@ -715,6 +752,14 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                   <option key={e.id} value={e.id}>{e.name} ({e.thickness} mm)</option>
                 ))}
               </select>
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={door.factoryHingeHoles !== false}
+                onChange={(e) => updateDoor(door.id, { factoryHingeHoles: e.target.checked })}
+              />
+              Factory: drill hinge holes
             </label>
             <label className="runner-select-label">
               Hinge

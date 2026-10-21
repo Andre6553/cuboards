@@ -7,8 +7,81 @@ import { exportClientQuotePdf } from './quotePdf';
 import { formatMoney, resolveQuoteCurrency } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
 import { drawPdfBrandHeader, loadPdfLogoDataUrl } from './pdfBrand';
+import { buildFactoryCutListRows, factoryTickCell } from './factoryCutList';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
+
+function renderFactoryCutListSection(
+  doc: jsPDF,
+  y: number,
+  margin: number,
+  job: Job,
+  result: CutListResult,
+): number {
+  const rows = buildFactoryCutListRows(job, result.pieces);
+  if (rows.length === 0) return y;
+
+  if (y > 150) {
+    doc.addPage();
+    y = margin;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Cutting list', margin, y);
+  doc.setFont('helvetica', 'normal');
+  y += 5;
+
+  autoTable(doc, {
+    startY: y,
+    head: [[
+      'Unit ID',
+      'Description',
+      'Board colour',
+      'Finish',
+      'Length (mm)',
+      'Width (mm)',
+      'Qty',
+      'L1',
+      'L2',
+      'B1',
+      'B2',
+      'Thick',
+      'Edging colour',
+      'Holes',
+      'Notes',
+    ]],
+    body: rows.map((r) => [
+      r.unitId,
+      r.description,
+      r.boardColour,
+      r.finish,
+      String(r.lengthMm),
+      String(r.widthMm),
+      String(r.qty),
+      factoryTickCell(r.edging.l1),
+      factoryTickCell(r.edging.l2),
+      factoryTickCell(r.edging.b1),
+      factoryTickCell(r.edging.b2),
+      r.edgingThickMm != null ? String(r.edgingThickMm) : '',
+      r.edgingColour,
+      r.hingeHoles,
+      r.notes,
+    ]),
+    styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak' },
+    headStyles: { fillColor: [45, 55, 72], fontSize: 7, fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 28 },
+      12: { cellWidth: 22 },
+      14: { cellWidth: 24 },
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (doc as any).lastAutoTable.finalY + 6;
+}
 
 function renderGroupedSection(
   doc: jsPDF,
@@ -181,8 +254,12 @@ export async function exportCutListPdf(job: Job, result: CutListResult, mode: Cu
     doc.setTextColor(0);
   }
 
-  y = renderGroupedSection(doc, y, margin, 'Board cut list', result.boardGroups);
-  y = renderGroupedSection(doc, y, margin, 'Masonite cut list', result.masoniteGroups, false);
+  if (factory) {
+    y = renderFactoryCutListSection(doc, y, margin, job, result);
+  } else {
+    y = renderGroupedSection(doc, y, margin, 'Board cut list', result.boardGroups);
+    y = renderGroupedSection(doc, y, margin, 'Masonite cut list', result.masoniteGroups, false);
+  }
 
   if (!factory && result.boardOffcuts.length > 0) {
     if (y > 150) {

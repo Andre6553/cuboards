@@ -274,6 +274,8 @@ export interface DoorConfig {
   openingHeight: number;
   gaps: DoorGaps;
   hinge: DoorHinge;
+  /** Factory cut list: drill hinge holes (default yes). */
+  factoryHingeHoles?: boolean;
 }
 
 export interface DrawerGaps {
@@ -397,6 +399,8 @@ export interface CutPiece {
   bottomType?: BottomType;
   /** Which axis carries the long edging run — controls cut-list dimension order. */
   longAlong?: 'width' | 'length';
+  /** Doors only — factory Holes column. */
+  factoryHingeHoles?: boolean;
 }
 
 export interface EdgingLine {

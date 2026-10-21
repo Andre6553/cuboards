@@ -13,10 +13,64 @@ import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
 import { SheetMapView } from './SheetMapView';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from '../lib/sheetLayout';
+import { buildFactoryCutListRows, factoryTickCell } from '../lib/factoryCutList';
 import type { CutListGroup, Job } from '../types';
 
 interface Props {
   job: Job;
+}
+
+function FactoryCutListTable({ job, pieces }: { job: Job; pieces: ReturnType<typeof generateCutList>['pieces'] }) {
+  const rows = buildFactoryCutListRows(job, pieces);
+  if (rows.length === 0) {
+    return <p className="hint">No board or masonite parts on this job.</p>;
+  }
+  return (
+    <div className="table-wrap factory-cutlist-wrap">
+      <table className="data-table factory-cutlist-table">
+        <thead>
+          <tr>
+            <th>Unit ID</th>
+            <th>Description</th>
+            <th>Board colour</th>
+            <th>Finish</th>
+            <th>Length (mm)</th>
+            <th>Width (mm)</th>
+            <th>Qty</th>
+            <th>L1</th>
+            <th>L2</th>
+            <th>B1</th>
+            <th>B2</th>
+            <th>Thick</th>
+            <th>Edging colour</th>
+            <th>Holes</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td>{r.unitId}</td>
+              <td>{r.description}</td>
+              <td>{r.boardColour}</td>
+              <td>{r.finish}</td>
+              <td>{r.lengthMm}</td>
+              <td>{r.widthMm}</td>
+              <td><strong>{r.qty}</strong></td>
+              <td className="factory-tick">{factoryTickCell(r.edging.l1)}</td>
+              <td className="factory-tick">{factoryTickCell(r.edging.l2)}</td>
+              <td className="factory-tick">{factoryTickCell(r.edging.b1)}</td>
+              <td className="factory-tick">{factoryTickCell(r.edging.b2)}</td>
+              <td>{r.edgingThickMm ?? ''}</td>
+              <td>{r.edgingColour}</td>
+              <td>{r.hingeHoles}</td>
+              <td>{r.notes}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function GroupedCutTable({ groups, showEdging = true }: { groups: CutListGroup[]; showEdging?: boolean }) {
@@ -126,7 +180,7 @@ export function CutListView({ job }: Props) {
           <h2>{factory ? 'Factory cut list' : quote ? 'Client quotation' : 'Full cut list'}</h2>
           <p className="hint">
             {factory
-              ? 'For the cutting factory: panel sizes and edging types only. No metres, prices, kickplate, hinges, screws, or installation.'
+              ? 'Send the factory a PDF only (Download factory PDF) — Mosselbaai-style table: Unit ID = cupboard name, L1–B2 edging ticks, Thick, edging colour, Holes on doors.'
               : quote
                 ? 'Client-facing: scope of work and quotation total only — no supply breakdown or cut sizes.'
                 : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
@@ -222,6 +276,13 @@ export function CutListView({ job }: Props) {
 
           {showCutLists && (
           <>
+          {factory ? (
+            <>
+              <h3 className="section-title">Cutting list</h3>
+              <FactoryCutListTable job={job} pieces={result.pieces} />
+            </>
+          ) : (
+            <>
           <h3 className="section-title">Board cut list</h3>
           <p className="hint">
             One table per board material and edging tape — carcass, doors and drawer parts together.
@@ -235,6 +296,8 @@ export function CutListView({ job }: Props) {
           <h3 className="section-title">Masonite cut list</h3>
           <p className="hint">Carcass backs and drawer bottoms — 2 mm smaller on length and width.</p>
           <GroupedCutTable groups={result.masoniteGroups} showEdging={false} />
+            </>
+          )}
 
           {showTechnical && (
             <>

@@ -762,6 +762,17 @@
   margin: 0.75rem 0;
 }
 
+.factory-cutlist-table .factory-tick {
+  text-align: center;
+  font-weight: 700;
+  width: 2rem;
+}
+
+.factory-cutlist-table th:nth-child(n + 8):nth-child(-n + 11),
+.factory-cutlist-table td.factory-tick {
+  text-align: center;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;

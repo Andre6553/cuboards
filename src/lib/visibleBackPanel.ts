@@ -38,18 +38,11 @@ export function resolveVisibleBackPanelMaterialId(unit: Unit, materials: Materia
   return unit.carcass.fillerMaterialId || materials[0]?.id || '';
 }
 
-export function resolveVisibleBackPanelEdging(
+function defaultVisibleBackPanelEdging(
   unit: Unit,
   boardMaterialId: string,
   materials: Material[],
 ): { pattern: EdgingPattern; edgingMaterialId: string } {
-  const v = unit.carcass.visibleBackPanel;
-  if (v?.edgingMaterialId) {
-    return {
-      pattern: v.edgingPattern ?? '2_long_2_short',
-      edgingMaterialId: v.edgingMaterialId,
-    };
-  }
   const door = unit.doors[0];
   if (door?.edgingMaterialId) {
     return { pattern: door.edgingPattern, edgingMaterialId: door.edgingMaterialId };
@@ -65,5 +58,19 @@ export function resolveVisibleBackPanelEdging(
   return {
     pattern: '2_long_2_short',
     edgingMaterialId: boardMat?.edgingMaterialId ?? '',
+  };
+}
+
+/** Pattern + tape for cut list (explicit unit fields override door/drawer defaults). */
+export function resolveVisibleBackPanelEdging(
+  unit: Unit,
+  boardMaterialId: string,
+  materials: Material[],
+): { pattern: EdgingPattern; edgingMaterialId: string } {
+  const v = unit.carcass.visibleBackPanel;
+  const fallback = defaultVisibleBackPanelEdging(unit, boardMaterialId, materials);
+  return {
+    pattern: v?.edgingPattern ?? fallback.pattern,
+    edgingMaterialId: v?.edgingMaterialId ?? fallback.edgingMaterialId,
   };
 }

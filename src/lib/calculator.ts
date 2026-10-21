@@ -195,6 +195,7 @@ function pushBoardPiece(
     edgingMaterialId?: string;
     bottomType?: CutPiece['bottomType'];
     longAlong?: LongAlong;
+    factoryHingeHoles?: boolean;
   },
 ) {
   if (opts.qty <= 0) return;
@@ -225,6 +226,7 @@ function pushBoardPiece(
     edgingMaterialId,
     bottomType: opts.bottomType,
     longAlong,
+    factoryHingeHoles: opts.factoryHingeHoles,
   });
 }
 
@@ -506,6 +508,7 @@ function calcDoors(
       edgingPattern: door.edgingPattern,
       edgingMaterialId: door.edgingMaterialId,
       longAlong: 'length',
+      factoryHingeHoles: door.factoryHingeHoles !== false,
     });
     addEdging(edging, job, door.materialId, 'Door', unit.name, door.edgingPattern, w, h, totalQty, door.edgingMaterialId, 'length');
 
@@ -1119,6 +1122,7 @@ export function createDefaultDoor(unit: Unit, job: Job, materialId: string): Doo
     openingHeight: unit.height,
     gaps: { ...DEFAULT_DOOR_GAPS, between: job.settings.defaultGap },
     hinge: { type: 'preset', presetId: DEFAULT_HINGE_PRESET_ID },
+    factoryHingeHoles: true,
   };
 }
 
