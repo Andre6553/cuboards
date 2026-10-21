@@ -1,3 +1,4 @@
+import type { jsPDF } from 'jspdf';
 import { grainLabel } from './sheetLayout';
 import { formatCutListDimensions } from './edgingCutSize';
 import type { CutPiece, EdgingPattern, Job } from '../types';
@@ -81,7 +82,7 @@ export function pieceToFactoryRow(job: Job, piece: CutPiece): FactoryCutListRow 
     edgingThickMm: pattern === 'none' ? null : (edgingMat?.thickness ?? null),
     edgingColour: pattern === 'none' ? '—' : (edgingMat?.name?.trim() || '—'),
     hingeHoles,
-    notes: piece.notes?.replace(/\s*·\s*/g, '; ') ?? '',
+    notes: '',
   };
 }
 
@@ -98,6 +99,29 @@ export function buildFactoryCutListRows(job: Job, pieces: CutPiece[]): FactoryCu
     );
 }
 
+/** On-screen factory table (browser fonts render this reliably). */
 export function factoryTickCell(on: boolean): string {
   return on ? '✓' : '';
+}
+
+/** PDF: Helvetica cannot render ✓ — draw ticks in pdf.ts instead; cells stay empty. */
+export function factoryTickCellPdf(_on: boolean): string {
+  return '';
+}
+
+export function drawFactoryEdgingTick(
+  doc: jsPDF,
+  cell: { x: number; y: number; width: number; height: number },
+): void {
+  const { x, y, width, height } = cell;
+  const pad = 1.2;
+  doc.setDrawColor(20);
+  doc.setLineWidth(0.4);
+  const left = x + width * 0.26;
+  const midX = x + width * 0.4;
+  const bottom = y + height - pad;
+  const right = x + width * 0.74;
+  const top = y + pad + height * 0.12;
+  doc.line(left, y + height * 0.55, midX, bottom);
+  doc.line(midX, bottom, right, top);
 }

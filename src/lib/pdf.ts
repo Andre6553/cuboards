@@ -7,7 +7,7 @@ import { exportClientQuotePdf } from './quotePdf';
 import { formatMoney, resolveQuoteCurrency } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
 import { drawPdfBrandHeader, loadPdfLogoDataUrl } from './pdfBrand';
-import { buildFactoryCutListRows, factoryTickCell } from './factoryCutList';
+import { buildFactoryCutListRows, drawFactoryEdgingTick, factoryTickCellPdf } from './factoryCutList';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
@@ -59,10 +59,10 @@ function renderFactoryCutListSection(
       String(r.lengthMm),
       String(r.widthMm),
       String(r.qty),
-      factoryTickCell(r.edging.l1),
-      factoryTickCell(r.edging.l2),
-      factoryTickCell(r.edging.b1),
-      factoryTickCell(r.edging.b2),
+      factoryTickCellPdf(r.edging.l1),
+      factoryTickCellPdf(r.edging.l2),
+      factoryTickCellPdf(r.edging.b1),
+      factoryTickCellPdf(r.edging.b2),
       r.edgingThickMm != null ? String(r.edgingThickMm) : '',
       r.edgingColour,
       r.hingeHoles,
@@ -73,10 +73,24 @@ function renderFactoryCutListSection(
     columnStyles: {
       0: { cellWidth: 22 },
       1: { cellWidth: 28 },
+      7: { halign: 'center', cellWidth: 9 },
+      8: { halign: 'center', cellWidth: 9 },
+      9: { halign: 'center', cellWidth: 9 },
+      10: { halign: 'center', cellWidth: 9 },
       12: { cellWidth: 22 },
       14: { cellWidth: 24 },
     },
     margin: { left: margin, right: margin },
+    didDrawCell: (data) => {
+      if (data.section !== 'body') return;
+      const col = data.column.index;
+      if (col < 7 || col > 10) return;
+      const row = rows[data.row.index];
+      if (!row) return;
+      const on = [row.edging.l1, row.edging.l2, row.edging.b1, row.edging.b2][col - 7];
+      if (!on) return;
+      drawFactoryEdgingTick(data.doc, data.cell);
+    },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
