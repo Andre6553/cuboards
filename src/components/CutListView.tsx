@@ -7,7 +7,7 @@ import { connectingFittingLineDetail } from '../lib/connectingFittingRules';
 import { getConnectingFittingById } from '../lib/connectingFittingCatalog';
 import { UNIT_TYPE_LABELS } from '../lib/constants';
 import type { Unit } from '../types';
-import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS } from '../lib/edgingCutSize';
+import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS, formatCutListDimensions } from '../lib/edgingCutSize';
 import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
@@ -46,7 +46,7 @@ function GroupedCutTable({ groups, showEdging = true }: { groups: CutListGroup[]
                   {group.items.map((p, i) => (
                     <tr key={i}>
                       <td>{p.partName}</td>
-                      <td>{p.length} × {p.width}</td>
+                      <td>{formatCutListDimensions(p.width, p.length, p.longAlong ?? 'length')}</td>
                       <td><strong>{p.totalQty}</strong></td>
                       {showGrain && <td>{grainLabel(p.grain)}</td>}
                       {showEdging && <td>{p.edgingLabel}</td>}
@@ -609,7 +609,7 @@ export function CutListView({ job }: Props) {
                       <td>{p.materialName}</td>
                       <td>{p.unitName}</td>
                       <td>{p.partName}</td>
-                      <td>{p.length} × {p.width}</td>
+                      <td>{formatCutListDimensions(p.width, p.length, p.longAlong ?? 'length')}</td>
                       <td>{p.qty}</td>
                       <td>{grainLabel(p.grain)}</td>
                       <td>{p.notes}{p.bottomType ? ` · ${p.bottomType}` : ''}</td>

@@ -48,6 +48,15 @@ export interface PanelCutSizeResult {
 /** Which piece axis the "long" edging run follows. Tape on that edge reduces the other axis. */
 export type LongAlong = 'width' | 'length';
 
+/** Cut list / factory PDF: show the long-edged side first (e.g. drawer side 500 × 130 not 130 × 500). */
+export function formatCutListDimensions(
+  width: number,
+  length: number,
+  longAlong: LongAlong = 'length',
+): string {
+  return longAlong === 'width' ? `${width} × ${length}` : `${length} × ${width}`;
+}
+
 export function edgingRunMm(
   pattern: EdgingPattern,
   longEdgeMm: number,

@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CUT_SIZE_MODE_LABELS } from './constants';
-import { CUT_SIZE_MODE_CUTLIST_HINT } from './edgingCutSize';
+import { CUT_SIZE_MODE_CUTLIST_HINT, formatCutListDimensions } from './edgingCutSize';
 import { jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from './cutListWarnings';
 import { exportClientQuotePdf } from './quotePdf';
 import { formatMoney, resolveQuoteCurrency } from './currency';
@@ -51,7 +51,11 @@ function renderGroupedSection(
       startY: y,
       head: [head],
       body: group.items.map((p) => {
-        const row = [p.partName, `${p.length} × ${p.width}`, p.totalQty.toString()];
+        const row = [
+          p.partName,
+          formatCutListDimensions(p.width, p.length, p.longAlong ?? 'length'),
+          p.totalQty.toString(),
+        ];
         if (showGrain) row.push(grainLabel(p.grain));
         if (showEdging) row.push(p.edgingLabel);
         return row;

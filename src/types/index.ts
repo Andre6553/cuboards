@@ -382,6 +382,8 @@ export interface CutPiece {
   edgingPattern?: EdgingPattern;
   edgingMaterialId?: string;
   bottomType?: BottomType;
+  /** Which axis carries the long edging run — controls cut-list dimension order. */
+  longAlong?: 'width' | 'length';
 }
 
 export interface EdgingLine {
@@ -429,6 +431,7 @@ export interface ConsolidatedPiece {
   patternLabel: string;
   /** Board + edging pattern + tape spec — used to merge cut list tables */
   groupKey: string;
+  longAlong?: 'width' | 'length';
 }
 
 export interface CutListGroup {

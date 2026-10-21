@@ -219,6 +219,7 @@ function pushBoardPiece(
     edgingPattern: pattern,
     edgingMaterialId,
     bottomType: opts.bottomType,
+    longAlong,
   });
 }
 
@@ -752,6 +753,7 @@ function consolidatePieces(
         edgingLabel,
         patternLabel: EDGING_LABELS[pattern] ?? pattern,
         groupKey,
+        longAlong: p.longAlong ?? 'length',
       });
     }
   }
