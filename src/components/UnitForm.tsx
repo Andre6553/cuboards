@@ -14,6 +14,7 @@ import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiv
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
 import { fillersFollowSideMaterial, resolveFillerMaterial } from '../lib/carcassRules';
+import { defaultVisibleBackPanel, resolveVisibleBackPanelMaterialId } from '../lib/visibleBackPanel';
 import { kickplateRunLengthMm } from '../lib/kickplateRules';
 import { deletePreset, loadPresets, saveUnitAsPreset } from '../lib/presets';
 import { CollapsibleSection } from './CollapsibleSection';
@@ -89,6 +90,14 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
   };
   const setCarcass = (field: keyof Unit['carcass'], value: Unit['carcass'][typeof field]) =>
     onChange({ ...unit, carcass: { ...unit.carcass, [field]: value } });
+
+  const setVisibleBackPanel = (patch: Partial<NonNullable<Unit['carcass']['visibleBackPanel']>>) => {
+    const prev = unit.carcass.visibleBackPanel ?? defaultVisibleBackPanel(unit);
+    onChange({
+      ...unit,
+      carcass: { ...unit.carcass, visibleBackPanel: { ...prev, ...patch } },
+    });
+  };
 
   const setPlinth = (field: keyof NonNullable<Unit['plinth']>, value: string | number | boolean) => {
     const plinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
@@ -449,12 +458,92 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         )}
         <label>
           Carcass backing
-          <select value={unit.carcass.backingType ?? 'none'} onChange={(e) => setCarcass('backingType', e.target.value as Unit['carcass']['backingType'])}>
+          <select
+            value={unit.carcass.backingType ?? 'none'}
+            onChange={(e) => {
+              const backingType = e.target.value as Unit['carcass']['backingType'];
+              const carcass = { ...unit.carcass, backingType };
+              if (backingType !== 'none' && carcass.visibleBackPanel?.enabled) {
+                carcass.visibleBackPanel = { ...carcass.visibleBackPanel, enabled: false };
+              }
+              onChange({ ...unit, carcass });
+            }}
+          >
             {Object.entries(BACKING_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
         </label>
+        {unit.carcass.backingType === 'none' && (
+          <div className="visible-back-panel-fields">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={unit.carcass.visibleBackPanel?.enabled ?? false}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setVisibleBackPanel({
+                      enabled: true,
+                      widthMm: unit.carcass.visibleBackPanel?.widthMm ?? unit.width,
+                      heightMm: unit.carcass.visibleBackPanel?.heightMm ?? unit.height,
+                    });
+                  } else {
+                    setVisibleBackPanel({ enabled: false });
+                  }
+                }}
+              />
+              Visible back panel (external)
+            </label>
+            {unit.carcass.visibleBackPanel?.enabled && (
+              <div className="form-grid form-grid-3">
+                <label>
+                  Back panel width (mm)
+                  <NumberInput
+                    min={1}
+                    value={unit.carcass.visibleBackPanel.widthMm}
+                    onChange={(n) => setVisibleBackPanel({ widthMm: Math.max(1, n) })}
+                  />
+                </label>
+                <label>
+                  Back panel height (mm)
+                  <NumberInput
+                    min={1}
+                    value={unit.carcass.visibleBackPanel.heightMm}
+                    onChange={(n) => setVisibleBackPanel({ heightMm: Math.max(1, n) })}
+                  />
+                </label>
+                <label>
+                  Material
+                  <select
+                    value={unit.carcass.visibleBackPanel.materialId ?? ''}
+                    onChange={(e) => setVisibleBackPanel({ materialId: e.target.value || undefined })}
+                  >
+                    <option value="">Same as door / drawer front</option>
+                    {materials.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}{m.colour ? ` (${m.colour})` : ''}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+            <p className="hint">
+              {unit.carcass.visibleBackPanel?.enabled ? (
+                <>
+                  Cut list: visible back{' '}
+                  {unit.carcass.visibleBackPanel.heightMm} × {unit.carcass.visibleBackPanel.widthMm} mm
+                  {' '}· material{' '}
+                  {materials.find((m) => m.id === resolveVisibleBackPanelMaterialId(unit, materials))?.name ?? '—'}
+                  {materials.find((m) => m.id === resolveVisibleBackPanelMaterialId(unit, materials))?.hasGrain
+                    ? ' · grain top to bottom (same as doors/drawers)'
+                    : ''}
+                  {' '}· edging matches door/drawer front.
+                </>
+              ) : (
+                <>Optional finished back when the carcass has no internal backing. Defaults to cupboard width × height.</>
+              )}
+            </p>
+          </div>
+        )}
         {unit.carcass.backingType === 'melamine' && (
           <label>
             Backing material

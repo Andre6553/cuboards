@@ -36,6 +36,11 @@ import {
   melamineBackingSize,
   resolveFillerMaterial,
 } from './carcassRules';
+import {
+  normalizeVisibleBackPanel,
+  resolveVisibleBackPanelEdging,
+  resolveVisibleBackPanelMaterialId,
+} from './visibleBackPanel';
 import { resolveFrontLayout } from './frontLayout';
 import { coverageLabel, kickplateRunLengthMm, woodKickplatePieces } from './kickplateRules';
 import {
@@ -378,6 +383,26 @@ function calcCarcass(
       edgingPattern: 'none',
       notes: `${job.masonite.thickness}mm · W−2 × H−2 mm ${mult > 1 ? `· ${mult} cupboards` : ''}`.trim(),
     });
+  }
+
+  const visibleBack = normalizeVisibleBackPanel(unit, c);
+  if (backingType === 'none' && visibleBack?.enabled) {
+    const panelW = Math.max(1, roundMm(visibleBack.widthMm));
+    const panelH = Math.max(1, roundMm(visibleBack.heightMm));
+    const backMatId = resolveVisibleBackPanelMaterialId(unit, job.materials);
+    const edging = resolveVisibleBackPanelEdging(unit, backMatId, job.materials);
+    addEdgedPiece(
+      'Visible back panel',
+      backMatId,
+      panelW,
+      panelH,
+      1,
+      materialHasGrain(job.materials, backMatId) ? 'vertical' : 'none',
+      'External back · no carcass backing',
+      edging.pattern,
+      edging.edgingMaterialId,
+      'length',
+    );
   }
 }
 

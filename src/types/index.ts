@@ -211,6 +211,17 @@ export interface KitchenPlinthConfig {
   feetRequired: boolean;
 }
 
+export interface VisibleBackPanelConfig {
+  enabled: boolean;
+  widthMm: number;
+  heightMm: number;
+  /** Empty = match first door or drawer front material. */
+  materialId?: string;
+  edgingPattern?: EdgingPattern;
+  /** Empty = match door/drawer front edging. */
+  edgingMaterialId?: string;
+}
+
 export interface CarcassConfig {
   leftMaterialId: string;
   rightMaterialId: string;
@@ -230,6 +241,8 @@ export interface CarcassConfig {
   rightVisible?: boolean;
   backingType: BackingType;
   backingMaterialId: string;
+  /** External visible back when `backingType` is `none` (not inside carcass). */
+  visibleBackPanel?: VisibleBackPanelConfig;
   countertopType: CountertopType;
   mountType: MountType;
 }
