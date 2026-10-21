@@ -192,19 +192,27 @@ export function factoryTickCellPdf(_on: boolean): string {
   return '';
 }
 
+/** Fixed mm size — must not scale with row height (wrapped Unit ID rows). */
+const FACTORY_TICK_HEIGHT_MM = 3;
+const FACTORY_TICK_WIDTH_MM = 2.6;
+
 export function drawFactoryEdgingTick(
   doc: jsPDF,
   cell: { x: number; y: number; width: number; height: number },
 ): void {
-  const { x, y, width, height } = cell;
-  const pad = 1.2;
+  const cx = cell.x + cell.width / 2;
+  const cy = cell.y + cell.height / 2;
+  const h = FACTORY_TICK_HEIGHT_MM;
+  const w = FACTORY_TICK_WIDTH_MM;
+
   doc.setDrawColor(20);
-  doc.setLineWidth(0.4);
-  const left = x + width * 0.26;
-  const midX = x + width * 0.4;
-  const bottom = y + height - pad;
-  const right = x + width * 0.74;
-  const top = y + pad + height * 0.12;
-  doc.line(left, y + height * 0.55, midX, bottom);
-  doc.line(midX, bottom, right, top);
+  doc.setLineWidth(0.35);
+  const x1 = cx - w * 0.38;
+  const y1 = cy + h * 0.06;
+  const x2 = cx - w * 0.05;
+  const y2 = cy + h * 0.4;
+  const x3 = cx + w * 0.42;
+  const y3 = cy - h * 0.36;
+  doc.line(x1, y1, x2, y2);
+  doc.line(x2, y2, x3, y3);
 }
