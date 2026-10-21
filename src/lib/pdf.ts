@@ -34,10 +34,12 @@ function renderGroupedSection(
       doc.addPage();
       y = margin;
     }
-    doc.setFontSize(9);
-    doc.setTextColor(60);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(40);
     doc.text(group.heading, margin, y);
-    y += 3;
+    y += 5;
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(0);
 
     const showGrain = group.items.some((p) => p.grain !== 'none');
