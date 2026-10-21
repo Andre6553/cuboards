@@ -54,7 +54,8 @@ import {
 } from './sheetCost';
 import { calcBoardOffcuts } from './sheetOffcuts';
 import { calcSheetMaps } from './sheetMaps';
-import { layoutSheets, resolveSawKerfMm } from './sheetLayout';
+import { layoutSheets, resolveSawKerfMm, type LayoutPiece } from './sheetLayout';
+import { cutPiecesToLayout } from './sheetLayoutPieces';
 import { calcJobScrews } from './screwRules';
 import { calcJobConnectingFittings } from './connectingFittingRules';
 import { calcJobInstall } from './installRules';
@@ -893,6 +894,47 @@ function consolidateEdging(lines: EdgingLine[], edgingMaterials: Job['edgingMate
     .sort((a, b) => a.edgingMaterialName.localeCompare(b.edgingMaterialName) || a.thickness - b.thickness);
 }
 
+function pushUnplacedSheetWarnings(
+  materialLabel: string,
+  sheetWidth: number,
+  sheetHeight: number,
+  unplaced: LayoutPiece[],
+  sheetWarnings: string[],
+): void {
+  const grainLen = Math.max(sheetWidth, sheetHeight);
+  for (const p of unplaced) {
+    sheetWarnings.push(
+      p.grainLocked
+        ? `${materialLabel}: ${p.label} is longer than the ${grainLen} mm sheet grain — it can't be cut with grain top to bottom.`
+        : `${materialLabel}: ${p.label} is too large for a ${sheetWidth}×${sheetHeight} mm sheet.`,
+    );
+  }
+}
+
+function sheetCountFromNesting(
+  matPieces: CutPiece[],
+  sheetWidth: number,
+  sheetHeight: number,
+  sawKerfMm: number,
+  purchaseFrac: number,
+  sheetArea: number,
+): { sheetsFromLayout: number; unplaced: LayoutPiece[] } {
+  const layout = layoutSheets(
+    cutPiecesToLayout(matPieces),
+    sheetWidth,
+    sheetHeight,
+    sawKerfMm,
+    purchaseFrac,
+  );
+  const unplacedArea = layout.unplaced.reduce(
+    (sum, p) => sum + p.length * p.width * p.qty,
+    0,
+  );
+  const sheetsFromLayout =
+    layout.sheetsToOrder + estimateSheetsFromArea(unplacedArea, sheetArea, purchaseFrac);
+  return { sheetsFromLayout, unplaced: layout.unplaced };
+}
+
 function calcCosts(
   job: Job,
   pieces: CutPiece[],
@@ -929,35 +971,22 @@ function calcCosts(
     const purchaseFrac = sheetPurchaseFraction(m);
     const purchaseLabel = sheetPurchaseDetailLabel(purchaseUnit);
     let sheetsNeeded = estimateSheetsFromArea(totalAreaMm2, sheetArea, purchaseFrac);
-    const wastageNote = wastagePct > 0 ? ` · includes ${wastagePct}% cutting allowance` : '';
-    let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} (${purchaseLabel}${wastageNote})`;
-
-    if (m.hasGrain) {
-      const layout = layoutSheets(
-        (piecesByMaterial.get(m.id) ?? []).map((p) => ({
-          length: p.length,
-          width: p.width,
-          qty: p.qty,
-          grainLocked: p.grain !== 'none',
-          label: `${p.partName} (${p.unitName}) ${p.length} × ${p.width}`,
-        })),
-        sheetWidth,
-        sheetHeight,
-        sawKerfMm,
-        purchaseFrac,
-      );
-      const unplacedArea = layout.unplaced.reduce((s, p) => s + p.length * p.width * p.qty, 0);
-      sheetsNeeded = Math.max(
-        sheetsNeeded,
-        layout.sheetsToOrder + estimateSheetsFromArea(unplacedArea, sheetArea, purchaseFrac),
-      );
-      detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · grain layout (${purchaseLabel}; sides, doors & drawer fronts grain top to bottom, ${sawKerfMm} mm saw cut)`;
-      for (const p of layout.unplaced) {
-        sheetWarnings.push(
-          `${m.name}: ${p.label} is longer than the ${Math.max(sheetWidth, sheetHeight)} mm sheet grain — it can't be cut with grain top to bottom.`,
-        );
-      }
-    }
+    const wastageNote = wastagePct > 0 ? ` · includes ${wastagePct}% cutting allowance on area` : '';
+    const matPieces = piecesByMaterial.get(m.id) ?? [];
+    const { sheetsFromLayout, unplaced } = sheetCountFromNesting(
+      matPieces,
+      sheetWidth,
+      sheetHeight,
+      sawKerfMm,
+      purchaseFrac,
+      sheetArea,
+    );
+    sheetsNeeded = Math.max(sheetsNeeded, sheetsFromLayout);
+    const layoutNote = m.hasGrain
+      ? `grain layout (${purchaseLabel}; sides, doors & drawer fronts grain top to bottom, ${sawKerfMm} mm saw cut)`
+      : `panel layout (${purchaseLabel}; parts can rotate, ${sawKerfMm} mm saw cut)`;
+    let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · ${layoutNote}${wastageNote}`;
+    pushUnplacedSheetWarnings(m.name, sheetWidth, sheetHeight, unplaced, sheetWarnings);
 
     costs.push({
       category: 'board',
@@ -969,18 +998,36 @@ function calcCosts(
     });
   }
 
-  const masoniteArea = pieces
-    .filter((p) => p.materialId === MASONITE_ID)
-    .reduce((sum, p) => sum + p.width * p.length * p.qty, 0);
+  const masonitePieces = pieces.filter((p) => p.materialId === MASONITE_ID);
+  const masoniteArea = masonitePieces.reduce((sum, p) => sum + p.width * p.length * p.qty, 0);
   if (masoniteArea > 0) {
-    const mSheetArea = job.masonite.sheetWidth * job.masonite.sheetHeight;
+    const mW = job.masonite.sheetWidth;
+    const mH = job.masonite.sheetHeight;
+    const mSheetArea = mW * mH;
     const masoniteUnit = resolveMasonitePurchaseUnit(job.masonite);
     const masoniteFrac = masonitePurchaseFraction(job.masonite);
-    const sheetsNeeded = estimateSheetsFromArea(masoniteArea, mSheetArea, masoniteFrac);
+    const masoniteLabel = sheetPurchaseDetailLabel(masoniteUnit);
+    let sheetsNeeded = estimateSheetsFromArea(masoniteArea, mSheetArea, masoniteFrac);
+    const { sheetsFromLayout, unplaced } = sheetCountFromNesting(
+      masonitePieces,
+      mW,
+      mH,
+      sawKerfMm,
+      masoniteFrac,
+      mSheetArea,
+    );
+    sheetsNeeded = Math.max(sheetsNeeded, sheetsFromLayout);
+    pushUnplacedSheetWarnings(
+      `${job.masonite.name} (${job.masonite.colour})`,
+      mW,
+      mH,
+      unplaced,
+      sheetWarnings,
+    );
     costs.push({
       category: 'masonite',
       name: `${job.masonite.name} (${job.masonite.colour})`,
-      detail: `${job.masonite.thickness}mm · ${formatSheetCount(sheetsNeeded)} (${sheetPurchaseDetailLabel(masoniteUnit)})`,
+      detail: `${job.masonite.thickness}mm · ${formatSheetCount(sheetsNeeded)} @ ${mW}×${mH} · panel layout (${masoniteLabel}; ${sawKerfMm} mm saw cut)`,
       quantity: sheetsNeeded,
       unitPrice: job.masonite.pricePerSheet,
       subtotal: sheetsNeeded * job.masonite.pricePerSheet,

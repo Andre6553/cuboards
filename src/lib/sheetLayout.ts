@@ -68,7 +68,7 @@ export interface LayoutSheetDetail {
 
 export interface SheetLayoutResult {
   sheetsUsed: number;
-  /** Full sheets + rounded-up fraction of the last sheet (¼ steps). */
+  /** Full sheets + rounded-up fraction of the last sheet (purchase step: ⅓, ¼, ½, …). */
   sheetsToOrder: number;
   /** Parts that cannot fit on a sheet in the required grain direction. */
   unplaced: LayoutPiece[];

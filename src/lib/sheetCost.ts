@@ -6,6 +6,7 @@ export const DEFAULT_SHEET_PURCHASE_UNIT: SheetPurchaseUnit = 'quarter';
 export const SHEET_PURCHASE_FRACTION: Record<SheetPurchaseUnit, number> = {
   full: 1,
   half: 0.5,
+  third: 1 / 3,
   quarter: 0.25,
 };
 
@@ -31,6 +32,8 @@ export function sheetPurchaseDetailLabel(unit: SheetPurchaseUnit): string {
       return 'full sheet only';
     case 'half':
       return '½-sheet increments';
+    case 'third':
+      return '⅓-sheet increments';
     case 'quarter':
       return '¼-sheet increments';
   }
@@ -38,7 +41,7 @@ export function sheetPurchaseDetailLabel(unit: SheetPurchaseUnit): string {
 
 /**
  * Sheets to order from total part area.
- * Rounds **up** to the next step the supplier allows (¼, ½, or full) so a small
+ * Rounds **up** to the next step the supplier allows (⅓, ¼, ½, or full) so a small
  * overrun (e.g. 1.05 sheets of material) becomes 1.25 when ¼ sheets are sold,
  * not 2 full sheets. "Full sheet only" means any overrun rounds to the next whole sheet.
  */
@@ -52,9 +55,16 @@ export function estimateSheetsFromArea(
   return steps * purchaseFraction;
 }
 
-/** Human-readable sheet count for cost lines (e.g. "0.25 sheet(s)", "2 sheet(s)"). */
+/** Human-readable sheet count for cost lines (e.g. "0.33 sheet(s)", "2 sheet(s)"). */
 export function formatSheetCount(sheets: number): string {
   if (sheets <= 0) return '0 sheet(s)';
-  const text = Number.isInteger(sheets) ? String(sheets) : sheets.toFixed(2).replace(/\.?0+$/, '');
+  const nearThird = Math.round(sheets * 3) / 3;
+  const nearQuarter = Math.round(sheets * 4) / 4;
+  const nearHalf = Math.round(sheets * 2) / 2;
+  let display = sheets;
+  if (Math.abs(sheets - nearThird) < 0.008) display = nearThird;
+  else if (Math.abs(sheets - nearQuarter) < 0.008) display = nearQuarter;
+  else if (Math.abs(sheets - nearHalf) < 0.008) display = nearHalf;
+  const text = Number.isInteger(display) ? String(display) : display.toFixed(2).replace(/\.?0+$/, '');
   return `${text} sheet(s)`;
 }

@@ -9,7 +9,7 @@ export type KickplateType = 'wood' | 'plastic';
 export type KickplateCoverage = 'front' | 'front-one-side' | 'front-both-sides';
 export type KickplateSide = 'left' | 'right';
 /** Smallest board size you can buy from the supplier for that melamine. */
-export type SheetPurchaseUnit = 'full' | 'half' | 'quarter';
+export type SheetPurchaseUnit = 'full' | 'half' | 'third' | 'quarter';
 
 export type EdgingPattern =
   | '1_long'

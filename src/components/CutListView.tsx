@@ -649,9 +649,8 @@ export function CutListView({ job }: Props) {
           )}
           {showTechnical && (
             <p className="hint">
-              Board sheet counts round up to each material&apos;s <strong>Buy as</strong> step (smallest size that supplier
-              sells — so a small overrun can be a ¼ or ½ sheet, not a full sheet). Masonite uses ¼-sheet steps. Confirm
-              with nesting before ordering.
+              Board sheet counts use <strong>max(area + wastage %, panel nesting + saw kerf)</strong>, rounded up to each
+              material&apos;s <strong>Buy as</strong> step (⅓, ¼, ½, or full). Match sheet maps before ordering.
             </p>
           )}
 

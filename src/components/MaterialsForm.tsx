@@ -541,7 +541,7 @@ export function MaterialsForm({
 
         <p className="hint">
           <strong>Saw blade width</strong> is the kerf between cuts when nesting panels on a sheet — it affects sheet maps,
-          offcuts, and grain-board sheet counts on the quote. Nesting uses panel-saw strips (full-length rips, then
+          offcuts, and board/masonite sheet counts on the quote. Nesting uses panel-saw strips (full-length rips, then
           crosscuts). Panel sizes on the cut list stay as finished dimensions.
         </p>
 
@@ -661,7 +661,7 @@ export function MaterialsForm({
 
         <p className="hint">
           Set your melamine board prices here. <strong>Buy as</strong> is the smallest board size your supplier will sell
-          for that colour (¼, ½, or full sheet only). Sheet count rounds up to that step so you do not pay for a whole
+          for that colour (⅓, ¼, ½, or full sheet only). Sheet count rounds up to that step so you do not pay for a whole
           extra sheet when you only need a bit more — e.g. need 1.05 sheets and ¼ sheets are available → quote 1.25, not 2.
           Link each board to its edging tape below.
         </p>
@@ -714,6 +714,7 @@ export function MaterialsForm({
                         updateMaterial(m.id, 'sheetPurchaseUnit', e.target.value as Material['sheetPurchaseUnit'])
                       }
                     >
+                      <option value="third">⅓ sheet</option>
                       <option value="quarter">¼ sheet</option>
                       <option value="half">½ sheet</option>
                       <option value="full">Full sheet only</option>
@@ -847,6 +848,7 @@ export function MaterialsForm({
                 })
               }
             >
+              <option value="third">⅓ sheet</option>
               <option value="quarter">¼ sheet</option>
               <option value="half">½ sheet</option>
               <option value="full">Full sheet only</option>
