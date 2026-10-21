@@ -9,7 +9,18 @@ import {
 import { DEFAULT_HINGE_PRESET_ID } from './hingeCatalog';
 import { applyCutSizeMode, edgingRunMm, type LongAlong } from './edgingCutSize';
 import { doorPanelHeight, doorPanelWidth, DEFAULT_DOOR_GAPS, hingesPerDoorLeaf } from './doorRules';
-import { drawerFrontHeight, drawerFrontWidth, DEFAULT_DRAWER_GAPS, DEFAULT_FRONT_OVERHANG_MM, DEFAULT_GAP_TO_DOOR_MM, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveFrontQty, targetDrawerOpeningHeight } from './drawerRules';
+import {
+  drawerBoxHeightFromFront,
+  drawerFrontHeight,
+  drawerFrontWidth,
+  DEFAULT_DRAWER_GAPS,
+  DEFAULT_FRONT_OVERHANG_MM,
+  DEFAULT_GAP_TO_DOOR_MM,
+  resolveDrawerBoxMaterialId,
+  resolveDrawerFrontMaterialId,
+  resolveFrontQty,
+  targetDrawerOpeningHeight,
+} from './drawerRules';
 import {
   drawerBoxFrontBackWidth,
   drawerBoxFrontBackWidthNote,
@@ -520,11 +531,11 @@ function calcDrawers(
     const frontClearance = drawer.frontClearance ?? 20;
     const backClearance = drawer.backClearance ?? 5;
     const sideDepth = drawerBoxSideDepth(D, frontClearance, backClearance);
-    const boxH = drawer.boxHeight;
+    const boxH = drawerBoxHeightFromFront(drawer, unit.height, drawers);
     const drawerMult = drawer.qty * mult;
     const frontPieceQty = drawerMult * resolveFrontQty(drawer);
     const facadeW = drawerFrontWidth(drawer);
-    const facadeH = drawerFrontHeight(drawer);
+    const facadeH = drawerFrontHeight(drawer, unit.height, drawers);
     const boxWidthNote = drawerBoxFrontBackWidthNote(W, T, sideClearance);
     const inner = drawerBoxInnerSize(frontBackWidth, sideDepth, T);
 
@@ -1108,7 +1119,7 @@ export function createDefaultDrawer(unit: Unit, job: Job, materialId: string): D
     frontClearance: 20,
     backClearance: 5,
   };
-  return { ...base, openingHeight: targetDrawerOpeningHeight(base) };
+  return { ...base, openingHeight: targetDrawerOpeningHeight(base, false, unit.height, [base]) };
 }
 
 export function createDefaultUnit(job: Job, index: number): Unit {

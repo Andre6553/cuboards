@@ -81,6 +81,8 @@ function migrateDrawer(
       boxEdgingMaterialId: d.boxEdgingMaterialId ?? boxBoardMat?.edgingMaterialId ?? edgingMaterials[0]?.id ?? '',
     },
     (unit.doors?.length ?? 0) > 0,
+    unit.height,
+    unit.drawers,
   );
 }
 

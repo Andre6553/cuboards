@@ -20,8 +20,13 @@ export function totalDoorOpeningHeight(unit: Unit): number {
 }
 
 /** Minimum front opening for an active drawer row. */
-export function minDrawerOpeningHeight(drawer: DrawerConfig, hasDoorBelow = false): number {
+export function minDrawerOpeningHeight(
+  drawer: DrawerConfig,
+  hasDoorBelow = false,
+  unit?: Unit,
+): number {
   if (!isActiveDrawer(drawer)) return 0;
+  if (unit) return targetDrawerOpeningHeight(drawer, hasDoorBelow, unit.height, unit.drawers);
   return targetDrawerOpeningHeight(drawer, hasDoorBelow);
 }
 
@@ -54,7 +59,7 @@ export function defaultDrawerOpeningHeight(unit: Unit): number {
     backClearance: 5,
   };
 
-  const typical = targetDrawerOpeningHeight(stub, hasDoor);
+  const typical = targetDrawerOpeningHeight(stub, hasDoor, height, [...existing, stub]);
 
   if (hasDoor) {
     const remaining = Math.max(0, height - existingTotal);
@@ -86,8 +91,14 @@ function scaleDrawerHeights(drawers: DrawerConfig[], targetTotal: number, hasDoo
   return scaled;
 }
 
-function syncActiveDrawerOpenings(drawers: DrawerConfig[], hasDoorBelow: boolean): DrawerConfig[] {
-  return drawers.map((d) => (isActiveDrawer(d) ? syncDrawerOpeningFromFront(d, hasDoorBelow) : d));
+function syncActiveDrawerOpenings(
+  drawers: DrawerConfig[],
+  hasDoorBelow: boolean,
+  carcassHeight: number,
+): DrawerConfig[] {
+  return drawers.map((d) =>
+    isActiveDrawer(d) ? syncDrawerOpeningFromFront(d, hasDoorBelow, carcassHeight, drawers) : d,
+  );
 }
 
 function rebalanceDrawerOnlyStack(
@@ -101,7 +112,7 @@ function rebalanceDrawerOnlyStack(
     return drawers.map((d) => (d.id === active[0].id ? { ...d, openingHeight: carcassHeight } : d));
   }
 
-  let rows = syncActiveDrawerOpenings(active, false);
+  let rows = syncActiveDrawerOpenings(active, false, carcassHeight);
   const lastIdx = rows.length - 1;
   const changedIdx = changedDrawerId ? rows.findIndex((d) => d.id === changedDrawerId) : -1;
 
@@ -163,7 +174,7 @@ function capDrawersForDoor(
   let adjustedActive: DrawerConfig[];
   if (active.length === 1) {
     const d = active[0];
-    const typical = targetDrawerOpeningHeight(d, true);
+    const typical = targetDrawerOpeningHeight(d, true, carcassHeight, drawers);
     adjustedActive = [
       {
         ...d,
@@ -207,11 +218,11 @@ export function resolveFrontLayout(unit: Unit, opts?: FrontLayoutOptions): Unit 
     return { ...unit, doors: syncedDoors, drawers: syncedDrawers };
   }
 
-  syncedDrawers = syncActiveDrawerOpenings(syncedDrawers, hasDoor);
+  syncedDrawers = syncActiveDrawerOpenings(syncedDrawers, hasDoor, height);
 
   if (active().length > 0 && doorCount > 0) {
     syncedDrawers = capDrawersForDoor(unit, syncedDrawers, syncedDoors, height);
-    syncedDrawers = syncActiveDrawerOpenings(syncedDrawers, true);
+    syncedDrawers = syncActiveDrawerOpenings(syncedDrawers, true, height);
 
     let drawerTotal = active().reduce((sum, d) => sum + d.openingHeight, 0);
 
@@ -262,5 +273,5 @@ export function maxDrawerOpeningHeight(unit: Unit, drawerId: string): number {
     .reduce((sum, d) => sum + d.openingHeight, 0);
   const minDoorTotal = unit.doors.reduce((sum, d) => sum + minDoorOpeningHeight(d), 0);
   const maxTotal = Math.max(0, unit.height - minDoorTotal);
-  return Math.max(minDrawerOpeningHeight(drawer, unit.doors.length > 0), maxTotal - otherDrawers);
+  return Math.max(minDrawerOpeningHeight(drawer, unit.doors.length > 0, unit), maxTotal - otherDrawers);
 }
