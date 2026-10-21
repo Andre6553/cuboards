@@ -696,6 +696,17 @@ function calcDrawers(
   }
 }
 
+/** Combine part labels when the same cut size + edging merges across names (e.g. left/right sides). */
+function mergeConsolidatedPartNames(existing: string, incoming: string): string {
+  const labels = new Set(
+    `${existing} / ${incoming}`
+      .split(' / ')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  return Array.from(labels).sort((a, b) => a.localeCompare(b)).join(' / ');
+}
+
 function consolidatePieces(
   job: Job,
   pieces: CutPiece[],
@@ -711,12 +722,15 @@ function consolidatePieces(
     const pattern = p.edgingPattern ?? 'none';
     const edgingMaterialId = p.edgingMaterialId ?? resolveEdgingMaterialId(job, p.materialId);
     const edgingKey = edgingGroupKey(job, pattern, edgingMaterialId);
-    const key = `${p.partName}|${p.materialId}|${p.width}|${p.length}|${p.grain}|${edgingKey}`;
+    const key = `${p.materialId}|${p.width}|${p.length}|${p.grain}|${edgingKey}`;
     const edgingLabel = formatEdgingLabel(job, pattern, edgingMaterialId);
     const groupKey = `${p.materialName}|${edgingKey}`;
     const existing = map.get(key);
     if (existing) {
       existing.totalQty += p.qty;
+      if (p.partName !== existing.partName) {
+        existing.partName = mergeConsolidatedPartNames(existing.partName, p.partName);
+      }
     } else {
       map.set(key, {
         partName: p.partName,
