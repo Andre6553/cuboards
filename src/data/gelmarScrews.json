@@ -35,6 +35,28 @@
       "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-32mm-150-pieces.html"
     },
     {
+      "id": "gelmar-4372",
+      "sku": "4372",
+      "title": "Drywall Screws, Phillips, 3.5mm x 41mm, 700 Pieces",
+      "category": "drywall",
+      "diameterMm": 3.5,
+      "lengthMm": 41,
+      "packSize": 700,
+      "priceZar": 105,
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-41mm-700-pieces.html"
+    },
+    {
+      "id": "gelmar-4361",
+      "sku": "4361",
+      "title": "Drywall Screws, Phillips, 3.5mm x 41mm, 80 Pieces",
+      "category": "drywall",
+      "diameterMm": 3.5,
+      "lengthMm": 41,
+      "packSize": 80,
+      "priceZar": 19,
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-41mm-80-pieces.html"
+    },
+    {
       "id": "gelmar-1037",
       "sku": "1037",
       "title": "Drywall Screws, Phillips, 6mm x 32mm, 1000 Pieces",
