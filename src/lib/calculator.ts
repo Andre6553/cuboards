@@ -158,8 +158,9 @@ function addEdging(
   });
 }
 
+/** Whole mm — cut house / panel saw (no 0.1 mm on cut lists). */
 function roundMm(n: number): number {
-  return Math.round(n * 10) / 10;
+  return Math.round(n);
 }
 
 /** Catalog short names end with "· SKU 200 · R 6.30"; the hardware table shows those in their own columns. */
@@ -371,8 +372,8 @@ function calcCarcass(
       materialName: `${job.masonite.name} — ${job.masonite.colour}`,
       partName: 'Carcass back (masonite)',
       unitName: unit.name,
-      width: Math.round(backW * 10) / 10,
-      length: Math.round(backH * 10) / 10,
+      width: Math.round(backW),
+      length: Math.round(backH),
       qty: mult,
       grain: 'none',
       edgingPattern: 'none',
@@ -677,8 +678,8 @@ function calcDrawers(
         materialName: `${job.masonite.name} — ${job.masonite.colour}`,
         partName: 'Drawer bottom (masonite)',
         unitName: unit.name,
-        width: Math.round(bottomMasonite.width * 10) / 10,
-        length: Math.round(bottomMasonite.length * 10) / 10,
+        width: Math.round(bottomMasonite.width),
+        length: Math.round(bottomMasonite.length),
         qty: drawerMult,
         grain: 'none',
         edgingPattern: 'none',

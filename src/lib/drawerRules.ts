@@ -81,7 +81,7 @@ export function drawerFrontPanelHeight(
   const gaps = resolveDrawerStackGaps(allDrawers);
   const usable = carcassHeight - gaps.top - gaps.bottom;
   const betweenTotal = Math.max(0, totalSlots - 1) * DRAWER_STACK_GAP_MM;
-  return round1(Math.max(0, (usable - betweenTotal) / totalSlots));
+  return Math.round(Math.max(0, (usable - betweenTotal) / totalSlots));
 }
 
 /** Drawer box panel height = front height minus overhang above box. */
@@ -92,7 +92,7 @@ export function drawerBoxHeightFromFront(
 ): number {
   const front = drawerFrontPanelHeight(drawer, carcassHeight, allDrawers);
   if (front <= 0) return Math.max(1, drawer.boxHeight);
-  return round1(Math.max(1, front - resolveFrontOverhang(drawer)));
+  return Math.round(Math.max(1, front - resolveFrontOverhang(drawer)));
 }
 
 /**
