@@ -271,35 +271,29 @@ function calcCarcass(
     }
   };
 
-  addPiece(
+  addEdgedPiece(
     'Side (left)',
     c.leftMaterialId,
     D,
     H,
     1,
     materialHasGrain(job.materials, c.leftMaterialId) ? 'vertical' : 'none',
-    'Grain vertical',
-    c.leftVisible ? '1_long' : 'none',
+    materialHasGrain(job.materials, c.leftMaterialId) ? 'Grain vertical' : '',
+    '1_long',
     c.leftEdgingMaterialId,
   );
-  if (c.leftVisible) {
-    addEdging(edging, job, c.leftMaterialId, 'Side (left)', unit.name, '1_long', D, H, mult, c.leftEdgingMaterialId, 'length');
-  }
 
-  addPiece(
+  addEdgedPiece(
     'Side (right)',
     c.rightMaterialId,
     D,
     H,
     1,
     materialHasGrain(job.materials, c.rightMaterialId) ? 'vertical' : 'none',
-    'Grain vertical',
-    c.rightVisible ? '1_long' : 'none',
+    materialHasGrain(job.materials, c.rightMaterialId) ? 'Grain vertical' : '',
+    '1_long',
     c.rightEdgingMaterialId,
   );
-  if (c.rightVisible) {
-    addEdging(edging, job, c.rightMaterialId, 'Side (right)', unit.name, '1_long', D, H, mult, c.rightEdgingMaterialId, 'length');
-  }
 
   addEdgedPiece('Bottom', c.bottomMaterialId, D, internalW, 1, 'none', '', '1_long', c.bottomEdgingMaterialId);
 
@@ -1127,8 +1121,6 @@ export function createDefaultUnit(job: Job, index: number): Unit {
       fillerEdgingMaterialId: job.materials.find((m) => m.id === defaultMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
       shelfQty: 1,
       fillerWidth: job.settings.defaultFillerWidth,
-      leftVisible: true,
-      rightVisible: false,
       backingType: 'none',
       backingMaterialId: defaultMat,
       countertopType: 'granite',

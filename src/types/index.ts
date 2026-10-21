@@ -224,8 +224,10 @@ export interface CarcassConfig {
   fillerEdgingMaterialId: string;
   shelfQty: number;
   fillerWidth: number;
-  leftVisible: boolean;
-  rightVisible: boolean;
+  /** @deprecated Ignored — sides always get 1 long edge (front). Kept for old saved jobs. */
+  leftVisible?: boolean;
+  /** @deprecated Ignored — sides always get 1 long edge (front). Kept for old saved jobs. */
+  rightVisible?: boolean;
   backingType: BackingType;
   backingMaterialId: string;
   countertopType: CountertopType;

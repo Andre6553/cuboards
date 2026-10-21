@@ -373,6 +373,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           </label>
           <label>
             Left side edging type
+            <span className="hint inline-hint">1 long edge (front)</span>
             <EdgingTypeSelect
               value={unit.carcass.leftEdgingMaterialId}
               fallbackMaterialId={unit.carcass.leftMaterialId}
@@ -380,10 +381,6 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               edgingMaterials={edgingMaterials}
               onChange={(v) => setCarcass('leftEdgingMaterialId', v)}
             />
-          </label>
-          <label className="checkbox-label side-checkbox">
-            <input type="checkbox" checked={unit.carcass.leftVisible} onChange={(e) => setCarcass('leftVisible', e.target.checked)} />
-            Left side visible (1 long edge on front)
           </label>
         </div>
         <div className="side-column">
@@ -404,6 +401,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           </label>
           <label>
             Right side edging type
+            <span className="hint inline-hint">1 long edge (front)</span>
             <EdgingTypeSelect
               value={unit.carcass.rightEdgingMaterialId}
               fallbackMaterialId={unit.carcass.rightMaterialId}
@@ -411,10 +409,6 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               edgingMaterials={edgingMaterials}
               onChange={(v) => setCarcass('rightEdgingMaterialId', v)}
             />
-          </label>
-          <label className="checkbox-label side-checkbox">
-            <input type="checkbox" checked={unit.carcass.rightVisible} onChange={(e) => setCarcass('rightVisible', e.target.checked)} />
-            Right side visible (1 long edge on front)
           </label>
         </div>
       </div>

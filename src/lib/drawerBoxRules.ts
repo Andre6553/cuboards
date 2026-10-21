@@ -12,10 +12,10 @@ export function carcassInternalWidth(carcassWidth: number, boardThickness: numbe
 }
 
 /**
- * Drawer box front/back panel width (mm) — panels sit between the box sides.
+ * Drawer box front/back panel width (mm) — full width in the runner bay (sides mount inside).
  *
- * = carcass width − 2×carcass T − 2×runner side clearance − 2×box T
- * e.g. 500 − 32 − 26 − 32 = 410 mm (16 mm board, 13 mm runner clearance)
+ * = carcass width − 2×carcass T − 2×runner side clearance
+ * e.g. 500 − 32 − 26 = 442 mm (16 mm board, 13 mm runner clearance)
  */
 export function drawerBoxFrontBackWidth(
   carcassWidth: number,
@@ -23,7 +23,7 @@ export function drawerBoxFrontBackWidth(
   sideClearance: number,
 ): number {
   const internalWidth = carcassInternalWidth(carcassWidth, boardThickness);
-  return internalWidth - 2 * sideClearance - 2 * boardThickness;
+  return internalWidth - 2 * sideClearance;
 }
 
 /**
@@ -40,14 +40,14 @@ export function drawerBoxSideDepth(
   return cupboardDepth - frontClearance - backClearance;
 }
 
-/** Inside the box, for a drop-in bottom (no groove). Front/back sit between the sides. */
+/** Inside the box, for a drop-in bottom (no groove). Sides sit inside the front/back width. */
 export function drawerBoxInnerSize(
   frontBackWidth: number,
   sideDepth: number,
   boardThickness: number,
 ): { width: number; depth: number } {
   return {
-    width: frontBackWidth,
+    width: frontBackWidth - 2 * boardThickness,
     depth: sideDepth - 2 * boardThickness,
   };
 }
@@ -61,7 +61,7 @@ export function drawerBoxFrontBackWidthNote(
   const width = drawerBoxFrontBackWidth(carcassWidth, boardThickness, sideClearance);
   return (
     `${width} mm = ${carcassWidth} mm − 2×${boardThickness} mm carcass (${internalWidth} mm) ` +
-    `− 2×${sideClearance} mm runner − 2×${boardThickness} mm box sides`
+    `− 2×${sideClearance} mm runner clearance`
   );
 }
 
