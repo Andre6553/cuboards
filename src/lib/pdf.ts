@@ -7,31 +7,21 @@ import { exportClientQuotePdf } from './quotePdf';
 import { formatMoney, resolveQuoteCurrency } from './currency';
 import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote } from './vat';
 import { drawPdfBrandHeader, loadPdfLogoDataUrl } from './pdfBrand';
-import { buildFactoryCutListRows, drawFactoryEdgingTick, factoryTickCellPdf } from './factoryCutList';
+import {
+  buildFactoryCutListGroups,
+  drawFactoryEdgingTick,
+  factoryTickCellPdf,
+  type FactoryCutListRow,
+} from './factoryCutList';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from './sheetLayout';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
-function renderFactoryCutListSection(
+function renderFactoryCutListTable(
   doc: jsPDF,
   y: number,
   margin: number,
-  job: Job,
-  result: CutListResult,
+  rows: FactoryCutListRow[],
 ): number {
-  const rows = buildFactoryCutListRows(job, result.pieces);
-  if (rows.length === 0) return y;
-
-  if (y > 150) {
-    doc.addPage();
-    y = margin;
-  }
-
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Cutting list', margin, y);
-  doc.setFont('helvetica', 'normal');
-  y += 5;
-
   autoTable(doc, {
     startY: y,
     head: [[
@@ -94,7 +84,47 @@ function renderFactoryCutListSection(
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (doc as any).lastAutoTable.finalY + 6;
+  return (doc as any).lastAutoTable.finalY + 4;
+}
+
+function renderFactoryCutListSection(
+  doc: jsPDF,
+  y: number,
+  margin: number,
+  job: Job,
+  result: CutListResult,
+): number {
+  const groups = buildFactoryCutListGroups(job, result.pieces);
+  if (groups.length === 0) return y;
+
+  if (y > 150) {
+    doc.addPage();
+    y = margin;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Cutting list', margin, y);
+  doc.setFont('helvetica', 'normal');
+  y += 5;
+
+  for (const group of groups) {
+    if (y > 165) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(40);
+    doc.text(group.heading, margin, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0);
+    y = renderFactoryCutListTable(doc, y, margin, group.rows);
+    y += 2;
+  }
+
+  return y + 2;
 }
 
 function renderGroupedSection(

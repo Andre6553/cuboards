@@ -13,7 +13,7 @@ import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
 import { SheetMapView } from './SheetMapView';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from '../lib/sheetLayout';
-import { buildFactoryCutListRows, factoryTickCell } from '../lib/factoryCutList';
+import { buildFactoryCutListGroups, factoryTickCell } from '../lib/factoryCutList';
 import type { CutListGroup, Job } from '../types';
 
 interface Props {
@@ -21,55 +21,62 @@ interface Props {
 }
 
 function FactoryCutListTable({ job, pieces }: { job: Job; pieces: ReturnType<typeof generateCutList>['pieces'] }) {
-  const rows = buildFactoryCutListRows(job, pieces);
-  if (rows.length === 0) {
+  const groups = buildFactoryCutListGroups(job, pieces);
+  if (groups.length === 0) {
     return <p className="hint">No board or masonite parts on this job.</p>;
   }
   return (
-    <div className="table-wrap factory-cutlist-wrap">
-      <table className="data-table factory-cutlist-table">
-        <thead>
-          <tr>
-            <th>Unit ID</th>
-            <th>Description</th>
-            <th>Board colour</th>
-            <th>Finish</th>
-            <th>Length (mm)</th>
-            <th>Width (mm)</th>
-            <th>Qty</th>
-            <th>L1</th>
-            <th>L2</th>
-            <th>B1</th>
-            <th>B2</th>
-            <th>Thick</th>
-            <th>Edging colour</th>
-            <th>Holes</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              <td>{r.unitId}</td>
-              <td>{r.description}</td>
-              <td>{r.boardColour}</td>
-              <td>{r.finish}</td>
-              <td>{r.lengthMm}</td>
-              <td>{r.widthMm}</td>
-              <td><strong>{r.qty}</strong></td>
-              <td className="factory-tick">{factoryTickCell(r.edging.l1)}</td>
-              <td className="factory-tick">{factoryTickCell(r.edging.l2)}</td>
-              <td className="factory-tick">{factoryTickCell(r.edging.b1)}</td>
-              <td className="factory-tick">{factoryTickCell(r.edging.b2)}</td>
-              <td>{r.edgingThickMm ?? ''}</td>
-              <td>{r.edgingColour}</td>
-              <td>{r.hingeHoles}</td>
-              <td>{r.notes}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {groups.map((group, gi) => (
+        <div key={gi} className="cutlist-group factory-cutlist-group">
+          <h4 className="subsection-title">{group.heading}</h4>
+          <div className="table-wrap factory-cutlist-wrap">
+            <table className="data-table factory-cutlist-table">
+              <thead>
+                <tr>
+                  <th>Unit ID</th>
+                  <th>Description</th>
+                  <th>Board colour</th>
+                  <th>Finish</th>
+                  <th>Length (mm)</th>
+                  <th>Width (mm)</th>
+                  <th>Qty</th>
+                  <th>L1</th>
+                  <th>L2</th>
+                  <th>B1</th>
+                  <th>B2</th>
+                  <th>Thick</th>
+                  <th>Edging colour</th>
+                  <th>Holes</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.rows.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.unitId}</td>
+                    <td>{r.description}</td>
+                    <td>{r.boardColour}</td>
+                    <td>{r.finish}</td>
+                    <td>{r.lengthMm}</td>
+                    <td>{r.widthMm}</td>
+                    <td><strong>{r.qty}</strong></td>
+                    <td className="factory-tick">{factoryTickCell(r.edging.l1)}</td>
+                    <td className="factory-tick">{factoryTickCell(r.edging.l2)}</td>
+                    <td className="factory-tick">{factoryTickCell(r.edging.b1)}</td>
+                    <td className="factory-tick">{factoryTickCell(r.edging.b2)}</td>
+                    <td>{r.edgingThickMm ?? ''}</td>
+                    <td>{r.edgingColour}</td>
+                    <td>{r.hingeHoles}</td>
+                    <td>{r.notes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -180,7 +187,7 @@ export function CutListView({ job }: Props) {
           <h2>{factory ? 'Factory cut list' : quote ? 'Client quotation' : 'Full cut list'}</h2>
           <p className="hint">
             {factory
-              ? 'Send the factory a PDF only (Download factory PDF) — Mosselbaai-style table: Unit ID = cupboard name, L1–B2 edging ticks, Thick, edging colour, Holes on doors.'
+              ? 'Send the factory a PDF only — grouped by board + edging tape (same as Full board groups). Unit ID = cupboard name; L1–B2, Thick, edging colour, Holes on doors.'
               : quote
                 ? 'Client-facing: scope of work and quotation total only — no supply breakdown or cut sizes.'
                 : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}

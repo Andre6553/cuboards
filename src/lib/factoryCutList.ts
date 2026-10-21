@@ -43,6 +43,60 @@ export interface FactoryCutListRow {
   notes: string;
 }
 
+export interface FactoryCutListGroup {
+  /** e.g. "White 16mm — Winterland (0.4 mm)" — same grouping as board cut list */
+  heading: string;
+  rows: FactoryCutListRow[];
+}
+
+const MASONITE_ID = 'masonite';
+
+function resolveEdgingMaterialId(job: Job, boardMaterialId: string, override?: string): string {
+  if (override) return override;
+  return job.materials.find((m) => m.id === boardMaterialId)?.edgingMaterialId ?? '';
+}
+
+function edgingGroupKey(job: Job, pattern: EdgingPattern, edgingMaterialId: string): string {
+  if (pattern === 'none') return 'none';
+  const em = job.edgingMaterials.find((e) => e.id === edgingMaterialId);
+  return `${pattern}|${em?.name ?? '—'}|${em?.thickness ?? 0}`;
+}
+
+function edgingTapeKeyFromEdgingGroupKey(edgingPart: string): string {
+  if (edgingPart === 'none') return 'none';
+  const segments = edgingPart.split('|');
+  if (segments.length < 3) return edgingPart;
+  const name = segments.slice(1, -1).join('|');
+  const thickness = segments[segments.length - 1];
+  return `${name}|${thickness}`;
+}
+
+function tapeHeading(tapeKey: string): string {
+  if (tapeKey === 'none') return 'No edging';
+  const pipe = tapeKey.lastIndexOf('|');
+  return `${tapeKey.slice(0, pipe)} (${tapeKey.slice(pipe + 1)} mm)`;
+}
+
+function factoryPieceGroupKeys(job: Job, piece: CutPiece): { sortKey: string; heading: string } {
+  const pattern = piece.edgingPattern ?? 'none';
+  const edgingMaterialId = resolveEdgingMaterialId(job, piece.materialId, piece.edgingMaterialId);
+  const edgingPart = edgingGroupKey(job, pattern, edgingMaterialId);
+  const tapeKey = edgingTapeKeyFromEdgingGroupKey(edgingPart);
+
+  if (piece.materialId === MASONITE_ID) {
+    return {
+      sortKey: `${piece.materialName}|masonite`,
+      heading: piece.materialName,
+    };
+  }
+
+  const sortKey = `${piece.materialName}|${tapeKey}`;
+  return {
+    sortKey,
+    heading: `${piece.materialName} — ${tapeHeading(tapeKey)}`,
+  };
+}
+
 function parseDimensionPair(formatted: string): { lengthMm: number; widthMm: number } {
   const parts = formatted.split('×').map((s) => s.trim());
   if (parts.length !== 2) return { lengthMm: 0, widthMm: 0 };
@@ -86,17 +140,46 @@ export function pieceToFactoryRow(job: Job, piece: CutPiece): FactoryCutListRow 
   };
 }
 
+function sortFactoryRows(a: FactoryCutListRow, b: FactoryCutListRow): number {
+  return (
+    a.unitId.localeCompare(b.unitId) ||
+    a.description.localeCompare(b.description) ||
+    b.lengthMm - a.lengthMm ||
+    b.widthMm - a.widthMm
+  );
+}
+
+/** One section per board + edging tape (matches Full/Factory board groups). */
+export function buildFactoryCutListGroups(job: Job, pieces: CutPiece[]): FactoryCutListGroup[] {
+  const map = new Map<string, { heading: string; materialName: string; tapeKey: string; rows: FactoryCutListRow[] }>();
+
+  for (const piece of pieces) {
+    if (piece.qty <= 0) continue;
+    const { sortKey, heading } = factoryPieceGroupKeys(job, piece);
+    const pipe = sortKey.indexOf('|');
+    const materialName = sortKey.slice(0, pipe);
+    const tapeKey = sortKey.slice(pipe + 1);
+    const entry = map.get(sortKey) ?? { heading, materialName, tapeKey, rows: [] };
+    entry.rows.push(pieceToFactoryRow(job, piece));
+    map.set(sortKey, entry);
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => {
+      const matCmp = a.materialName.localeCompare(b.materialName);
+      if (matCmp !== 0) return matCmp;
+      if ((a.tapeKey === 'none') !== (b.tapeKey === 'none')) return a.tapeKey === 'none' ? 1 : -1;
+      if (a.tapeKey === 'masonite' && b.tapeKey === 'masonite') return 0;
+      return a.tapeKey.localeCompare(b.tapeKey, undefined, { numeric: true });
+    })
+    .map(({ heading, rows }) => ({
+      heading,
+      rows: rows.sort(sortFactoryRows),
+    }));
+}
+
 export function buildFactoryCutListRows(job: Job, pieces: CutPiece[]): FactoryCutListRow[] {
-  return pieces
-    .filter((p) => p.qty > 0)
-    .map((p) => pieceToFactoryRow(job, p))
-    .sort(
-      (a, b) =>
-        a.unitId.localeCompare(b.unitId) ||
-        a.description.localeCompare(b.description) ||
-        b.lengthMm - a.lengthMm ||
-        b.widthMm - a.widthMm,
-    );
+  return buildFactoryCutListGroups(job, pieces).flatMap((g) => g.rows);
 }
 
 /** On-screen factory table (browser fonts render this reliably). */
