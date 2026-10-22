@@ -25,10 +25,14 @@ export function guillotineCutLines(placements: SheetMapSheet['placements']): {
   return { ripY, cross };
 }
 
-function fitFontSize(label: string, boxW: number, boxH: number, scale = 1): number {
+function fitFontSize(label: string, boxW: number, boxH: number, scale = 1, forPdf = false): number {
   const base = Math.min(boxW, boxH) * 0.22 * scale;
   const lenFactor = Math.max(1, label.length / 14);
-  return Math.max(5, Math.min(scale > 1 ? 20 : 14, base / lenFactor));
+  const raw = base / lenFactor;
+  if (forPdf) {
+    return Math.max(24, Math.min(52, raw * 0.5));
+  }
+  return Math.max(5, Math.min(scale > 1 ? 20 : 14, raw));
 }
 
 function placementSizeLabel(widthMm: number, heightMm: number): string {
@@ -45,6 +49,8 @@ function escapeXml(text: string): string {
 
 export type SheetMapSvgOptions = {
   expanded?: boolean;
+  /** Larger part labels for print/PDF raster (same geometry, readable sizes when zoomed). */
+  forPdf?: boolean;
   showSheetGrainBand?: boolean;
   showPartGrainArrows?: boolean;
   className?: string;
@@ -69,6 +75,7 @@ export function sheetMapSvgViewBoxSize(sheet: SheetMapSheet, options: SheetMapSv
 /** Inline-styled SVG matching on-screen sheet maps (for UI and PDF rasterization). */
 export function buildSheetMapSvg(sheet: SheetMapSheet, patternId: string, options: SheetMapSvgOptions = {}): string {
   const expanded = options.expanded ?? false;
+  const forPdf = options.forPdf ?? false;
   const showSheetGrainBand = options.showSheetGrainBand ?? false;
   const showPartGrainArrows = options.showPartGrainArrows ?? false;
   const { viewW, viewH, pad, grainBand } = sheetMapSvgViewBoxSize(sheet, options);
@@ -100,20 +107,21 @@ export function buildSheetMapSvg(sheet: SheetMapSheet, patternId: string, option
   }
 
   sheet.placements.forEach((p) => {
-    const fontSize = fitFontSize(p.label, p.widthMm, p.heightMm, expanded ? 1.85 : 1);
+    const fontSize = fitFontSize(p.label, p.widthMm, p.heightMm, expanded ? 1.85 : 1, forPdf);
     const cx = pad + p.xMm + p.widthMm / 2;
     const cy = pad + grainBand + p.yMm + p.heightMm / 2;
     const lines = p.label.split(' · ');
     const line1 = lines[0] ?? p.label;
     const line2 = lines[1];
     const sizeText = placementSizeLabel(p.widthMm, p.heightMm);
-    const minLabelW = expanded ? 28 : 55;
-    const minLabelH = expanded ? 16 : 28;
-    const minSizeW = expanded ? 22 : 38;
-    const minSizeH = expanded ? 10 : 16;
+    const minLabelW = forPdf ? 38 : expanded ? 28 : 55;
+    const minLabelH = forPdf ? 28 : expanded ? 16 : 28;
+    const minSizeW = forPdf ? 28 : expanded ? 22 : 38;
+    const minSizeH = forPdf ? 18 : expanded ? 10 : 16;
     const showName = p.widthMm > minLabelW && p.heightMm > minLabelH;
-    const showUnit = showName && line2 && p.heightMm > (expanded ? 40 : 52);
+    const showUnit = !forPdf && showName && line2 && p.heightMm > (expanded ? 40 : 52);
     const showSize = p.widthMm > minSizeW && p.heightMm > minSizeH;
+    const sizeFontSize = forPdf ? Math.max(fontSize * 0.95, 26) : showName ? fontSize * 0.82 : fontSize * 0.9;
     const grainLift = showPartGrainArrows && p.grainLocked && showName ? fontSize * 0.35 : 0;
     const rowCount = (showName ? 1 : 0) + (showUnit ? 1 : 0) + (showSize ? 1 : 0);
     const rowStep = fontSize * 1.05;
@@ -126,9 +134,10 @@ export function buildSheetMapSvg(sheet: SheetMapSheet, patternId: string, option
     if (showPartGrainArrows && p.grainLocked && p.widthMm > 36 && p.heightMm > 16) {
       body += `<line x1="${pad + p.xMm + 6}" y1="${cy - grainLift}" x2="${pad + p.xMm + p.widthMm - 6}" y2="${cy - grainLift}" stroke="#1d4ed8" stroke-width="${expanded ? 1.4 : 1}" opacity="0.85" marker-end="url(#${safeId}-arrow)"/>`;
     }
+    const textWeight = forPdf ? ' font-weight="700"' : '';
     if (showName) {
       const yText = blockTop + row++ * rowStep;
-      body += `<text x="${cx}" y="${yText}" text-anchor="middle" dominant-baseline="middle" fill="#1e293b" font-family="Segoe UI, system-ui, sans-serif" font-size="${fontSize}">${escapeXml(line1)}</text>`;
+      body += `<text x="${cx}" y="${yText}" text-anchor="middle" dominant-baseline="middle" fill="#0f172a" font-family="Segoe UI, system-ui, sans-serif"${textWeight} font-size="${fontSize}">${escapeXml(line1)}</text>`;
     }
     if (showUnit && line2) {
       const yText = blockTop + row++ * rowStep;
@@ -136,7 +145,7 @@ export function buildSheetMapSvg(sheet: SheetMapSheet, patternId: string, option
     }
     if (showSize) {
       const yText = blockTop + row++ * rowStep;
-      body += `<text x="${cx}" y="${yText}" text-anchor="middle" dominant-baseline="middle" fill="#0f172a" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="${showName ? fontSize * 0.82 : fontSize * 0.9}">${escapeXml(sizeText)}</text>`;
+      body += `<text x="${cx}" y="${yText}" text-anchor="middle" dominant-baseline="middle" fill="#0f172a" font-family="Segoe UI, system-ui, sans-serif" font-weight="700" font-size="${sizeFontSize}">${escapeXml(sizeText)}</text>`;
     }
     body += `</g>`;
   });

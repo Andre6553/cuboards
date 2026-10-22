@@ -2,9 +2,12 @@ import type { jsPDF } from 'jspdf';
 import type { SheetMapGroup } from '../types';
 import { buildSheetMapSvg, sheetMapSvgViewBoxSize } from './sheetMapDiagram';
 
+/** Screen px per mm at 96 dpi — used to target ~300 dpi in the embedded PDF image. */
 const PX_PER_MM = 3.78;
+const PDF_RASTER_DPI = 300;
+const PDF_RASTER_SCALE = PDF_RASTER_DPI / 96;
 
-function svgStringToJpegDataUrl(svg: string, pixelWidth: number): Promise<string> {
+function svgStringToPngDataUrl(svg: string, pixelWidth: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
     const img = new Image();
@@ -22,9 +25,11 @@ function svgStringToJpegDataUrl(svg: string, pixelWidth: number): Promise<string
       }
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.92));
+      resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -45,11 +50,8 @@ export async function appendSheetMapsToPdf(
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const contentW = pageW - margin * 2;
-  const cols = 2;
-  const gap = 6;
-  const cellW = (contentW - gap * (cols - 1)) / cols;
   const captionH = 7;
-  const maxDiagramH = 72;
+  const maxDiagramH = pageH - margin * 2 - captionH - 8;
 
   let y = startY;
 
@@ -69,7 +71,7 @@ export async function appendSheetMapsToPdf(
   doc.setFontSize(8);
   doc.setTextColor(80);
   const hint = doc.splitTextToSize(
-    'Panel-saw layout: rip strips across the sheet, then crosscut parts along the grain. Grain runs along the long side (→). Dashed areas are keeper offcuts.',
+    'Panel-saw layout: rip strips across the sheet, then crosscut parts along the grain. Grain runs along the long side (→). Dashed areas are keeper offcuts. One sheet per row — zoom in for part sizes.',
     contentW,
   );
   doc.text(hint, margin, y);
@@ -84,51 +86,40 @@ export async function appendSheetMapsToPdf(
     y += 5;
     doc.setFont('helvetica', 'normal');
 
-    let col = 0;
-    let rowStartY = y;
-    let rowMaxH = 0;
-
     for (const sheet of group.sheets) {
       const patternId = `pdf-${group.materialId}-${sheet.sheetIndex}`;
-      const { viewW, viewH } = sheetMapSvgViewBoxSize(sheet, {});
-      let diagramW = cellW;
+      const { viewW, viewH } = sheetMapSvgViewBoxSize(sheet, { forPdf: true });
+      let diagramW = contentW;
       let diagramH = (diagramW * viewH) / viewW;
       if (diagramH > maxDiagramH) {
         diagramH = maxDiagramH;
         diagramW = (diagramH * viewW) / viewH;
       }
-      const blockH = captionH + diagramH + 3;
+      const blockH = captionH + diagramH + 6;
 
-      if (col === 0) {
-        ensureSpace(blockH);
-        rowStartY = y;
-        rowMaxH = 0;
-      }
+      ensureSpace(blockH);
 
-      const x = margin + col * (cellW + gap);
-      doc.setFontSize(8);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
       doc.text(
         `Sheet ${sheet.sheetIndex} — ${sheet.grainLengthMm} × ${sheet.crossLengthMm} mm`,
-        x,
-        rowStartY + 4,
+        margin,
+        y + 4,
       );
+      doc.setFont('helvetica', 'normal');
 
-      const svg = buildSheetMapSvg(sheet, patternId, {});
-      const pixelWidth = Math.round(diagramW * PX_PER_MM * 2);
-      const dataUrl = await svgStringToJpegDataUrl(svg, pixelWidth);
-      doc.addImage(dataUrl, 'JPEG', x, rowStartY + captionH, diagramW, diagramH);
+      const svg = buildSheetMapSvg(sheet, patternId, { forPdf: true });
+      const pixelWidth = Math.max(
+        3200,
+        Math.round(diagramW * PX_PER_MM * PDF_RASTER_SCALE),
+      );
+      const dataUrl = await svgStringToPngDataUrl(svg, pixelWidth);
+      const x = margin + (contentW - diagramW) / 2;
+      doc.addImage(dataUrl, 'PNG', x, y + captionH, diagramW, diagramH);
 
-      rowMaxH = Math.max(rowMaxH, blockH);
-      col += 1;
-      if (col >= cols) {
-        y = rowStartY + rowMaxH + 4;
-        col = 0;
-      }
+      y += blockH;
     }
 
-    if (col !== 0) {
-      y = rowStartY + rowMaxH + 4;
-    }
     y += 3;
   }
 
