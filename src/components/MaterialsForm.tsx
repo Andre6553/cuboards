@@ -26,6 +26,7 @@ import {
   notifyGelmarRefreshFailure,
   type GelmarRefreshUiState,
 } from '../lib/gelmarPriceRefresh';
+import { patchGelmarCategoryPrices, type GelmarPriceCategory } from '../lib/gelmarPriceSnapshot';
 import {
   formatMoney,
   priceInputLabel,
@@ -235,6 +236,7 @@ export function MaterialsForm({
 
   const runGelmarRefresh = async (options: {
     apiPath: string;
+    gelmarCategory: GelmarPriceCategory;
     setRefreshing: (v: boolean) => void;
     setUi: (ui: GelmarRefreshUiState) => void;
     currentPrices: Record<string, number>;
@@ -253,6 +255,7 @@ export function MaterialsForm({
         options.formatLabel,
       );
       options.onPricesChange(nextPrices);
+      patchGelmarCategoryPrices(options.gelmarCategory, nextPrices, data.scrapedAt);
       options.setUi({
         note: gelmarRefreshNote(changes, checked.length, data.scrapedAt),
         error: null,
@@ -273,6 +276,7 @@ export function MaterialsForm({
   const refreshGelmarRunners = () =>
     void runGelmarRefresh({
       apiPath: '/api/gelmar-runners',
+      gelmarCategory: 'runners',
       setRefreshing: setRefreshingRunners,
       setUi: setRunnerRefresh,
       currentPrices: runnerPrices,
@@ -284,6 +288,7 @@ export function MaterialsForm({
   const refreshGelmarHinges = () =>
     void runGelmarRefresh({
       apiPath: '/api/gelmar-hinges',
+      gelmarCategory: 'hinges',
       setRefreshing: setRefreshingHinges,
       setUi: setHingeRefresh,
       currentPrices: hingePrices,
@@ -295,6 +300,7 @@ export function MaterialsForm({
   const refreshGelmarScrews = () =>
     void runGelmarRefresh({
       apiPath: '/api/gelmar-screws',
+      gelmarCategory: 'screws',
       setRefreshing: setRefreshingScrews,
       setUi: setScrewRefresh,
       currentPrices: screwPrices,
@@ -306,6 +312,7 @@ export function MaterialsForm({
   const refreshGelmarFittings = () =>
     void runGelmarRefresh({
       apiPath: '/api/gelmar-connecting-fittings',
+      gelmarCategory: 'connectingFittings',
       setRefreshing: setRefreshingFittings,
       setUi: setFittingRefresh,
       currentPrices: connectingFittingPrices,

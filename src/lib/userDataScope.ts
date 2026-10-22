@@ -24,6 +24,8 @@ export const userStorageKeys = {
   jobs: () => scopedKey('cuboards_jobs'),
   boardCatalog: () => scopedKey('cuboards_board_catalog'),
   priceList: () => scopedKey('cuboards_price_list'),
+  unitPresets: () => scopedKey('cuboards_unit_presets'),
+  gelmarPrices: () => scopedKey('cuboards_gelmar_prices'),
 };
 
 const LEGACY_JOBS = 'cuboards_jobs';

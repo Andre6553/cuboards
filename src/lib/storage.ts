@@ -28,6 +28,7 @@ import {
   loadMaterialCatalog,
   mergeIntoMaterialCatalog,
 } from './materialCatalog';
+import { applyGelmarSnapshotToJobPricing } from './gelmarPriceSnapshot';
 import { loadPriceList } from './priceList';
 import { DEFAULT_HARDWARE_PRICING, resolveHardwarePricing } from './hardwarePricing';
 import { requireUserDataScope, userStorageKeys } from './userDataScope';
@@ -120,9 +121,13 @@ export function createNewJob(): Job {
     units: [],
   };
   const list = loadPriceList();
-  if (!list) return job;
-  const { savedAt: _savedAt, ...defaults } = structuredClone(list);
-  return migrateJob({ ...job, ...defaults });
+  const withDefaults = !list
+    ? job
+    : (() => {
+        const { savedAt: _savedAt, ...defaults } = structuredClone(list);
+        return migrateJob({ ...job, ...defaults });
+      })();
+  return applyGelmarSnapshotToJobPricing(withDefaults);
 }
 
 export function duplicateJob(source: Job): Job {

@@ -13,7 +13,7 @@
 - **30-day trial** with full app access, granted once per **browser install id** (`localStorage` key `cuboards_install_id`).
 - A second account on the **same browser profile** does **not** get another trial (RPC `finalize_cuboards_signup`).
 - Clearing site data or another browser/device can still start a new install id — stronger fingerprinting is a later upgrade.
-- **Jobs and client data** sync to `cuboards_jobs` (full job JSON per row). **RLS:** each row’s `user_id` must match `auth.uid()` — installers never see each other’s data. Board catalog and **My default prices** are per account in `cuboards_user_prefs` with the same RLS. Browser storage keys are scoped by user id so signing in as someone else on the same PC does not mix jobs.
+- **Jobs and client data** sync to `cuboards_jobs` (full job JSON per row). **RLS:** each row’s `user_id` must match `auth.uid()` — installers never see each other’s data. Per account in `cuboards_user_prefs` (same RLS): board catalog, **My default prices**, **unit presets**, and **Gelmar price snapshot** (live refreshed SKU prices — not the full Gelmar catalog JSON). Browser storage keys are scoped by user id so signing in as someone else on the same PC does not mix jobs.
 
 ## SQL
 

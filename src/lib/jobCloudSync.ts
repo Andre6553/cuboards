@@ -1,9 +1,27 @@
 import type { Job } from '../types';
-import { loadJobs, migrateJob } from './storage';
-import { getSupabase } from './supabaseClient';
+import {
+  registerCloudPrefsPushImpl,
+  scheduleCloudPrefsPush,
+  setCloudPrefsPushContext,
+} from './cloudPrefsPush';
+import {
+  type GelmarPriceSnapshot,
+  loadGelmarPriceSnapshot,
+  mergeGelmarSnapshots,
+  saveGelmarPriceSnapshot,
+} from './gelmarPriceSnapshot';
 import { loadMaterialCatalog, saveMaterialCatalog, type BoardCatalog } from './materialCatalog';
+import {
+  adoptLegacyUnitPresetsIfEmpty,
+  loadPresetsBundle,
+  mergePresetBundles,
+  type UnitPresetsBundle,
+  writePresetsBundle,
+} from './presets';
 import { loadPriceList, type PriceList } from './priceList';
 import { recordCloudSync } from './backupReminder';
+import { loadJobs, migrateJob } from './storage';
+import { getSupabase } from './supabaseClient';
 import { adoptLegacyDeviceStorageIfEmpty, requireUserDataScope, userStorageKeys } from './userDataScope';
 
 let cloudSaveListener: (() => void) | null = null;
@@ -18,7 +36,13 @@ export function notifyCloudSaved(): void {
 }
 
 type JobRow = { id: string; data: Job; updated_at: string };
-type PrefsRow = { board_catalog: BoardCatalog | null; price_list: PriceList | null; updated_at: string };
+type PrefsRow = {
+  board_catalog: BoardCatalog | null;
+  price_list: PriceList | null;
+  unit_presets: UnitPresetsBundle | null;
+  gelmar_prices: GelmarPriceSnapshot | null;
+  updated_at: string;
+};
 
 export function mergeJobLists(local: Job[], remote: Job[]): Job[] {
   const map = new Map<string, Job>();
@@ -70,6 +94,7 @@ export async function deleteCloudJob(userId: string, jobId: string): Promise<voi
 
 export async function syncJobsWithCloud(userId: string): Promise<Job[]> {
   requireUserDataScope();
+  adoptLegacyUnitPresetsIfEmpty();
   const remote = await fetchCloudJobs(userId);
   let local = loadJobs();
   if (local.length === 0 && remote.length === 0) {
@@ -89,7 +114,9 @@ export async function syncAccountWithCloud(userId: string): Promise<Job[]> {
   return merged;
 }
 
-function applyPrefsFromCloud(catalog: BoardCatalog | null, priceList: PriceList | null): void {
+function applyPrefsFromCloud(row: PrefsRow): void {
+  const catalog = row.board_catalog;
+  const priceList = row.price_list;
   const localCatalog = loadMaterialCatalog();
   const localPrice = loadPriceList();
 
@@ -111,50 +138,56 @@ function applyPrefsFromCloud(catalog: BoardCatalog | null, priceList: PriceList 
       localStorage.setItem(userStorageKeys.priceList(), JSON.stringify(priceList));
     }
   }
+
+  if (row.unit_presets?.presets) {
+    const merged = mergePresetBundles(loadPresetsBundle(), row.unit_presets);
+    writePresetsBundle(merged);
+  }
+
+  const mergedGelmar = mergeGelmarSnapshots(loadGelmarPriceSnapshot(), row.gelmar_prices);
+  if (mergedGelmar?.savedAt) {
+    saveGelmarPriceSnapshot(mergedGelmar);
+  }
 }
 
 export async function pullUserPrefs(userId: string): Promise<void> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('cuboards_user_prefs')
-    .select('board_catalog, price_list, updated_at')
+    .select('board_catalog, price_list, unit_presets, gelmar_prices, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return;
-  const row = data as PrefsRow;
-  applyPrefsFromCloud(row.board_catalog, row.price_list);
+  applyPrefsFromCloud(data as PrefsRow);
 }
 
 export async function pushUserPrefsFromLocal(userId: string): Promise<void> {
   const supabase = getSupabase();
   const board_catalog = loadMaterialCatalog();
   const price_list = loadPriceList();
+  const unit_presets = loadPresetsBundle();
+  const gelmar_prices = loadGelmarPriceSnapshot();
   const { error } = await supabase.from('cuboards_user_prefs').upsert({
     user_id: userId,
     board_catalog,
     price_list,
+    unit_presets: unit_presets.presets.length ? unit_presets : null,
+    gelmar_prices: gelmar_prices?.savedAt ? gelmar_prices : null,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(error.message);
 }
 
-let prefsPushTimer: ReturnType<typeof setTimeout> | null = null;
-let prefsUserId: string | null = null;
-
 export function setCloudSyncUserId(userId: string | null): void {
-  prefsUserId = userId;
+  setCloudPrefsPushContext(userId, notifyCloudSaved);
 }
 
-export function schedulePushUserPrefs(): void {
-  if (!prefsUserId) return;
-  if (prefsPushTimer) clearTimeout(prefsPushTimer);
-  prefsPushTimer = setTimeout(() => {
-    void pushUserPrefsFromLocal(prefsUserId!)
-      .then(() => notifyCloudSaved())
-      .catch((e) => console.error('pushUserPrefs', e));
-  }, 800);
-}
+export { scheduleCloudPrefsPush as schedulePushUserPrefs };
+
+registerCloudPrefsPushImpl(async (userId) => {
+  await pushUserPrefsFromLocal(userId);
+});
 
 let jobsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingJobsPush: { userId: string; jobs: Job[] } | null = null;
