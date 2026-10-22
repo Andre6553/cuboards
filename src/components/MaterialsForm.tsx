@@ -660,10 +660,9 @@ export function MaterialsForm({
       <CollapsibleSection title="Board materials — price per sheet">
 
         <p className="hint">
-          Set your melamine board prices here. <strong>Buy as</strong> is the smallest board size your supplier will sell
-          for that colour (⅓, ¼, ½, or full sheet only). Sheet count rounds up to that step so you do not pay for a whole
-          extra sheet when you only need a bit more — e.g. need 1.05 sheets and ¼ sheets are available → quote 1.25, not 2.
-          Link each board to its edging tape below.
+          <strong>Board and edging types are shared across all jobs</strong> on this device — add or edit once, every job
+          uses the same catalog. Set melamine prices here too. <strong>Buy as</strong> is the smallest board size your
+          supplier will sell (⅓, ¼, ½, or full). Link each board to its edging tape below.
         </p>
 
         <div className="table-wrap">

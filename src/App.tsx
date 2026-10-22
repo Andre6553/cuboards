@@ -3,7 +3,8 @@ import { AppBrandBar } from './components/AppBrandBar';
 import { Dashboard } from './components/Dashboard';
 import { JobEditor } from './components/JobEditor';
 import type { Job } from './types';
-import { loadJobs, saveJobs, upsertJob } from './lib/storage';
+import { catalogFingerprint, saveMaterialCatalog } from './lib/materialCatalog';
+import { loadJobs, migrateJob, saveJobs, upsertJob } from './lib/storage';
 import './App.css';
 
 function App() {
@@ -11,7 +12,9 @@ function App() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
   useEffect(() => {
-    setJobs(loadJobs());
+    const loaded = loadJobs();
+    saveJobs(loaded);
+    setJobs(loaded);
   }, []);
 
   const persist = useCallback((next: Job[]) => {
@@ -20,6 +23,19 @@ function App() {
   }, []);
 
   const handleJobChange = (job: Job) => {
+    const prev = jobs.find((j) => j.id === job.id);
+    const catalogChanged =
+      !prev ||
+      catalogFingerprint(prev.materials, prev.edgingMaterials) !==
+        catalogFingerprint(job.materials, job.edgingMaterials);
+
+    if (catalogChanged) {
+      const catalog = saveMaterialCatalog(job.materials, job.edgingMaterials);
+      const withUpdated = upsertJob(jobs, job);
+      persist(withUpdated.map((j) => migrateJob({ ...j, materials: catalog.materials.map((m) => ({ ...m })), edgingMaterials: catalog.edgingMaterials.map((e) => ({ ...e })) })));
+      return;
+    }
+
     persist(upsertJob(jobs, job));
   };
 

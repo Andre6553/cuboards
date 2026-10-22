@@ -1,6 +1,5 @@
 import {
   DEFAULT_EDGING,
-  DEFAULT_MATERIALS,
   DEFAULT_MASONITE,
   DEFAULT_PLASTIC_KICKPLATE,
   DEFAULT_RUNNER_PRICES,
@@ -22,6 +21,12 @@ import { DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront
 import { syncFrontLayoutToUnit } from './frontLayout';
 import { recordJobsBackup } from './backupReminder';
 import { DEFAULT_QUOTE_TERMS } from './constants';
+import {
+  ensureMaterialCatalog,
+  hydrateJobFromCatalog,
+  loadMaterialCatalog,
+  mergeIntoMaterialCatalog,
+} from './materialCatalog';
 import { loadPriceList } from './priceList';
 import { DEFAULT_HARDWARE_PRICING, resolveHardwarePricing } from './hardwarePricing';
 
@@ -95,14 +100,15 @@ const emptyClient = (): Client => ({
 
 export function createNewJob(): Job {
   const now = new Date().toISOString();
+  const catalog = ensureMaterialCatalog(loadJobs());
   const job: Job = {
     id: crypto.randomUUID(),
     createdAt: now,
     updatedAt: now,
     client: emptyClient(),
     settings: { ...DEFAULT_SETTINGS },
-    materials: DEFAULT_MATERIALS.map((m) => ({ ...m })),
-    edgingMaterials: DEFAULT_EDGING.map((e) => ({ ...e })),
+    materials: catalog.materials.map((m) => ({ ...m })),
+    edgingMaterials: catalog.edgingMaterials.map((e) => ({ ...e })),
     masonite: { ...DEFAULT_MASONITE },
     plasticKickplate: { ...DEFAULT_PLASTIC_KICKPLATE },
     runnerPrices: { ...DEFAULT_RUNNER_PRICES },
@@ -212,8 +218,13 @@ export function migrateJob(job: Job): Job {
 export function loadJobs(): Job[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return (JSON.parse(raw) as Job[]).map(migrateJob);
+    if (!raw) {
+      ensureMaterialCatalog([]);
+      return [];
+    }
+    const parsed = JSON.parse(raw) as Job[];
+    const catalog = ensureMaterialCatalog(parsed);
+    return parsed.map((j) => migrateJob(hydrateJobFromCatalog(j, catalog)));
   } catch {
     return [];
   }
@@ -264,7 +275,11 @@ export function importJobsJson(file: File): Promise<Job[]> {
     const parsed = JSON.parse(text) as Job | Job[];
     const list = Array.isArray(parsed) ? parsed : [parsed];
     return list.map((raw) => {
-      const job = migrateJob(raw);
+      if (raw.materials?.length || raw.edgingMaterials?.length) {
+        mergeIntoMaterialCatalog(raw.materials ?? [], raw.edgingMaterials ?? []);
+      }
+      const catalog = loadMaterialCatalog() ?? ensureMaterialCatalog([]);
+      const job = migrateJob(hydrateJobFromCatalog(raw, catalog));
       if (!job.id || !job.settings) throw new Error('Invalid job file');
       return { ...job, id: crypto.randomUUID(), updatedAt: new Date().toISOString() };
     });

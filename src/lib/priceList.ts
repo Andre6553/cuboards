@@ -1,3 +1,4 @@
+import { mergeIntoMaterialCatalog, saveMaterialCatalog } from './materialCatalog';
 import type { Job } from '../types';
 
 const PRICE_LIST_KEY = 'cuboards_price_list';
@@ -27,6 +28,7 @@ export function loadPriceList(): PriceList | null {
 }
 
 export function savePriceListFromJob(job: Job): PriceList {
+  saveMaterialCatalog(job.materials, job.edgingMaterials);
   const list: PriceList = structuredClone({
     settings: job.settings,
     materials: job.materials,
@@ -57,10 +59,14 @@ export function applyPriceListToJob(job: Job, list: PriceList): Job {
     return [...merged, ...added.map((x) => ({ ...x }))];
   };
 
+  const materials = mergeById(job.materials, list.materials);
+  const edgingMaterials = mergeById(job.edgingMaterials, list.edgingMaterials);
+  mergeIntoMaterialCatalog(materials, edgingMaterials);
+
   return {
     ...job,
-    materials: mergeById(job.materials, list.materials),
-    edgingMaterials: mergeById(job.edgingMaterials, list.edgingMaterials),
+    materials,
+    edgingMaterials,
     masonite: { ...list.masonite },
     plasticKickplate: { ...list.plasticKickplate },
     runnerPrices: { ...job.runnerPrices, ...list.runnerPrices },
