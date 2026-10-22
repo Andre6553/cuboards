@@ -13,7 +13,7 @@ Andre asked to keep these improvements on file and implement in priority order.
 
 ## Tier 2 — pro depth
 
-5. **Visual sheet maps** — **in progress (2026-10-09)** — diagram per sheet from nesting.
+5. **Visual sheet maps** — **done (2026-10-22)** — on-screen + **embedded in factory & full PDFs**.
 6. **Share quote link** — read-only client view + optional accept.
 7. **Quote revision history** — v1/v2/v3 on one job.
 8. **Room / area grouping** — kitchen vs scullery on scope and cut list.

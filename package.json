@@ -12,6 +12,7 @@
     "refresh-gelmar-runners": "node scripts/export-gelmar-catalog.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "jspdf": "^4.2.1",

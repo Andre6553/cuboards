@@ -4,9 +4,19 @@ interface Props {
   onHome?: () => void;
   homeEnabled?: boolean;
   contextLabel?: string;
+  accountEmail?: string;
+  trialLabel?: string;
+  onSignOut?: () => void;
 }
 
-export function AppBrandBar({ onHome, homeEnabled = false, contextLabel }: Props) {
+export function AppBrandBar({
+  onHome,
+  homeEnabled = false,
+  contextLabel,
+  accountEmail,
+  trialLabel,
+  onSignOut,
+}: Props) {
   const logo = <CuboardsLogo />;
 
   return (
@@ -27,6 +37,19 @@ export function AppBrandBar({ onHome, homeEnabled = false, contextLabel }: Props
             {contextLabel}
           </p>
         ) : null}
+        <div className="app-brand-account">
+          {trialLabel ? <span className="app-brand-trial">{trialLabel}</span> : null}
+          {accountEmail ? (
+            <span className="app-brand-email" title={accountEmail}>
+              {accountEmail}
+            </span>
+          ) : null}
+          {onSignOut ? (
+            <button type="button" className="app-brand-signout" onClick={onSignOut}>
+              Sign out
+            </button>
+          ) : null}
+        </div>
       </div>
     </header>
   );

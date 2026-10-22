@@ -9,6 +9,9 @@ Strong candidate to sell as a tool/subscription to installers.
 
 ## Stack & key paths
 - **GitHub:** https://github.com/Andre6553/cuboards (public)
+- **Supabase (Cuboards only):** ref `vnsmgvdmxlrfffehzjpf`, region `eu-west-1` — credentials in
+  `.env`; migrations in `supabase/migrations/`. MCP: `supabase-cuboards` in `~/.cursor/mcp.json`.
+  SQL policy: `.cursor/rules/supabase-sql.mdc`. **Not** the BizTap DB (`vsujfqufdyoxfaopqcut`).
 - **Vite + TypeScript** web app. Source in `src/`, built site in `dist/`.
 - `Start Cuboards.bat` launches it; dev: `npm install` then `npm run dev`
   (http://localhost:5173). See `README.md`.
@@ -16,6 +19,11 @@ Strong candidate to sell as a tool/subscription to installers.
 
 ## Status
 Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF export).
+**Supabase auth live 2026-10-22** — email/password login, **90-day trial** (full access), one trial per
+browser install id (anti re-signup abuse). Jobs still **localStorage** on device; cloud job sync later.
+Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device.sql`.
+**PayFast Pro (2026-10-22):** `api/payfast-initiate.js`, `api/payfast-notify.js`, migration
+`0002_payfast_subscriptions.sql` — R199/mo default, sandbox-ready. See `docs/payfast-setup.md`.
 
 ## Notes
 - _Add pricing/packaging plan and installer feedback here._

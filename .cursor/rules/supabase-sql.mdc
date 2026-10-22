@@ -1,0 +1,62 @@
+---
+description: MANDATORY — all Cuboards Supabase DB changes use Cuboards project only
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Cuboards — Supabase database (mandatory binding)
+
+## HARD RULE — which database to use
+
+Any time the task touches **Cuboards** and the **Supabase database** (schema, RLS,
+migrations, SQL, Auth settings via SQL, seed data, advisors, types, edge functions tied
+to this DB):
+
+| MUST | MUST NOT |
+|------|----------|
+| MCP namespace **`user-supabase-cuboards`** only | **`user-supabase`** (BizTap / `vsujfqufdyoxfaopqcut`) |
+| Project ref **`vnsmgvdmxlrfffehzjpf`** | Any other project ref |
+| URL **`https://vnsmgvdmxlrfffehzjpf.supabase.co`** | `vsujfqufdyoxfaopqcut.supabase.co` |
+| Credentials from **`cuboards/.env`** | `whatsapp/.env` or BizTap keys |
+
+**Before every** `execute_sql`, `apply_migration`, or other Supabase MCP write: call
+`get_project_url` on **`user-supabase-cuboards`** and confirm the host contains
+`vnsmgvdmxlrfffehzjpf`. If it does not, **stop** — fix MCP or reload; do not proceed
+on the wrong project.
+
+If Andre asks for database work while **cuboards** is the active project (see
+`.cursor/active-project.md`), this rule applies even when the chat mention is vague
+("run a migration", "add a table", "fix RLS").
+
+## Project identity
+
+| Field | Value |
+|--------|--------|
+| **Name** | Cuboards |
+| **Project ref** | `vnsmgvdmxlrfffehzjpf` |
+| **Region** | `eu-west-1` |
+
+## Permission — run SQL on Andre’s behalf
+
+1. **Pre-authorised** to inspect and change **this** database via MCP without asking
+   each time, when it serves Cuboards.
+2. **Prefer migrations:** `cuboards/supabase/migrations/` + `apply_migration`.
+3. **Destructive SQL** (DROP, TRUNCATE, mass DELETE): one-line heads-up in chat first.
+4. **Never print** `.env` secrets or service-role keys in chat.
+
+## MCP setup
+
+`~/.cursor/mcp.json` server **`supabase-cuboards`** → `--project-ref=vnsmgvdmxlrfffehzjpf`.
+Reload MCP after config changes.
+
+## App wiring (when implemented)
+
+- Client: `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` from `cuboards/.env`.
+- Server only: `SUPABASE_SERVICE_ROLE_KEY`.
+- Use global `supabase` / `supabase-postgres-best-practices` skills for RLS and auth.
+
+## Schema direction
+
+See `docs/premium-roadmap.md` Tier 1 (profiles, job sync, PayFast tiers). Enable RLS
+before public anon writes.
