@@ -1,4 +1,4 @@
-import type { ConnectingFittingPrices, EdgingMaterial, EdgingPattern, HingePrices, JobSettings, KitchenPlinthConfig, MasoniteConfig, Material, MountType, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices, UnitType } from '../types';
+import type { ConnectingFittingPrices, EdgingMaterial, HingePrices, JobSettings, KitchenPlinthConfig, MasoniteConfig, Material, MountType, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices, UnitType } from '../types';
 import { CUT_SIZE_MODE_LABELS } from './edgingCutSize';
 import { BRAND_RUNNER_PRESETS, getDefaultRunnerPrices } from './runnerCatalog';
 import { getDefaultHingePrices } from './hingeCatalog';
@@ -41,12 +41,13 @@ export const EDGING_LABELS: Record<string, string> = {
   none: 'No edging',
 };
 
-/** Wood kickplate edging — shop labels for the four common patterns. */
-export const KICKPLATE_EDGING_OPTIONS: { pattern: EdgingPattern; label: string }[] = [
-  { pattern: '1_long', label: '1 Long' },
-  { pattern: '2_long', label: '2 Long' },
-  { pattern: '1_long_1_short', label: '1 short' },
-  { pattern: '1_long_2_short', label: '2 short' },
+/** Wood kickplate edging checkboxes (combine long + short; “No edging” clears all). */
+export const KICKPLATE_EDGING_CHECKBOXES = [
+  { key: 'none' as const, label: 'No edging' },
+  { key: 'long1' as const, label: '1 Long' },
+  { key: 'long2' as const, label: '2 Long' },
+  { key: 'short1' as const, label: '1 short' },
+  { key: 'short2' as const, label: '2 short' },
 ];
 
 export const UNIT_TYPE_LABELS = {
@@ -144,7 +145,8 @@ export function defaultPlinth(job: { settings: JobSettings; materials: Material[
     kickplateCoverage: 'front',
     kickplateSide: 'left',
     kickplateMaterialId,
-    kickplateEdgingPattern: '1_long',
+    kickplateEdgingLongCount: 1,
+    kickplateEdgingShortCount: 0,
     kickplateEdgingMaterialId: boardMat?.edgingMaterialId,
     kickplateHeight: job.settings.defaultKickplateHeight,
     feetPerUnit: job.settings.feetPerBaseUnit,

@@ -78,6 +78,41 @@ export function edgingRunMm(
   }
 }
 
+export function edgingRunMmFromEdgeCounts(
+  longEdges: number,
+  shortEdges: number,
+  longEdgeMm: number,
+  shortEdgeMm: number,
+): number {
+  if (longEdges <= 0 && shortEdges <= 0) return 0;
+  return longEdgeMm * longEdges + shortEdgeMm * shortEdges;
+}
+
+export function deductEdgingFromEdgeCounts(
+  width: number,
+  length: number,
+  longEdges: number,
+  shortEdges: number,
+  thickness: number,
+  longAlong: LongAlong = 'length',
+): { width: number; length: number } {
+  if ((longEdges <= 0 && shortEdges <= 0) || thickness <= 0) {
+    return { width, length };
+  }
+  const longDed = longEdges * thickness;
+  const shortDed = shortEdges * thickness;
+  if (longAlong === 'length') {
+    return {
+      width: Math.max(0, width - longDed),
+      length: Math.max(0, length - shortDed),
+    };
+  }
+  return {
+    width: Math.max(0, width - shortDed),
+    length: Math.max(0, length - longDed),
+  };
+}
+
 /** Finished panel size + cut-list board size respecting final vs net mode and edging tape. */
 export function panelCutSizes(
   job: Job,
@@ -216,6 +251,36 @@ export function applyCutSizeMode(
   }
 
   const adjusted = deductEdgingFromDimensions(width, length, pattern, thickness, longAlong);
+  return {
+    width: adjusted.width,
+    length: adjusted.length,
+    sizeNote: `Net cut (−${thickness} mm per edged edge)`,
+  };
+}
+
+export function applyCutSizeModeFromEdgeCounts(
+  job: Job,
+  boardMaterialId: string,
+  width: number,
+  length: number,
+  longEdges: number,
+  shortEdges: number,
+  edgingMaterialIdOverride?: string,
+  longAlong: LongAlong = 'length',
+): { width: number; length: number; sizeNote: string } {
+  const mode = job.settings.cutSizeMode ?? 'final';
+  if (mode !== 'net' || (longEdges <= 0 && shortEdges <= 0)) {
+    return { width, length, sizeNote: '' };
+  }
+
+  const thickness = edgingMaterialIdOverride
+    ? (job.edgingMaterials.find((e) => e.id === edgingMaterialIdOverride)?.thickness ?? 0)
+    : getBoardEdgingThickness(job, boardMaterialId);
+  if (thickness <= 0) {
+    return { width, length, sizeNote: '' };
+  }
+
+  const adjusted = deductEdgingFromEdgeCounts(width, length, longEdges, shortEdges, thickness, longAlong);
   return {
     width: adjusted.width,
     length: adjusted.length,

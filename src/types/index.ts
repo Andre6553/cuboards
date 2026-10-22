@@ -206,7 +206,11 @@ export interface KitchenPlinthConfig {
   kickplateCoverage: KickplateCoverage;
   kickplateSide: KickplateSide;
   kickplateMaterialId: string;
-  /** Wood kickplate only — default 1 long (visible front edge). */
+  /** Wood kickplate — long edges to tape (0–2). Default 1. */
+  kickplateEdgingLongCount?: 0 | 1 | 2;
+  /** Wood kickplate — short edges to tape (0–2). */
+  kickplateEdgingShortCount?: 0 | 1 | 2;
+  /** @deprecated migrated to long/short counts */
   kickplateEdgingPattern?: EdgingPattern;
   kickplateEdgingMaterialId?: string;
   kickplateHeight: number;

@@ -1,6 +1,6 @@
 import { useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
-import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_OPTIONS, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, UNIT_TYPE_LABELS } from '../lib/constants';
+import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, UNIT_TYPE_LABELS } from '../lib/constants';
 import {
   getHingeByIdForJob,
   getHingeGroupsForJob,
@@ -20,6 +20,13 @@ import {
   resolveVisibleBackPanelMaterialId,
 } from '../lib/visibleBackPanel';
 import { kickplateRunLengthMm } from '../lib/kickplateRules';
+import {
+  applyKickplateEdgingToggle,
+  isKickplateEdgingChecked,
+  kickplateEdgingSummary,
+  resolveKickplateEdgingCounts,
+  type KickplateEdgingToggle,
+} from '../lib/kickplateEdging';
 import { deletePreset, loadPresets, saveUnitAsPreset } from '../lib/presets';
 import { CollapsibleSection } from './CollapsibleSection';
 import { NumberInput } from './NumberInput';
@@ -106,6 +113,19 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
   const setPlinth = (field: keyof NonNullable<Unit['plinth']>, value: NonNullable<Unit['plinth']>[typeof field]) => {
     const plinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
     onChange({ ...unit, plinth: { ...plinth, [field]: value } });
+  };
+
+  const setKickplateEdgingCheckbox = (key: KickplateEdgingToggle, checked: boolean) => {
+    const plinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
+    const next = applyKickplateEdgingToggle(resolveKickplateEdgingCounts(plinth), key, checked);
+    onChange({
+      ...unit,
+      plinth: {
+        ...plinth,
+        kickplateEdgingLongCount: next.long,
+        kickplateEdgingShortCount: next.short,
+      },
+    });
   };
 
   const handleTypeChange = (type: Unit['type']) => {
@@ -378,37 +398,49 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               </label>
             )}
           </div>
-          {plinth.kickplateType === 'wood' && (
+          {plinth.kickplateType === 'wood' && (() => {
+            const edgingCounts = resolveKickplateEdgingCounts(plinth);
+            return (
             <div className="kickplate-edging-patterns">
-              <span className="field-label">Edging pattern</span>
+              <span className="field-label">Edging</span>
               <div className="checkbox-row">
-                {KICKPLATE_EDGING_OPTIONS.map(({ pattern, label }) => (
-                  <label key={pattern} className="checkbox-label">
+                {KICKPLATE_EDGING_CHECKBOXES.map(({ key, label }) => (
+                  <label key={key} className="checkbox-label">
                     <input
-                      type="radio"
-                      name={`kickplate-edging-${unit.id}`}
-                      checked={(plinth.kickplateEdgingPattern ?? '1_long') === pattern}
-                      onChange={() => setPlinth('kickplateEdgingPattern', pattern)}
+                      type="checkbox"
+                      checked={isKickplateEdgingChecked(edgingCounts, key)}
+                      onChange={(e) => setKickplateEdgingCheckbox(key, e.target.checked)}
                     />
                     {label}
-                    <span className="hint inline-hint">{EDGING_LABELS[pattern]}</span>
                   </label>
                 ))}
               </div>
             </div>
-          )}
+            );
+          })()}
           <p className="hint">
             {plinth.kickplateType === 'wood' ? (
               <>
-                Wood kickplate: board cuts with grain along kick height · edging{' '}
-                {EDGING_LABELS[plinth.kickplateEdgingPattern ?? '1_long'] ?? '—'} (
-                {edgingMaterials.find(
-                  (e) =>
-                    e.id ===
-                    (plinth.kickplateEdgingMaterialId ??
-                      defaultEdgingForMaterial(plinth.kickplateMaterialId)),
-                )?.name ?? '—'}
-                ).
+                Wood kickplate: grain along kick height on grain boards ·{' '}
+                {kickplateEdgingSummary(resolveKickplateEdgingCounts(plinth))}
+                {(() => {
+                  const c = resolveKickplateEdgingCounts(plinth);
+                  if (c.long + c.short <= 0) return null;
+                  return (
+                    <>
+                      {' '}
+                      (
+                      {edgingMaterials.find(
+                        (e) =>
+                          e.id ===
+                          (plinth.kickplateEdgingMaterialId ??
+                            defaultEdgingForMaterial(plinth.kickplateMaterialId)),
+                      )?.name ?? '—'}
+                      )
+                    </>
+                  );
+                })()}
+                .
               </>
             ) : (
               <>Plastic kickplate: {kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front')} mm run per cupboard

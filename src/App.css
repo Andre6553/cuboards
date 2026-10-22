@@ -461,7 +461,9 @@
 }
 
 .kickplate-edging-patterns .checkbox-label {
-  align-items: flex-start;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .empty-state {

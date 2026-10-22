@@ -11,6 +11,7 @@ import {
   defaultPlinth,
   isKitchenBase,
 } from './constants';
+import { kickplateEdgingFromLegacyPattern } from './kickplateEdging';
 import { getDefaultRunnerPrices, getRunnerClearances } from './runnerCatalog';
 import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
 import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
@@ -177,7 +178,12 @@ export function migrateJob(job: Job): Job {
             kickplateType: u.plinth?.kickplateType ?? 'wood',
             kickplateCoverage: u.plinth?.kickplateCoverage ?? 'front',
             kickplateSide: u.plinth?.kickplateSide ?? 'left',
-            kickplateEdgingPattern: u.plinth?.kickplateEdgingPattern ?? '1_long',
+            kickplateEdgingLongCount:
+              u.plinth?.kickplateEdgingLongCount ??
+              kickplateEdgingFromLegacyPattern(u.plinth?.kickplateEdgingPattern).long,
+            kickplateEdgingShortCount:
+              u.plinth?.kickplateEdgingShortCount ??
+              kickplateEdgingFromLegacyPattern(u.plinth?.kickplateEdgingPattern).short,
             kickplateEdgingMaterialId:
               u.plinth?.kickplateEdgingMaterialId ??
               (job.materials ?? []).find((m) => m.id === (u.plinth?.kickplateMaterialId ?? defaultMat))?.edgingMaterialId ??
