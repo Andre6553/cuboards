@@ -1,6 +1,6 @@
 import type { jsPDF } from 'jspdf';
 import { grainLabel } from './sheetLayout';
-import { formatCutListDimensions } from './edgingCutSize';
+import { factoryCutDimensions } from './edgingCutSize';
 import {
   edgingTapeKeyFromMaterial,
   kickplateEdgingToFactoryTicks,
@@ -15,7 +15,7 @@ export interface FactoryEdgingTicks {
   b2: boolean;
 }
 
-/** Map Cuboards edging pattern to factory L1/L2/B1/B2 tick boxes (length = long sides, B = short ends). */
+/** L1/L2 = edges on the Length column sides; B1/B2 = Width column sides (long tape runs along Length). */
 export function edgingPatternToFactoryTicks(pattern: EdgingPattern): FactoryEdgingTicks {
   switch (pattern) {
     case '1_long':
@@ -89,12 +89,6 @@ function factoryPieceGroupKeys(job: Job, piece: CutPiece): { sortKey: string; he
   };
 }
 
-function parseDimensionPair(formatted: string): { lengthMm: number; widthMm: number } {
-  const parts = formatted.split('×').map((s) => s.trim());
-  if (parts.length !== 2) return { lengthMm: 0, widthMm: 0 };
-  return { lengthMm: Number(parts[0]), widthMm: Number(parts[1]) };
-}
-
 function factoryFinish(piece: CutPiece, job: Job): string {
   const mat = job.materials.find((m) => m.id === piece.materialId);
   if (piece.grain !== 'none') {
@@ -110,8 +104,10 @@ export function pieceToFactoryRow(job: Job, piece: CutPiece): FactoryCutListRow 
   const ticks = piece.kickplateEdgingCounts
     ? kickplateEdgingToFactoryTicks(piece.kickplateEdgingCounts)
     : edgingPatternToFactoryTicks(pattern);
-  const dim = formatCutListDimensions(piece.width, piece.length, piece.longAlong ?? 'length');
-  const { lengthMm, widthMm } = parseDimensionPair(dim);
+  const longAlong = piece.longAlong ?? 'length';
+  const { lengthMm, widthMm } = piece.kickplateEdgingCounts
+    ? { lengthMm: piece.length, widthMm: piece.width }
+    : factoryCutDimensions(piece.width, piece.length, longAlong);
 
   let hingeHoles = '—';
   if (piece.category === 'door') {
@@ -148,12 +144,54 @@ export function pieceToFactoryRow(job: Job, piece: CutPiece): FactoryCutListRow 
   };
 }
 
+/**
+ * Within a board + edging-tape group: merge when cut size and edging ticks match.
+ * Board type and edging tape are already the same for every row in the group.
+ */
+function factoryRowMergeKey(row: FactoryCutListRow): string {
+  const e = row.edging;
+  return [
+    row.lengthMm,
+    row.widthMm,
+    row.finish,
+    e.l1,
+    e.l2,
+    e.b1,
+    e.b2,
+    row.edgingThickMm ?? '',
+    row.hingeHoles,
+  ].join('\0');
+}
+
+type MergeAcc = FactoryCutListRow & { sourceLines: number };
+
+/** Same board + edging + size + L/B ticks → one row, qty summed (factory sheet). */
+export function mergeFactoryRowsByCutSpec(rows: FactoryCutListRow[]): FactoryCutListRow[] {
+  const map = new Map<string, MergeAcc>();
+  for (const row of rows) {
+    const key = factoryRowMergeKey(row);
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, { ...row, edging: { ...row.edging }, sourceLines: 1 });
+      continue;
+    }
+    existing.qty += row.qty;
+    existing.sourceLines += 1;
+  }
+  return Array.from(map.values()).map(({ sourceLines, ...row }) => {
+    if (sourceLines > 1) {
+      return { ...row, unitId: '—', description: '—' };
+    }
+    return row;
+  });
+}
+
 function sortFactoryRows(a: FactoryCutListRow, b: FactoryCutListRow): number {
   return (
-    a.unitId.localeCompare(b.unitId) ||
-    a.description.localeCompare(b.description) ||
     b.lengthMm - a.lengthMm ||
-    b.widthMm - a.widthMm
+    b.widthMm - a.widthMm ||
+    a.description.localeCompare(b.description) ||
+    a.unitId.localeCompare(b.unitId)
   );
 }
 
@@ -182,7 +220,7 @@ export function buildFactoryCutListGroups(job: Job, pieces: CutPiece[]): Factory
     })
     .map(({ heading, rows }) => ({
       heading,
-      rows: rows.sort(sortFactoryRows),
+      rows: mergeFactoryRowsByCutSpec(rows).sort(sortFactoryRows),
     }));
 }
 

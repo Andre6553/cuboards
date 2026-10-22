@@ -187,7 +187,7 @@ export function CutListView({ job }: Props) {
           <h2>{factory ? 'Factory cut list' : quote ? 'Client quotation' : 'Full cut list'}</h2>
           <p className="hint">
             {factory
-              ? 'Send the factory a PDF only — grouped by board + edging tape (same as Full board groups). Unit ID = cupboard name; L1–B2, Thick, edging colour, Holes on doors.'
+              ? 'Grouped by board type + edging tape. Same length × width + edging ticks in a group → one line, qty added (unit/description blank when combined).'
               : quote
                 ? 'Client-facing: scope of work and quotation total only — no supply breakdown or cut sizes.'
                 : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}

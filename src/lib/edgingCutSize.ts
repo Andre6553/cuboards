@@ -48,13 +48,38 @@ export interface PanelCutSizeResult {
 /** Which piece axis the "long" edging run follows. Tape on that edge reduces the other axis. */
 export type LongAlong = 'width' | 'length';
 
+/** Long-edging axis vs the other axis (see `longAlong` on the piece). */
+export function longAndShortMm(
+  width: number,
+  length: number,
+  longAlong: LongAlong = 'length',
+): { longMm: number; shortMm: number } {
+  return longAlong === 'width'
+    ? { longMm: width, shortMm: length }
+    : { longMm: length, shortMm: width };
+}
+
+/**
+ * Factory sheet: Length column = axis the long edging runs along (L1/L2 edges);
+ * Width column = the other axis (B1/B2 edges). Matches 1 long edge (front) on the first size.
+ */
+export function factoryCutDimensions(
+  width: number,
+  length: number,
+  longAlong: LongAlong = 'length',
+): { lengthMm: number; widthMm: number } {
+  const { longMm, shortMm } = longAndShortMm(width, length, longAlong);
+  return { lengthMm: longMm, widthMm: shortMm };
+}
+
 /** Cut list / factory PDF: show the long-edged side first (e.g. drawer side 500 × 130 not 130 × 500). */
 export function formatCutListDimensions(
   width: number,
   length: number,
   longAlong: LongAlong = 'length',
 ): string {
-  return longAlong === 'width' ? `${width} × ${length}` : `${length} × ${width}`;
+  const { lengthMm, widthMm } = factoryCutDimensions(width, length, longAlong);
+  return `${lengthMm} × ${widthMm}`;
 }
 
 export function edgingRunMm(
