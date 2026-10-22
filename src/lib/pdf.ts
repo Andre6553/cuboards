@@ -28,7 +28,7 @@ function renderFactoryCutListTable(
       'Unit ID',
       'Description',
       'Board colour',
-      'Finish',
+      'Board Finish',
       'Length (mm)',
       'Width (mm)',
       'Qty',

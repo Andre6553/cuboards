@@ -37,7 +37,7 @@ function FactoryCutListTable({ job, pieces }: { job: Job; pieces: ReturnType<typ
                   <th>Unit ID</th>
                   <th>Description</th>
                   <th>Board colour</th>
-                  <th>Finish</th>
+                  <th>Board Finish</th>
                   <th>Length (mm)</th>
                   <th>Width (mm)</th>
                   <th>Qty</th>
