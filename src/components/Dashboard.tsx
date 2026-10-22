@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Job } from '../types';
 import { generateCutList } from '../lib/calculator';
 import {
   formatLastBackup,
   getLastBackupIso,
-  getLastCloudSyncIso,
   shouldShowBackupReminder,
 } from '../lib/backupReminder';
 import { formatMoney } from '../lib/currency';
@@ -14,6 +13,7 @@ import { createNewJob, deleteJob, duplicateJob, exportAllJobsJson, exportJobJson
 interface Props {
   jobs: Job[];
   cloudSyncState?: 'idle' | 'syncing' | 'error';
+  lastCloudSyncIso?: string | null;
   onOpen: (id: string) => void;
   onJobsChange: (jobs: Job[]) => void;
   onSyncNow?: () => void;
@@ -29,17 +29,17 @@ function quoteTotal(job: Job): number | null {
   }
 }
 
-export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange, onSyncNow }: Props) {
+export function Dashboard({
+  jobs,
+  cloudSyncState = 'idle',
+  lastCloudSyncIso = null,
+  onOpen,
+  onJobsChange,
+  onSyncNow,
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
-  const [lastCloudSync, setLastCloudSync] = useState(() => getLastCloudSyncIso());
   const [lastJsonBackup, setLastJsonBackup] = useState(() => getLastBackupIso());
-
-  useEffect(() => {
-    if (cloudSyncState === 'idle') {
-      setLastCloudSync(getLastCloudSyncIso());
-    }
-  }, [cloudSyncState]);
 
   const handleJsonBackup = () => {
     exportAllJobsJson(jobs);
@@ -118,7 +118,7 @@ export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange,
         </p>
         <div className="storage-notice-footer">
           <p className="hint storage-backup-meta">
-            Last cloud sync: {formatLastBackup(lastCloudSync)}
+            Last cloud sync: {formatLastBackup(lastCloudSyncIso)}
             {' · '}
             JSON backup: {formatLastBackup(lastJsonBackup)}
             {shouldShowBackupReminder(jobs.length) ? ' — download a JSON backup for your archive.' : ''}

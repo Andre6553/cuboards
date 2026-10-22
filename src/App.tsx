@@ -15,11 +15,13 @@ import {
   deleteCloudJob,
   schedulePushJobs,
   schedulePushUserPrefs,
+  notifyCloudSaved,
+  setCloudSaveListener,
   setCloudSyncUserId,
   syncAccountWithCloud,
 } from './lib/jobCloudSync';
 import { setUserDataScope } from './lib/userDataScope';
-import { recordCloudSync } from './lib/backupReminder';
+import { getLastCloudSyncIso, recordCloudSync } from './lib/backupReminder';
 import { migrateJob, saveJobs, upsertJob } from './lib/storage';
 import './App.css';
 
@@ -43,8 +45,14 @@ function CuboardsApp() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [cloudSyncState, setCloudSyncState] = useState<'idle' | 'syncing' | 'error'>('idle');
+  const [lastCloudSyncIso, setLastCloudSyncIso] = useState<string | null>(() => getLastCloudSyncIso());
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
+
+  useEffect(() => {
+    setCloudSaveListener(() => setLastCloudSyncIso(getLastCloudSyncIso()));
+    return () => setCloudSaveListener(null);
+  }, []);
 
   const runCloudSync = useCallback(async () => {
     if (!userId) return;
@@ -55,6 +63,7 @@ function CuboardsApp() {
       saveJobs(merged);
       setJobs(merged);
       recordCloudSync();
+      setLastCloudSyncIso(getLastCloudSyncIso());
       setCloudSyncState('idle');
     } catch (e) {
       console.error('cloud sync', e);
@@ -84,7 +93,9 @@ function CuboardsApp() {
       if (userId) {
         for (const p of prev) {
           if (!next.some((n) => n.id === p.id)) {
-            void deleteCloudJob(userId, p.id).catch((e) => console.error('deleteCloudJob', e));
+            void deleteCloudJob(userId, p.id)
+              .then(() => notifyCloudSaved())
+              .catch((e) => console.error('deleteCloudJob', e));
           }
         }
         schedulePushJobs(userId, next);
@@ -150,6 +161,7 @@ function CuboardsApp() {
           <Dashboard
             jobs={jobs}
             cloudSyncState={cloudSyncState}
+            lastCloudSyncIso={lastCloudSyncIso}
             onOpen={setActiveJobId}
             onJobsChange={persist}
             onSyncNow={() => void runCloudSync()}

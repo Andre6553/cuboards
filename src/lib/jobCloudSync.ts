@@ -3,7 +3,19 @@ import { loadJobs, migrateJob } from './storage';
 import { getSupabase } from './supabaseClient';
 import { loadMaterialCatalog, saveMaterialCatalog, type BoardCatalog } from './materialCatalog';
 import { loadPriceList, type PriceList } from './priceList';
+import { recordCloudSync } from './backupReminder';
 import { adoptLegacyDeviceStorageIfEmpty, requireUserDataScope, userStorageKeys } from './userDataScope';
+
+let cloudSaveListener: (() => void) | null = null;
+
+export function setCloudSaveListener(fn: (() => void) | null): void {
+  cloudSaveListener = fn;
+}
+
+export function notifyCloudSaved(): void {
+  recordCloudSync();
+  cloudSaveListener?.();
+}
 
 type JobRow = { id: string; data: Job; updated_at: string };
 type PrefsRow = { board_catalog: BoardCatalog | null; price_list: PriceList | null; updated_at: string };
@@ -138,7 +150,9 @@ export function schedulePushUserPrefs(): void {
   if (!prefsUserId) return;
   if (prefsPushTimer) clearTimeout(prefsPushTimer);
   prefsPushTimer = setTimeout(() => {
-    void pushUserPrefsFromLocal(prefsUserId!).catch((e) => console.error('pushUserPrefs', e));
+    void pushUserPrefsFromLocal(prefsUserId!)
+      .then(() => notifyCloudSaved())
+      .catch((e) => console.error('pushUserPrefs', e));
   }, 800);
 }
 
@@ -152,6 +166,8 @@ export function schedulePushJobs(userId: string, jobs: Job[]): void {
     const batch = pendingJobsPush;
     pendingJobsPush = null;
     if (!batch) return;
-    void upsertCloudJobs(batch.userId, batch.jobs).catch((e) => console.error('pushJobs', e));
+    void upsertCloudJobs(batch.userId, batch.jobs)
+      .then(() => notifyCloudSaved())
+      .catch((e) => console.error('pushJobs', e));
   }, 600);
 }
