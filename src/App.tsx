@@ -101,10 +101,18 @@ function AppGate() {
   const { loading, session, access, refreshAccess } = useAuth();
 
   useEffect(() => {
+    if (!session) return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('subscription') === 'success' && session) {
-      void refreshAccess();
+    let fromPayfast = params.get('subscription') === 'success';
+    try {
+      if (sessionStorage.getItem('cuboards_payfast_return') === 'success') {
+        sessionStorage.removeItem('cuboards_payfast_return');
+        fromPayfast = true;
+      }
+    } catch {
+      /* ignore */
     }
+    if (fromPayfast) void refreshAccess();
   }, [session, refreshAccess]);
 
   if (loading) {

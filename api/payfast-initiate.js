@@ -63,19 +63,19 @@ export default async function handler(req, res) {
   // PayFast m_payment_id: keep alphanumeric (UUID without hyphens) to avoid 400 validation errors.
   const payfastPaymentRef = String(payment.id).replace(/-/g, '')
 
+  // Minimal field set (PayFast 400 if custom_str UUIDs or query-heavy return URLs on some accounts).
   const fields = [
     ['merchant_id', merchantId],
     ['merchant_key', merchantKey],
-    ['return_url', `${base}/?subscription=success`],
-    ['cancel_url', `${base}/?subscription=cancelled`],
+    ['return_url', `${base}/`],
+    ['cancel_url', `${base}/`],
     ['notify_url', `${base}/api/payfast-notify`],
     ['name_first', firstName],
+    ['name_last', 'User'],
     ['email_address', email],
     ['m_payment_id', payfastPaymentRef],
     ['amount', payfastAmount(amountCents)],
     ['item_name', itemName],
-    ['custom_str1', user.id],
-    ['custom_str2', payment.id],
   ]
 
   const out = {}

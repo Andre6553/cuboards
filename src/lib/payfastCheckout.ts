@@ -32,5 +32,10 @@ export async function startPayfastSubscription(accessToken: string): Promise<voi
   if (!res.ok || !data.process_url || !data.fields) {
     throw new Error(data.error || 'Could not start PayFast checkout.');
   }
+  try {
+    sessionStorage.setItem('cuboards_payfast_return', 'success');
+  } catch {
+    /* ignore */
+  }
   submitPayfastForm(data.process_url, data.fields);
 }
