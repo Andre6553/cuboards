@@ -7,17 +7,15 @@ import {
   resolveRunnerUnitPrice,
 } from './hardwarePricing';
 import { DEFAULT_HINGE_PRESET_ID } from './hingeCatalog';
+import { applyCutSizeMode, edgingRunMm, type LongAlong } from './edgingCutSize';
 import {
-  applyCutSizeMode,
-  applyCutSizeModeFromEdgeCounts,
-  edgingRunMm,
-  edgingRunMmFromEdgeCounts,
-  type LongAlong,
-} from './edgingCutSize';
-import {
+  applyKickplateCutSizeMode,
+  formatKickplateEdgingLabel,
+  kickplateEdgingGroupKey,
+  kickplateEdgingRunMm,
   kickplateEdgingSummary,
   resolveKickplateEdgingCounts,
-  resolveKickplateEdgingPattern,
+  type KickplateEdgingCounts,
 } from './kickplateEdging';
 import { doorPanelHeight, doorPanelWidth, DEFAULT_DOOR_GAPS, hingesPerDoorLeaf } from './doorRules';
 import {
@@ -148,15 +146,10 @@ function addEdging(
   qty: number,
   edgingMaterialIdOverride?: string,
   longAlong: LongAlong = 'length',
-  edgeCounts?: { long: number; short: number },
-  patternLabelOverride?: string,
 ) {
-  if (qty <= 0) return;
+  if (pattern === 'none' || qty <= 0) return;
   const { longMm, shortMm } = longShort(width, length, longAlong);
-  const totalLm = edgeCounts
-    ? (edgingRunMmFromEdgeCounts(edgeCounts.long, edgeCounts.short, longMm, shortMm) * qty) / 1000
-    : edgingLm(pattern, longMm, shortMm, qty);
-  if (edgeCounts ? edgeCounts.long <= 0 && edgeCounts.short <= 0 : pattern === 'none') return;
+  const totalLm = edgingLm(pattern, longMm, shortMm, qty);
   if (totalLm <= 0) return;
 
   const boardMat = job.materials.find((m) => m.id === boardMaterialId);
@@ -171,8 +164,44 @@ function addEdging(
     partName,
     unitName,
     pattern,
-    patternLabel: patternLabelOverride ?? EDGING_LABELS[pattern] ?? pattern,
+    patternLabel: EDGING_LABELS[pattern] ?? pattern,
     edgeSize: `${Math.round(Math.max(width, length))} mm`,
+    qty,
+    totalLm,
+  });
+}
+
+function addKickplateEdging(
+  lines: EdgingLine[],
+  job: Job,
+  boardMaterialId: string,
+  partName: string,
+  unitName: string,
+  counts: KickplateEdgingCounts,
+  runMm: number,
+  heightMm: number,
+  qty: number,
+  edgingMaterialIdOverride?: string,
+) {
+  if (qty <= 0 || (counts.long <= 0 && counts.short <= 0)) return;
+  const totalLm = (kickplateEdgingRunMm(counts, runMm, heightMm) * qty) / 1000;
+  if (totalLm <= 0) return;
+
+  const boardMat = job.materials.find((m) => m.id === boardMaterialId);
+  const edgingMatId = resolveEdgingMaterialId(job, boardMaterialId, edgingMaterialIdOverride);
+  const edgingMat = job.edgingMaterials.find((e) => e.id === edgingMatId);
+  const summary = kickplateEdgingSummary(counts);
+
+  lines.push({
+    boardMaterialName: boardMat?.name ?? 'Unknown',
+    edgingMaterialId: edgingMat?.id ?? '',
+    edgingMaterialName: edgingMat?.name ?? '—',
+    edgingThickness: edgingMat?.thickness ?? 0,
+    partName,
+    unitName,
+    pattern: 'none',
+    patternLabel: summary,
+    edgeSize: `${Math.round(Math.max(runMm, heightMm))} mm`,
     qty,
     totalLm,
   });
@@ -213,34 +242,30 @@ function pushBoardPiece(
     bottomType?: CutPiece['bottomType'];
     longAlong?: LongAlong;
     factoryHingeHoles?: boolean;
-    edgeCounts?: { long: number; short: number };
-    /** Net cut / tape axis (defaults to longAlong). Kickplate uses width for edging, length for cut-list display. */
-    edgingLongAlong?: LongAlong;
+    kickplateEdgingCounts?: KickplateEdgingCounts;
   },
 ) {
   if (opts.qty <= 0) return;
   const longAlong = opts.longAlong ?? 'length';
-  const sizingLongAlong = opts.edgingLongAlong ?? longAlong;
+  const kickCounts = opts.kickplateEdgingCounts;
   const pattern =
-    opts.edgeCounts != null
-      ? resolveKickplateEdgingPattern({
-          long: opts.edgeCounts.long as 0 | 1 | 2,
-          short: opts.edgeCounts.short as 0 | 1 | 2,
-        })
+    kickCounts != null
+      ? kickCounts.long <= 0 && kickCounts.short <= 0
+        ? 'none'
+        : 'none'
       : (opts.edgingPattern ?? 'none');
   const sized =
-    opts.edgeCounts != null
-      ? applyCutSizeModeFromEdgeCounts(
+    kickCounts != null
+      ? applyKickplateCutSizeMode(job, opts.materialId, opts.width, opts.length, kickCounts, opts.edgingMaterialId)
+      : applyCutSizeMode(
           job,
           opts.materialId,
           opts.width,
           opts.length,
-          opts.edgeCounts.long,
-          opts.edgeCounts.short,
+          pattern,
           opts.edgingMaterialId,
-          sizingLongAlong,
-        )
-      : applyCutSizeMode(job, opts.materialId, opts.width, opts.length, pattern, opts.edgingMaterialId, sizingLongAlong);
+          longAlong,
+        );
   const edgingMaterialId = resolveEdgingMaterialId(job, opts.materialId, opts.edgingMaterialId);
   pieces.push({
     category: opts.category,
@@ -253,10 +278,13 @@ function pushBoardPiece(
     qty: opts.qty,
     grain: opts.grain,
     notes: joinNotes(opts.notes, sized.sizeNote),
-    edgingPattern: pattern,
+    edgingPattern: kickCounts != null && kickCounts.long <= 0 && kickCounts.short <= 0 ? 'none' : pattern,
     edgingMaterialId,
     bottomType: opts.bottomType,
     longAlong,
+    kickplateEdgingCounts: kickCounts
+      ? { long: kickCounts.long as 0 | 1 | 2, short: kickCounts.short as 0 | 1 | 2 }
+      : undefined,
     factoryHingeHoles: opts.factoryHingeHoles,
   });
 }
@@ -448,9 +476,7 @@ function calcKitchenPlinth(
   const coverage = plinth.kickplateCoverage ?? 'front';
 
   if (kickType === 'wood') {
-    const edgeCounts = resolveKickplateEdgingCounts(plinth);
-    const kickEdgingPattern = resolveKickplateEdgingPattern(edgeCounts);
-    const kickEdgingLabel = kickplateEdgingSummary(edgeCounts);
+    const kickCounts = resolveKickplateEdgingCounts(plinth);
     const kickEdgingMatId = plinth.kickplateEdgingMaterialId;
     const hasGrain = materialHasGrain(job.materials, plinth.kickplateMaterialId);
     for (const kp of woodKickplatePieces(W, D, kh, plinth)) {
@@ -464,25 +490,21 @@ function calcKitchenPlinth(
         qty: mult,
         grain: hasGrain ? 'vertical' : 'none',
         notes: joinNotes(kp.notes, coverageLabel(coverage), hasGrain ? 'Grain along height' : undefined),
-        edgingPattern: kickEdgingPattern,
         longAlong: 'length',
-        edgingLongAlong: 'width',
-        edgeCounts,
+        kickplateEdgingCounts: kickCounts,
+        edgingMaterialId: kickEdgingMatId,
       });
-      addEdging(
+      addKickplateEdging(
         edging,
         job,
         plinth.kickplateMaterialId,
         kp.partName,
         unit.name,
-        kickEdgingPattern,
+        kickCounts,
         kp.width,
         kp.length,
         mult,
         kickEdgingMatId,
-        'width',
-        edgeCounts,
-        kickEdgingLabel,
       );
     }
   } else {
@@ -803,9 +825,13 @@ function consolidatePieces(
   for (const p of filtered) {
     const pattern = p.edgingPattern ?? 'none';
     const edgingMaterialId = p.edgingMaterialId ?? resolveEdgingMaterialId(job, p.materialId);
-    const edgingKey = edgingGroupKey(job, pattern, edgingMaterialId);
+    const edgingKey = p.kickplateEdgingCounts
+      ? kickplateEdgingGroupKey(job, p.kickplateEdgingCounts, edgingMaterialId)
+      : edgingGroupKey(job, pattern, edgingMaterialId);
     const key = `${p.materialId}|${p.width}|${p.length}|${p.grain}|${edgingKey}`;
-    const edgingLabel = formatEdgingLabel(job, pattern, edgingMaterialId);
+    const edgingLabel = p.kickplateEdgingCounts
+      ? formatKickplateEdgingLabel(job, p.kickplateEdgingCounts, edgingMaterialId)
+      : formatEdgingLabel(job, pattern, edgingMaterialId);
     const groupKey = `${p.materialName}|${edgingKey}`;
     const existing = map.get(key);
     if (existing) {
@@ -822,7 +848,9 @@ function consolidatePieces(
         grain: p.grain,
         totalQty: p.qty,
         edgingLabel,
-        patternLabel: EDGING_LABELS[pattern] ?? pattern,
+        patternLabel: p.kickplateEdgingCounts
+          ? kickplateEdgingSummary(p.kickplateEdgingCounts)
+          : (EDGING_LABELS[pattern] ?? pattern),
         groupKey,
         longAlong: p.longAlong ?? 'length',
       });

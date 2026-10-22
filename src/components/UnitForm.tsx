@@ -402,7 +402,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             const edgingCounts = resolveKickplateEdgingCounts(plinth);
             return (
             <div className="kickplate-edging-patterns">
-              <span className="field-label">Edging</span>
+              <span className="field-label">Edging (Long = along kick run · short = along height)</span>
               <div className="checkbox-row">
                 {KICKPLATE_EDGING_CHECKBOXES.map(({ key, label }) => (
                   <label key={key} className="checkbox-label">

@@ -1,8 +1,16 @@
-import type { EdgingPattern, KitchenPlinthConfig } from '../types';
+import type { EdgingPattern, Job, KitchenPlinthConfig } from '../types';
+import { getBoardEdgingThickness } from './edgingCutSize';
 
 export type KickplateEdgingLongCount = 0 | 1 | 2;
 export type KickplateEdgingShortCount = 0 | 1 | 2;
 
+/**
+ * Kickplate edging (matches unit form checkboxes and factory L/B ticks on cut list):
+ * - **long** — edges parallel to the kick **run** (piece width; top/bottom when grain runs along height)
+ * - **short** — edges parallel to kick **height** (piece length; vertical sides)
+ *
+ * Cut list order is height × run (`longAlong: length`). Factory **L** = short count, **B** = long count.
+ */
 export interface KickplateEdgingCounts {
   long: KickplateEdgingLongCount;
   short: KickplateEdgingShortCount;
@@ -36,20 +44,6 @@ export function resolveKickplateEdgingCounts(plinth: KitchenPlinthConfig): Kickp
   return kickplateEdgingFromLegacyPattern(plinth.kickplateEdgingPattern);
 }
 
-/** Best-fit pattern for cut-list grouping; edge counts drive tape length when they differ. */
-export function resolveKickplateEdgingPattern(counts: KickplateEdgingCounts): EdgingPattern {
-  const { long, short } = counts;
-  if (long === 0 && short === 0) return 'none';
-  if (long === 2 && short === 2) return '2_long_2_short';
-  if (long === 2 && short === 0) return '2_long';
-  if (long === 1 && short === 0) return '1_long';
-  if (long === 1 && short === 1) return '1_long_1_short';
-  if (long === 1 && short === 2) return '1_long_2_short';
-  if (long === 2 && short === 1) return '2_long';
-  if (long === 0 && short > 0) return 'none';
-  return '1_long';
-}
-
 export function kickplateEdgingSummary(counts: KickplateEdgingCounts): string {
   const { long, short } = counts;
   if (long === 0 && short === 0) return 'No edging';
@@ -61,9 +55,95 @@ export function kickplateEdgingSummary(counts: KickplateEdgingCounts): string {
   return parts.join(' + ');
 }
 
+/** Total edging tape (mm) for one kickplate piece: width = run, length = height. */
+export function kickplateEdgingRunMm(
+  counts: KickplateEdgingCounts,
+  runMm: number,
+  heightMm: number,
+): number {
+  if (counts.long <= 0 && counts.short <= 0) return 0;
+  return counts.long * runMm + counts.short * heightMm;
+}
+
+/** Net board size — run on width, height on length. */
+export function deductKickplateEdgingDimensions(
+  runMm: number,
+  heightMm: number,
+  counts: KickplateEdgingCounts,
+  thickness: number,
+): { width: number; length: number } {
+  if (thickness <= 0 || (counts.long <= 0 && counts.short <= 0)) {
+    return { width: runMm, length: heightMm };
+  }
+  return {
+    width: Math.max(0, runMm - counts.short * thickness),
+    length: Math.max(0, heightMm - counts.long * thickness),
+  };
+}
+
+export function applyKickplateCutSizeMode(
+  job: Job,
+  boardMaterialId: string,
+  runMm: number,
+  heightMm: number,
+  counts: KickplateEdgingCounts,
+  edgingMaterialIdOverride?: string,
+): { width: number; length: number; sizeNote: string } {
+  const mode = job.settings.cutSizeMode ?? 'final';
+  if (mode !== 'net' || (counts.long <= 0 && counts.short <= 0)) {
+    return { width: runMm, length: heightMm, sizeNote: '' };
+  }
+  const thickness = edgingMaterialIdOverride
+    ? (job.edgingMaterials.find((e) => e.id === edgingMaterialIdOverride)?.thickness ?? 0)
+    : getBoardEdgingThickness(job, boardMaterialId);
+  if (thickness <= 0) {
+    return { width: runMm, length: heightMm, sizeNote: '' };
+  }
+  const adjusted = deductKickplateEdgingDimensions(runMm, heightMm, counts, thickness);
+  return {
+    width: adjusted.width,
+    length: adjusted.length,
+    sizeNote: `Net cut (−${thickness} mm per edged edge)`,
+  };
+}
+
+/** Factory row: length column = height, width column = run. */
+export function kickplateEdgingToFactoryTicks(counts: KickplateEdgingCounts): {
+  l1: boolean;
+  l2: boolean;
+  b1: boolean;
+  b2: boolean;
+} {
+  return {
+    l1: counts.short >= 1,
+    l2: counts.short >= 2,
+    b1: counts.long >= 1,
+    b2: counts.long >= 2,
+  };
+}
+
+export function formatKickplateEdgingLabel(
+  job: Job,
+  counts: KickplateEdgingCounts,
+  edgingMaterialId: string,
+): string {
+  const summary = kickplateEdgingSummary(counts);
+  if (summary === 'No edging') return summary;
+  const em = job.edgingMaterials.find((e) => e.id === edgingMaterialId);
+  if (!em) return summary;
+  return `${summary} · ${em.name} (${em.thickness} mm)`;
+}
+
+export function kickplateEdgingGroupKey(job: Job, counts: KickplateEdgingCounts, edgingMaterialId: string): string {
+  const summary = kickplateEdgingSummary(counts);
+  if (summary === 'No edging') return 'none';
+  const em = job.edgingMaterials.find((e) => e.id === edgingMaterialId);
+  return `kp|${summary}|${em?.name ?? '—'}|${em?.thickness ?? 0}`;
+}
+
 export type KickplateEdgingToggle = 'none' | 'long1' | 'long2' | 'short1' | 'short2';
 
-/** Checkbox rules: no edging clears all; any edge clears no edging; 1 Long / 2 Long are exclusive. */
+/** Checkbox rules: no edging clears all; 1 Long / 2 Long exclusive; 1 short / 2 short exclusive. */
 export function applyKickplateEdgingToggle(
   current: KickplateEdgingCounts,
   key: KickplateEdgingToggle,

@@ -19,7 +19,7 @@ Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF ex
 
 ## Notes
 - _Add pricing/packaging plan and installer feedback here._
-- **2026-10-22:** Wood kickplate: **Edging type** + checkboxes (No edging, 1/2 Long, 1/2 short — combinable; No edging clears all). Grain boards: grain along kick height; cut list shows height × run. Tape totals use long/short edge counts.
+- **2026-10-22:** Wood kickplate edging aligned with cut list: **Long** = tape on kick **run** (factory B ticks), **short** = on **height** (factory L ticks); cut list/factory/edging metres all use same counts (not generic door `1_long` labels).
 - **2026-10-06:** Cut-list calc fixes (backup `Backup/calc_20261006_123807/`): 1-long edging uses the front/top run not max(W,H); drawer box front/back width = internal − 2×runner clearance (sides inside; drop-in bottom inner −2T); side depth = D − front − back clearance; drop-in bottoms (no groove); wooden top is one full panel not fillers+top; Blum length rounds down to 50 mm; hinges 5 above 2 m; screw fronts use qty×frontQty. For a drawer tower add one row per height — qty 4 on one row is four matching boxes.
 - **2026-10-21:** Drawer box front/back no longer subtract 2×T for box sides — width = carcass internal − 2×runner clearance (e.g. 500 mm unit → **442 mm** @ 16 mm T, 13 mm clearance). Drop-in bottom inner width uses that minus 2×T.
 - **2026-10-21:** Carcass **Side (left/right)** always **1 long** on front edge; removed “side visible” toggles (old `leftVisible`/`rightVisible` in JSON ignored).

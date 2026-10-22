@@ -406,6 +406,8 @@ export interface CutPiece {
   bottomType?: BottomType;
   /** Which axis carries the long edging run — controls cut-list dimension order. */
   longAlong?: 'width' | 'length';
+  /** Wood kickplate — long = along run, short = along height (see kickplateEdging.ts). */
+  kickplateEdgingCounts?: { long: 0 | 1 | 2; short: 0 | 1 | 2 };
   /** Doors only — factory Holes column. */
   factoryHingeHoles?: boolean;
 }

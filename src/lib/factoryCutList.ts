@@ -1,6 +1,7 @@
 import type { jsPDF } from 'jspdf';
 import { grainLabel } from './sheetLayout';
 import { formatCutListDimensions } from './edgingCutSize';
+import { kickplateEdgingGroupKey, kickplateEdgingToFactoryTicks } from './kickplateEdging';
 import type { CutPiece, EdgingPattern, Job } from '../types';
 
 export interface FactoryEdgingTicks {
@@ -80,7 +81,9 @@ function tapeHeading(tapeKey: string): string {
 function factoryPieceGroupKeys(job: Job, piece: CutPiece): { sortKey: string; heading: string } {
   const pattern = piece.edgingPattern ?? 'none';
   const edgingMaterialId = resolveEdgingMaterialId(job, piece.materialId, piece.edgingMaterialId);
-  const edgingPart = edgingGroupKey(job, pattern, edgingMaterialId);
+  const edgingPart = piece.kickplateEdgingCounts
+    ? kickplateEdgingGroupKey(job, piece.kickplateEdgingCounts, edgingMaterialId)
+    : edgingGroupKey(job, pattern, edgingMaterialId);
   const tapeKey = edgingTapeKeyFromEdgingGroupKey(edgingPart);
 
   if (piece.materialId === MASONITE_ID) {
@@ -115,7 +118,9 @@ export function pieceToFactoryRow(job: Job, piece: CutPiece): FactoryCutListRow 
   const mat = job.materials.find((m) => m.id === piece.materialId);
   const edgingMat = job.edgingMaterials.find((e) => e.id === piece.edgingMaterialId);
   const pattern = piece.edgingPattern ?? 'none';
-  const ticks = edgingPatternToFactoryTicks(pattern);
+  const ticks = piece.kickplateEdgingCounts
+    ? kickplateEdgingToFactoryTicks(piece.kickplateEdgingCounts)
+    : edgingPatternToFactoryTicks(pattern);
   const dim = formatCutListDimensions(piece.width, piece.length, piece.longAlong ?? 'length');
   const { lengthMm, widthMm } = parseDimensionPair(dim);
 
@@ -133,8 +138,22 @@ export function pieceToFactoryRow(job: Job, piece: CutPiece): FactoryCutListRow 
     widthMm,
     qty: piece.qty,
     edging: ticks,
-    edgingThickMm: pattern === 'none' ? null : (edgingMat?.thickness ?? null),
-    edgingColour: pattern === 'none' ? '—' : (edgingMat?.name?.trim() || '—'),
+    edgingThickMm:
+      pattern === 'none' && !piece.kickplateEdgingCounts
+        ? null
+        : piece.kickplateEdgingCounts &&
+            piece.kickplateEdgingCounts.long <= 0 &&
+            piece.kickplateEdgingCounts.short <= 0
+          ? null
+          : (edgingMat?.thickness ?? null),
+    edgingColour:
+      pattern === 'none' && !piece.kickplateEdgingCounts
+        ? '—'
+        : piece.kickplateEdgingCounts &&
+            piece.kickplateEdgingCounts.long <= 0 &&
+            piece.kickplateEdgingCounts.short <= 0
+          ? '—'
+          : (edgingMat?.name?.trim() || '—'),
     hingeHoles,
     notes: '',
   };
