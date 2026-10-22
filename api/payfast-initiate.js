@@ -84,9 +84,12 @@ export default async function handler(req, res) {
   }
   out.signature = signFields(fields, passphrase)
 
+  const fieldOrder = fields.map(([k]) => k).filter((k) => out[k] !== undefined && out[k] !== '')
+
   res.status(200).json({
     process_url: processUrl,
     fields: out,
+    field_order: fieldOrder,
     amount_cents: amountCents,
     sandbox,
     ...(sandbox ? { debug_base_url: base } : {}),

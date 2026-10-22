@@ -41,7 +41,15 @@ export function resolvePayfastCredsFromEnv() {
   }
 }
 
+/** Outgoing redirect — match PHP urlencode (lowercase %xx). PayFast /eng/process verifies this way. */
 export function pfEncode(value) {
+  return encodeURIComponent(String(value).trim())
+    .replace(/%20/g, '+')
+    .replace(/%[0-9A-F]{2}/gi, (m) => m.toLowerCase())
+}
+
+/** Uppercase hex — ITN passphrase suffix only (see verifyItnSignature). */
+export function pfEncodeUpper(value) {
   return encodeURIComponent(String(value).trim())
     .replace(/%20/g, '+')
     .replace(/[!~*'()]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase())
@@ -79,6 +87,7 @@ export function verifyItnSignature(rawBody, passphrase) {
   const md5 = (s) => crypto.createHash('md5').update(s).digest('hex')
   const candidates = [md5(rawParam)]
   if (passphrase && passphrase.trim() !== '') {
+    candidates.push(md5(`${rawParam}&passphrase=${pfEncodeUpper(passphrase)}`))
     candidates.push(md5(`${rawParam}&passphrase=${pfEncode(passphrase)}`))
   }
   const ok = candidates.includes(received)
