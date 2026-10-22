@@ -19,6 +19,7 @@ import {
   syncAccountWithCloud,
 } from './lib/jobCloudSync';
 import { setUserDataScope } from './lib/userDataScope';
+import { recordCloudSync } from './lib/backupReminder';
 import { migrateJob, saveJobs, upsertJob } from './lib/storage';
 import './App.css';
 
@@ -53,6 +54,7 @@ function CuboardsApp() {
       const merged = await syncAccountWithCloud(userId);
       saveJobs(merged);
       setJobs(merged);
+      recordCloudSync();
       setCloudSyncState('idle');
     } catch (e) {
       console.error('cloud sync', e);

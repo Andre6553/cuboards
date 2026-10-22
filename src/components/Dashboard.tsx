@@ -1,7 +1,12 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Job } from '../types';
 import { generateCutList } from '../lib/calculator';
-import { formatLastBackup, getLastBackupIso, shouldShowBackupReminder } from '../lib/backupReminder';
+import {
+  formatLastBackup,
+  getLastBackupIso,
+  getLastCloudSyncIso,
+  shouldShowBackupReminder,
+} from '../lib/backupReminder';
 import { formatMoney } from '../lib/currency';
 import { displayGrandTotal } from './QuoteTotals';
 import { createNewJob, deleteJob, duplicateJob, exportAllJobsJson, exportJobJson, importJobsJson } from '../lib/storage';
@@ -27,6 +32,19 @@ function quoteTotal(job: Job): number | null {
 export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange, onSyncNow }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
+  const [lastCloudSync, setLastCloudSync] = useState(() => getLastCloudSyncIso());
+  const [lastJsonBackup, setLastJsonBackup] = useState(() => getLastBackupIso());
+
+  useEffect(() => {
+    if (cloudSyncState === 'idle') {
+      setLastCloudSync(getLastCloudSyncIso());
+    }
+  }, [cloudSyncState]);
+
+  const handleJsonBackup = () => {
+    exportAllJobsJson(jobs);
+    setLastJsonBackup(getLastBackupIso());
+  };
 
   const totals = useMemo(() => new Map(jobs.map((j) => [j.id, quoteTotal(j)])), [jobs]);
 
@@ -100,8 +118,10 @@ export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange,
         </p>
         <div className="storage-notice-footer">
           <p className="hint storage-backup-meta">
-            Last backup: {formatLastBackup(getLastBackupIso())}
-            {shouldShowBackupReminder(jobs.length) ? ' — please back up now.' : ''}
+            Last cloud sync: {formatLastBackup(lastCloudSync)}
+            {' · '}
+            JSON backup: {formatLastBackup(lastJsonBackup)}
+            {shouldShowBackupReminder(jobs.length) ? ' — download a JSON backup for your archive.' : ''}
           </p>
           <div className="storage-notice-buttons">
             <button
@@ -115,7 +135,7 @@ export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange,
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              onClick={() => exportAllJobsJson(jobs)}
+              onClick={handleJsonBackup}
               disabled={jobs.length === 0}
             >
               Back up all jobs

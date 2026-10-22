@@ -1,4 +1,21 @@
 const LAST_BACKUP_KEY = 'cuboards_last_backup';
+const LAST_CLOUD_SYNC_KEY = 'cuboards_last_cloud_sync';
+
+export function recordCloudSync(): void {
+  try {
+    localStorage.setItem(LAST_CLOUD_SYNC_KEY, new Date().toISOString());
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+export function getLastCloudSyncIso(): string | null {
+  try {
+    return localStorage.getItem(LAST_CLOUD_SYNC_KEY);
+  } catch {
+    return null;
+  }
+}
 
 export function recordJobsBackup(): void {
   try {
