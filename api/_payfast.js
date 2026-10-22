@@ -41,15 +41,8 @@ export function resolvePayfastCredsFromEnv() {
   }
 }
 
-/** Outgoing redirect — match PHP urlencode (lowercase %xx). PayFast /eng/process verifies this way. */
+// Match BizTap / PayFast PHP urlencode style (uppercase %XX for reserved chars).
 export function pfEncode(value) {
-  return encodeURIComponent(String(value).trim())
-    .replace(/%20/g, '+')
-    .replace(/%[0-9A-F]{2}/gi, (m) => m.toLowerCase())
-}
-
-/** Uppercase hex — ITN passphrase suffix only (see verifyItnSignature). */
-export function pfEncodeUpper(value) {
   return encodeURIComponent(String(value).trim())
     .replace(/%20/g, '+')
     .replace(/[!~*'()]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase())
@@ -64,6 +57,17 @@ export function signFields(fields, passphrase) {
     str += `&passphrase=${pfEncode(passphrase)}`
   }
   return crypto.createHash('md5').update(str).digest('hex')
+}
+
+/** GET redirect URL (same signed bytes as PayFast PHP samples — avoids POST form encoding drift). */
+export function buildPayfastProcessRedirect(processUrl, fields, passphrase) {
+  const pairs = fields.filter(([, v]) => v !== undefined && v !== null && String(v) !== '')
+  const signStr =
+    pairs.map(([k, v]) => `${k}=${pfEncode(String(v))}`).join('&') +
+    (passphrase && passphrase.trim() !== '' ? `&passphrase=${pfEncode(passphrase)}` : '')
+  const signature = crypto.createHash('md5').update(signStr).digest('hex')
+  const query = pairs.map(([k, v]) => `${k}=${pfEncode(String(v))}`).join('&')
+  return `${processUrl}?${query}&signature=${signature}`
 }
 
 export function payfastAmount(cents) {
@@ -87,7 +91,6 @@ export function verifyItnSignature(rawBody, passphrase) {
   const md5 = (s) => crypto.createHash('md5').update(s).digest('hex')
   const candidates = [md5(rawParam)]
   if (passphrase && passphrase.trim() !== '') {
-    candidates.push(md5(`${rawParam}&passphrase=${pfEncodeUpper(passphrase)}`))
     candidates.push(md5(`${rawParam}&passphrase=${pfEncode(passphrase)}`))
   }
   const ok = candidates.includes(received)

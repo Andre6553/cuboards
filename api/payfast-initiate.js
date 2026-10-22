@@ -1,5 +1,10 @@
 import { createAdminClient, getAppBaseUrl, getUserFromAuthHeader } from './_supabaseAdmin.js'
-import { payfastAmount, resolvePayfastCredsFromEnv, signFields } from './_payfast.js'
+import {
+  buildPayfastProcessRedirect,
+  payfastAmount,
+  resolvePayfastCredsFromEnv,
+  signFields,
+} from './_payfast.js'
 
 function subscriptionCents() {
   const raw = process.env.PAYFAST_SUBSCRIPTION_CENTS
@@ -64,6 +69,7 @@ export default async function handler(req, res) {
   const payfastPaymentRef = String(payment.id).replace(/-/g, '')
 
   // Minimal field set (PayFast 400 if custom_str UUIDs or query-heavy return URLs on some accounts).
+  // Same shape as BizTap order checkout (no email/name_last — fewer validation edge cases).
   const fields = [
     ['merchant_id', merchantId],
     ['merchant_key', merchantKey],
@@ -71,11 +77,10 @@ export default async function handler(req, res) {
     ['cancel_url', `${base}/`],
     ['notify_url', `${base}/api/payfast-notify`],
     ['name_first', firstName],
-    ['name_last', 'User'],
-    ['email_address', email],
     ['m_payment_id', payfastPaymentRef],
     ['amount', payfastAmount(amountCents)],
     ['item_name', itemName],
+    ['custom_str2', payment.id],
   ]
 
   const out = {}
@@ -86,8 +91,11 @@ export default async function handler(req, res) {
 
   const fieldOrder = fields.map(([k]) => k).filter((k) => out[k] !== undefined && out[k] !== '')
 
+  const redirect_url = buildPayfastProcessRedirect(processUrl, fields, passphrase)
+
   res.status(200).json({
     process_url: processUrl,
+    redirect_url,
     fields: out,
     field_order: fieldOrder,
     amount_cents: amountCents,

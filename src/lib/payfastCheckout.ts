@@ -65,16 +65,24 @@ export async function startPayfastSubscription(accessToken: string): Promise<voi
   const data = (await res.json().catch(() => ({}))) as {
     error?: string;
     process_url?: string;
+    redirect_url?: string;
     fields?: Record<string, string>;
     field_order?: string[];
   };
-  if (!res.ok || !data.process_url || !data.fields) {
+  if (!res.ok) {
     throw new Error(data.error || 'Could not start PayFast checkout.');
   }
   try {
     sessionStorage.setItem('cuboards_payfast_return', 'success');
   } catch {
     /* ignore */
+  }
+  if (data.redirect_url) {
+    window.location.assign(data.redirect_url);
+    return;
+  }
+  if (!data.process_url || !data.fields) {
+    throw new Error('Could not start PayFast checkout.');
   }
   submitPayfastForm(data.process_url, data.fields, data.field_order);
 }
