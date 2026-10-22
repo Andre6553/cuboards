@@ -10,7 +10,42 @@ export const SCREW_ID_DRYWALL_3_5x28 = 'gelmar-1049';
 export const SCREW_ID_DRYWALL_3_5x28_120 = 'gelmar-4359';
 export const SCREW_ID_DRYWALL_3_5x32 = 'gelmar-4360';
 export const SCREW_ID_DRYWALL_3_5x41 = 'gelmar-4372';
+export const SCREW_ID_DRYWALL_3_5x41_80 = 'gelmar-4361';
 export const SCREW_ID_DRYWALL_6x32 = 'gelmar-1037';
+
+/** Primary catalog id per size — used for usage-detail text when multiple pack SKUs exist. */
+const USAGE_SCREW_ID_BY_SIZE: Record<string, string> = {
+  '4x16': SCREW_ID_CHIPBOARD_4x16,
+  '3.5x28': SCREW_ID_DRYWALL_3_5x28,
+  '3.5x32': SCREW_ID_DRYWALL_3_5x32,
+  '3.5x41': SCREW_ID_DRYWALL_3_5x41,
+  '6x32': SCREW_ID_DRYWALL_6x32,
+};
+
+function screwSizeKey(entry: ScrewCatalogEntry): string {
+  return `${entry.diameterMm}x${entry.lengthMm}`;
+}
+
+function catalogPacksForSizeKey(sizeKey: string): ScrewCatalogEntry[] {
+  return SCREW_CATALOG.filter((e) => screwSizeKey(e) === sizeKey);
+}
+
+/**
+ * Gelmar pack choice: if need fits in the smaller pack, buy one small pack;
+ * otherwise buy the larger pack size (ceil to full large packs).
+ */
+export function pickGelmarPackByQuantity(
+  totalScrews: number,
+  packs: ScrewCatalogEntry[],
+): { entry: ScrewCatalogEntry; packsNeeded: number } {
+  const sorted = [...packs].sort((a, b) => a.packSize - b.packSize);
+  const small = sorted[0];
+  const large = sorted[sorted.length - 1];
+  if (totalScrews <= small.packSize) {
+    return { entry: small, packsNeeded: 1 };
+  }
+  return { entry: large, packsNeeded: Math.ceil(totalScrews / large.packSize) };
+}
 
 /** @deprecated Wall units and legacy docs — floor units use {@link calcFloorUnitScrewTotals}. */
 export const DEFAULT_SCREW_USAGE = {
@@ -104,27 +139,6 @@ function usageDetailForScrewLine(screwId: string, hasFloor: boolean, hasWall: bo
   return parts.join('; ') || `${screwId} total`;
 }
 
-const DRYWALL_28MM_PACK_IDS = [SCREW_ID_DRYWALL_3_5x28, SCREW_ID_DRYWALL_3_5x28_120] as const;
-
-/** Cheapest Gelmar pack line for 3.5×28 mm (SKU 1049 vs 4359). */
-function bestDrywall28mmPack(totalScrews: number, job: Job): ScrewCatalogEntry {
-  const entries = DRYWALL_28MM_PACK_IDS.map((id) => getScrewById(id)).filter(
-    (e): e is ScrewCatalogEntry => e != null,
-  );
-  let best = entries[0];
-  let bestCost = Infinity;
-  for (const entry of entries) {
-    const packsNeeded = Math.ceil(totalScrews / entry.packSize);
-    const packPrice = job.screwPrices?.[entry.id] ?? entry.defaultPackPrice;
-    const cost = packsNeeded * packPrice;
-    if (cost < bestCost) {
-      bestCost = cost;
-      best = entry;
-    }
-  }
-  return best;
-}
-
 function addWallUnitScrews(unit: Unit, cupboards: number, totals: Map<string, number>): void {
   const drawerFronts = activeDrawerFrontsPerCupboard(unit);
   const drawerBoxes = activeDrawerBoxesPerCupboard(unit);
@@ -178,25 +192,25 @@ export function calcJobScrews(job: Job): ScrewLine[] {
     }
   }
 
+  const neededBySize = new Map<string, number>();
+  for (const [screwId, qty] of totals) {
+    if (qty <= 0) continue;
+    const entry = getScrewById(screwId);
+    if (!entry) continue;
+    const key = screwSizeKey(entry);
+    neededBySize.set(key, (neededBySize.get(key) ?? 0) + qty);
+  }
+
   const lines: ScrewLine[] = [];
-  for (const entry of SCREW_CATALOG) {
-    if (entry.id === SCREW_ID_DRYWALL_3_5x28_120) continue;
+  for (const [sizeKey, totalScrews] of neededBySize) {
+    const packs = catalogPacksForSizeKey(sizeKey);
+    if (packs.length === 0 || totalScrews <= 0) continue;
 
-    const totalScrews =
-      entry.id === SCREW_ID_DRYWALL_3_5x28
-        ? totals.get(SCREW_ID_DRYWALL_3_5x28)
-        : totals.get(entry.id);
-    if (!totalScrews || totalScrews <= 0) continue;
-
-    const pick =
-      entry.id === SCREW_ID_DRYWALL_3_5x28 ? bestDrywall28mmPack(totalScrews, job) : entry;
-    const packsNeeded = Math.ceil(totalScrews / pick.packSize);
+    const { entry: pick, packsNeeded } = pickGelmarPackByQuantity(totalScrews, packs);
     const packPrice = job.screwPrices?.[pick.id] ?? pick.defaultPackPrice;
-    const usageDetail = usageDetailForScrewLine(
-      entry.id === SCREW_ID_DRYWALL_3_5x28 ? SCREW_ID_DRYWALL_3_5x28 : entry.id,
-      hasFloor,
-      hasWall,
-    );
+    const usageId = USAGE_SCREW_ID_BY_SIZE[sizeKey] ?? pick.id;
+    const usageDetail = usageDetailForScrewLine(usageId, hasFloor, hasWall);
+
     lines.push({
       screwId: pick.id,
       name: pick.name,
@@ -209,7 +223,8 @@ export function calcJobScrews(job: Job): ScrewLine[] {
       usageDetail,
     });
   }
-  return lines;
+
+  return lines.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function screwLineDetail(line: ScrewLine): string {
