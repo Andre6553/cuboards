@@ -66,9 +66,10 @@ export function JobEditor({ job, onChange, onBack }: Props) {
       {tab === 'units' && (
         <>
           <ClientForm
+            key={job.id}
             client={job.client}
             onChange={(client) => onChange({ ...job, client })}
-            defaultOpen={!job.client.name}
+            defaultOpen
           />
 
           <section className="card units-card">
