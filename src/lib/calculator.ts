@@ -340,22 +340,13 @@ function calcCarcass(
     ? 'Matches side material'
     : '';
 
-  const woodenTop = !isWall && c.countertopType === 'wooden';
-  if (woodenTop) {
-    addEdgedPiece(
-      'Top (full)',
-      fillerMatId,
-      D,
-      internalW,
-      1,
-      'none',
-      `Wooden top support · ${fillerNote}`.trim(),
-      '1_long',
-      c.fillerEdgingMaterialId,
-    );
-  } else {
+  if (!isWall) {
+    const woodenTop = c.countertopType === 'wooden';
     addEdgedPiece('Top filler (front)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
     addEdgedPiece('Top filler (back)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+    if (woodenTop) {
+      addEdgedPiece('Top filler (centre)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+    }
   }
 
   const backingType = c.backingType ?? 'none';

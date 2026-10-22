@@ -620,7 +620,11 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             edgingMaterials={edgingMaterials}
             onChange={(v) => setCarcass('fillerEdgingMaterialId', v)}
           />
-          <span className="hint-inline">Front &amp; back top fillers{unit.carcass.countertopType === 'wooden' ? ' + full top panel' : ''}</span>
+          <span className="hint-inline">
+            {unit.carcass.countertopType === 'wooden'
+              ? '3 top fillers (front, back, centre) — same width × internal W as granite'
+              : 'Front & back top fillers (granite / stone top)'}
+          </span>
         </label>
         <label>
           Filler width (mm)
@@ -634,7 +638,10 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           )}
           {unit.carcass.backingType === 'melamine' && unit.carcass.countertopType === 'wooden' && ' '}
           {unit.carcass.countertopType === 'wooden' && (
-            <>Wooden top: 3 fillers — front rail, back rail, plus full top panel ({unit.width - 2 * settings.thickness} × {unit.depth} mm).</>
+            <>
+              Wooden / laminate top: 3 top fillers — each {unit.carcass.fillerWidth} × {unit.width - 2 * settings.thickness} mm
+              (same as granite rails, plus one centre rail).
+            </>
           )}
         </p>
       )}

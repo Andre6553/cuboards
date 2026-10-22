@@ -49,7 +49,7 @@ export const UNIT_TYPE_LABELS = {
 
 export const COUNTERTOP_LABELS = {
   granite: 'Granite / stone top (2 fillers)',
-  wooden: 'Wooden / laminate top (3 fillers)',
+  wooden: 'Wooden / laminate top (3 top fillers)',
 } as const;
 
 export const BACKING_LABELS = {
