@@ -10,7 +10,7 @@
 ## Behaviour
 
 - Sign up / sign in with **email + password** (Supabase Auth).
-- **90-day trial** with full app access, granted once per **browser install id** (`localStorage` key `cuboards_install_id`).
+- **30-day trial** with full app access, granted once per **browser install id** (`localStorage` key `cuboards_install_id`).
 - A second account on the **same browser profile** does **not** get another trial (RPC `finalize_cuboards_signup`).
 - Clearing site data or another browser/device can still start a new install id — stronger fingerprinting is a later upgrade.
 

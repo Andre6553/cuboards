@@ -30,7 +30,7 @@ export function AuthScreen() {
         <h1 className="auth-title">{mode === 'signin' ? 'Sign in' : 'Create account'}</h1>
         <p className="auth-sub">
           {mode === 'signup'
-            ? 'New accounts get 90 days full access on this device (one trial per browser profile).'
+            ? 'New accounts get 30 days full access on this device (one trial per browser profile).'
             : 'Email and password are stored securely with Supabase Auth.'}
         </p>
 

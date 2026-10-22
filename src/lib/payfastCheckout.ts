@@ -1,5 +1,5 @@
 export function subscriptionPriceLabel(): string {
-  return import.meta.env.VITE_SUBSCRIPTION_PRICE_LABEL?.trim() || 'R199/month';
+  return import.meta.env.VITE_SUBSCRIPTION_PRICE_LABEL?.trim() || 'R500/year';
 }
 
 const PAYFAST_FIELD_ORDER = [

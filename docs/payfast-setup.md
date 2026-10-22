@@ -1,6 +1,6 @@
 # Cuboards — PayFast subscription
 
-Monthly **Cuboards Pro** after the 90-day trial. Uses the same signing rules as BizTap
+Annual **Cuboards Pro** (R500/year default) after the 30-day trial. Uses the same signing rules as BizTap
 (outgoing redirect skips empty fields; **ITN** verifies from the raw posted body).
 
 ## Vercel environment variables
@@ -11,15 +11,15 @@ Monthly **Cuboards Pro** after the 90-day trial. Uses the same signing rules as 
 | `SUPABASE_SERVICE_ROLE_KEY` | ITN + initiate (server only) |
 | `PAYFAST_SANDBOX` | `true` (default) for sandbox |
 | `PAYFAST_MERCHANT_ID` / `KEY` / `PASSPHRASE` | Your live merchant; leave blank in sandbox to use PayFast test merchant `10000100` |
-| `PAYFAST_SUBSCRIPTION_CENTS` | Default `19900` (R199) |
+| `PAYFAST_SUBSCRIPTION_CENTS` | Default `50000` (R500/year) |
 | `APP_URL` | e.g. `https://your-app.vercel.app` — return & notify URLs |
-| `VITE_SUBSCRIPTION_PRICE_LABEL` | Shown in UI, e.g. `R199/month` |
+| `VITE_SUBSCRIPTION_PRICE_LABEL` | Shown in UI, e.g. `R500/year` |
 
 ## Flow
 
 1. Expired user → **Pay with PayFast** → `POST /api/payfast-initiate` (Bearer session JWT).
 2. Browser POSTs signed form to PayFast sandbox/live.
-3. PayFast **ITN** → `POST /api/payfast-notify` → `confirm_cuboards_subscription_payment` → `profiles.access_status = active`, `paid_until` + 1 month.
+3. PayFast **ITN** → `POST /api/payfast-notify` → `confirm_cuboards_subscription_payment` → `profiles.access_status = active`, `paid_until` + 1 year.
 4. User returns to `/?subscription=success` and taps **I've paid — refresh access** if needed.
 
 ## Local testing

@@ -19,11 +19,13 @@ Strong candidate to sell as a tool/subscription to installers.
 
 ## Status
 Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF export).
-**Supabase auth live 2026-10-22** — email/password login, **90-day trial** (full access), one trial per
+**Supabase auth live 2026-10-22** — email/password login, **30-day trial** (full access), one trial per
 browser install id (anti re-signup abuse). Jobs still **localStorage** on device; cloud job sync later.
 Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device.sql`.
 **PayFast Pro (2026-10-22):** `api/payfast-initiate.js`, `api/payfast-notify.js`, migration
-`0002_payfast_subscriptions.sql` — R199/mo default, sandbox-ready. See `docs/payfast-setup.md`.
+`0002_payfast_subscriptions.sql` + `0003_trial_30d_annual_subscription.sql` — **R500/year** after trial, sandbox-ready. See `docs/payfast-setup.md`.
+
+**2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
 - _Add pricing/packaging plan and installer feedback here._

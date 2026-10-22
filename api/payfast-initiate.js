@@ -8,8 +8,8 @@ import {
 
 function subscriptionCents() {
   const raw = process.env.PAYFAST_SUBSCRIPTION_CENTS
-  const n = raw ? parseInt(raw, 10) : 19900
-  return Number.isFinite(n) && n > 0 ? n : 19900
+  const n = raw ? parseInt(raw, 10) : 50000
+  return Number.isFinite(n) && n > 0 ? n : 50000
 }
 
 export default async function handler(req, res) {
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
   const firstToken = localPart.split(/[._+\-]/)[0]?.replace(/[^a-zA-Z]/g, '') || 'Customer'
   const firstName =
     (firstToken.charAt(0).toUpperCase() + firstToken.slice(1).toLowerCase()).slice(0, 50) || 'Customer'
-  const itemName = sandbox ? 'Cuboards Pro sandbox' : 'Cuboards Pro 1 month'
+  const itemName = sandbox ? 'Cuboards Pro sandbox' : 'Cuboards Pro 1 year'
   // PayFast m_payment_id: keep alphanumeric (UUID without hyphens) to avoid 400 validation errors.
   const payfastPaymentRef = String(payment.id).replace(/-/g, '')
 
