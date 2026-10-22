@@ -11,6 +11,7 @@ interface Props {
   cloudSyncState?: 'idle' | 'syncing' | 'error';
   onOpen: (id: string) => void;
   onJobsChange: (jobs: Job[]) => void;
+  onSyncNow?: () => void;
 }
 
 function quoteTotal(job: Job): number | null {
@@ -23,7 +24,7 @@ function quoteTotal(job: Job): number | null {
   }
 }
 
-export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange }: Props) {
+export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange, onSyncNow }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
 
@@ -95,16 +96,32 @@ export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange 
         <p>
           <strong>Your jobs belong to this account only.</strong> They sync to the cloud while you&apos;re signed in —
           use the same email on another device to pick up where you left off. JSON backup below is for your own archive.
-          {cloudSyncState === 'syncing' ? ' Syncing with cloud…' : null}
-          {cloudSyncState === 'error' ? ' Cloud sync failed — check your connection and refresh.' : null}
+          {cloudSyncState === 'error' ? ' Cloud sync failed — try Sync to cloud now or refresh.' : null}
         </p>
-        <p className="hint storage-backup-meta">
-          Last backup: {formatLastBackup(getLastBackupIso())}
-          {shouldShowBackupReminder(jobs.length) ? ' — please back up now.' : ''}
-        </p>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => exportAllJobsJson(jobs)} disabled={jobs.length === 0}>
-          Back up all jobs
-        </button>
+        <div className="storage-notice-footer">
+          <p className="hint storage-backup-meta">
+            Last backup: {formatLastBackup(getLastBackupIso())}
+            {shouldShowBackupReminder(jobs.length) ? ' — please back up now.' : ''}
+          </p>
+          <div className="storage-notice-buttons">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={cloudSyncState === 'syncing' || !onSyncNow}
+              onClick={() => onSyncNow?.()}
+            >
+              {cloudSyncState === 'syncing' ? 'Syncing…' : 'Sync to cloud now'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => exportAllJobsJson(jobs)}
+              disabled={jobs.length === 0}
+            >
+              Back up all jobs
+            </button>
+          </div>
+        </div>
       </div>
 
       {jobs.length === 0 ? (

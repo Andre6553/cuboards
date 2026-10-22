@@ -69,6 +69,14 @@ export async function syncJobsWithCloud(userId: string): Promise<Job[]> {
   return merged;
 }
 
+/** Merge jobs + prefs with Supabase (pull then push). */
+export async function syncAccountWithCloud(userId: string): Promise<Job[]> {
+  const merged = await syncJobsWithCloud(userId);
+  await pullUserPrefs(userId);
+  await pushUserPrefsFromLocal(userId);
+  return merged;
+}
+
 function applyPrefsFromCloud(catalog: BoardCatalog | null, priceList: PriceList | null): void {
   const localCatalog = loadMaterialCatalog();
   const localPrice = loadPriceList();

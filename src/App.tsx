@@ -13,12 +13,10 @@ import { catalogFingerprint, saveMaterialCatalog } from './lib/materialCatalog';
 import { isSupabaseConfigured } from './lib/supabaseClient';
 import {
   deleteCloudJob,
-  pullUserPrefs,
-  pushUserPrefsFromLocal,
   schedulePushJobs,
   schedulePushUserPrefs,
   setCloudSyncUserId,
-  syncJobsWithCloud,
+  syncAccountWithCloud,
 } from './lib/jobCloudSync';
 import { setUserDataScope } from './lib/userDataScope';
 import { migrateJob, saveJobs, upsertJob } from './lib/storage';
@@ -46,6 +44,22 @@ function CuboardsApp() {
   const [cloudSyncState, setCloudSyncState] = useState<'idle' | 'syncing' | 'error'>('idle');
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
+
+  const runCloudSync = useCallback(async () => {
+    if (!userId) return;
+    setCloudSyncState('syncing');
+    try {
+      saveJobs(jobsRef.current);
+      const merged = await syncAccountWithCloud(userId);
+      saveJobs(merged);
+      setJobs(merged);
+      setCloudSyncState('idle');
+    } catch (e) {
+      console.error('cloud sync', e);
+      setCloudSyncState('error');
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (!userId) {
       setUserDataScope(null);
@@ -59,28 +73,8 @@ function CuboardsApp() {
     setCloudSyncUserId(userId);
     setJobs([]);
     setActiveJobId(null);
-    let cancelled = false;
-    setCloudSyncState('syncing');
-
-    void (async () => {
-      try {
-        const merged = await syncJobsWithCloud(userId);
-        await pullUserPrefs(userId);
-        if (cancelled) return;
-        saveJobs(merged);
-        setJobs(merged);
-        await pushUserPrefsFromLocal(userId);
-        setCloudSyncState('idle');
-      } catch (e) {
-        console.error('cloud sync', e);
-        if (!cancelled) setCloudSyncState('error');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
+    void runCloudSync();
+  }, [userId, runCloudSync]);
 
   const persist = useCallback(
     (next: Job[]) => {
@@ -151,7 +145,13 @@ function CuboardsApp() {
             onPrefsSaved={() => schedulePushUserPrefs()}
           />
         ) : (
-          <Dashboard jobs={jobs} cloudSyncState={cloudSyncState} onOpen={setActiveJobId} onJobsChange={persist} />
+          <Dashboard
+            jobs={jobs}
+            cloudSyncState={cloudSyncState}
+            onOpen={setActiveJobId}
+            onJobsChange={persist}
+            onSyncNow={() => void runCloudSync()}
+          />
         )}
       </div>
     </div>
