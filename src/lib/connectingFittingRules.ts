@@ -4,25 +4,11 @@ import {
   CONNECTING_FITTING_ID_CORNER_BLOCK,
   getConnectingFittingById,
 } from './connectingFittingCatalog';
+import { cornerBlockUsageDetail, totalCornerBlocksOnJob } from './cornerBlockRules';
 import { calcCustomPackLines, usesGelmarCatalog } from './hardwarePricing';
-
-/** Corner blocks with cap — per cupboard. */
-export const DEFAULT_CONNECTING_FITTING_USAGE = {
-  cornerBlockPerCupboard: 8,
-} as const;
 
 /** 4×16 mm chipboard screws per corner block (Gelmar 4386). */
 export const SCREWS_PER_CORNER_BLOCK = 4;
-
-export function totalCornerBlocksOnJob(job: { units: { unitQty?: number }[] }): number {
-  let total = 0;
-  for (const unit of job.units) {
-    const cupboards = Math.max(0, unit.unitQty ?? 0);
-    if (cupboards <= 0) continue;
-    total += DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard * cupboards;
-  }
-  return total;
-}
 
 /** Job-wide connecting fitting totals. */
 export function calcJobConnectingFittings(job: Job): ScrewLine[] {
@@ -30,13 +16,7 @@ export function calcJobConnectingFittings(job: Job): ScrewLine[] {
     return calcCustomPackLines(job, 'connectingFittings');
   }
 
-  let totalPieces = 0;
-  for (const unit of job.units) {
-    const cupboards = Math.max(0, unit.unitQty ?? 0);
-    if (cupboards <= 0) continue;
-    totalPieces += DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard * cupboards;
-  }
-
+  const totalPieces = totalCornerBlocksOnJob(job);
   if (totalPieces <= 0) return [];
 
   const entry = CONNECTING_FITTING_CATALOG.find((f) => f.id === CONNECTING_FITTING_ID_CORNER_BLOCK);
@@ -44,6 +24,16 @@ export function calcJobConnectingFittings(job: Job): ScrewLine[] {
 
   const packsNeeded = Math.ceil(totalPieces / entry.packSize);
   const packPrice = job.connectingFittingPrices?.[entry.id] ?? entry.defaultPackPrice;
+
+  const usageParts: string[] = [];
+  const materials = job.materials ?? [];
+  for (const unit of job.units) {
+    const cupboards = Math.max(0, unit.unitQty ?? 0);
+    if (cupboards <= 0) continue;
+    const detail = cornerBlockUsageDetail(unit, materials);
+    if (detail.startsWith('No visible')) continue;
+    usageParts.push(`${unit.name}${cupboards > 1 ? ` ×${cupboards}` : ''}: ${detail}`);
+  }
 
   return [
     {
@@ -55,7 +45,7 @@ export function calcJobConnectingFittings(job: Job): ScrewLine[] {
       packsNeeded,
       packPrice,
       subtotal: packsNeeded * packPrice,
-      usageDetail: `${DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard`,
+      usageDetail: usageParts.length > 0 ? usageParts.join(' · ') : 'From shelves, fillers & visible sides',
     },
   ];
 }

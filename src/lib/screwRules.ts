@@ -2,11 +2,8 @@ import type { Job, ScrewLine, Unit } from '../types';
 import { isFloorUnit } from './constants';
 import { calcCustomPackLines, usesGelmarCatalog } from './hardwarePricing';
 import { getScrewById, SCREW_CATALOG, type ScrewCatalogEntry } from './screwCatalog';
-import {
-  DEFAULT_CONNECTING_FITTING_USAGE,
-  SCREWS_PER_CORNER_BLOCK,
-  totalCornerBlocksOnJob,
-} from './connectingFittingRules';
+import { SCREWS_PER_CORNER_BLOCK } from './connectingFittingRules';
+import { totalCornerBlocksOnJob } from './cornerBlockRules';
 import { isActiveDrawer, resolveFrontQty } from './drawerRules';
 
 /** Gelmar screw IDs (SKU-based). */
@@ -113,9 +110,7 @@ function usageDetailForScrewLine(screwId: string, hasFloor: boolean, hasWall: bo
         );
         break;
       case SCREW_ID_CHIPBOARD_4x16:
-        parts.push(
-          `${SCREWS_PER_CORNER_BLOCK}/corner block (${DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard)`,
-        );
+        parts.push(`${SCREWS_PER_CORNER_BLOCK}/corner block (see corner block line)`);
         parts.push('12/cupboard (one exposed side · carcass)');
         break;
       default:
@@ -127,9 +122,7 @@ function usageDetailForScrewLine(screwId: string, hasFloor: boolean, hasWall: bo
     switch (screwId) {
       case SCREW_ID_CHIPBOARD_4x16:
         if (!hasFloor) {
-          parts.push(
-            `${SCREWS_PER_CORNER_BLOCK}/corner block (${DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard)`,
-          );
+          parts.push(`${SCREWS_PER_CORNER_BLOCK}/corner block (see corner block line)`);
         }
         parts.push(`${u.chipboardPerCupboard}/cupboard (wall)`);
         break;

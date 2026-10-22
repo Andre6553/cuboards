@@ -242,9 +242,9 @@ export interface CarcassConfig {
   fillerEdgingMaterialId: string;
   shelfQty: number;
   fillerWidth: number;
-  /** @deprecated Ignored — sides always get 1 long edge (front). Kept for old saved jobs. */
+  /** External finished face — affects corner block count (defaults from materials). */
   leftVisible?: boolean;
-  /** @deprecated Ignored — sides always get 1 long edge (front). Kept for old saved jobs. */
+  /** External finished face — affects corner block count (defaults from materials). */
   rightVisible?: boolean;
   backingType: BackingType;
   backingMaterialId: string;

@@ -26,7 +26,6 @@ export {
   GELMAR_CONNECTING_FITTINGS_SCRAPED_AT,
   CONNECTING_FITTING_CATALOG,
 } from './connectingFittingCatalog';
-export { DEFAULT_CONNECTING_FITTING_USAGE } from './connectingFittingRules';
 export { DEFAULT_INSTALL_RATES } from './installRules';
 
 /** @deprecated use BRAND_RUNNER_PRESETS or RUNNER_CATALOG — kept for existing imports */

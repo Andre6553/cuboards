@@ -15,6 +15,12 @@ import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_B
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
 import { fillersFollowSideMaterial, resolveFillerMaterial } from '../lib/carcassRules';
 import {
+  cornerBlockUsageDetail,
+  cornerBlocksPerCupboard,
+  resolveLeftSideVisible,
+  resolveRightSideVisible,
+} from '../lib/cornerBlockRules';
+import {
   defaultVisibleBackPanel,
   resolveVisibleBackPanelEdging,
   resolveVisibleBackPanelMaterialId,
@@ -484,6 +490,14 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               onChange={(v) => setCarcass('leftEdgingMaterialId', v)}
             />
           </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={resolveLeftSideVisible(unit.carcass, materials)}
+              onChange={(e) => setCarcass('leftVisible', e.target.checked)}
+            />
+            Left side visible (corner blocks)
+          </label>
         </div>
         <div className="side-column">
           <label>
@@ -512,8 +526,20 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               onChange={(v) => setCarcass('rightEdgingMaterialId', v)}
             />
           </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={resolveRightSideVisible(unit.carcass, materials)}
+              onChange={(e) => setCarcass('rightVisible', e.target.checked)}
+            />
+            Right side visible (corner blocks)
+          </label>
         </div>
       </div>
+      <p className="hint">
+        Corner blocks: {cornerBlocksPerCupboard(unit, materials)}/cupboard — {cornerBlockUsageDetail(unit, materials)}.
+        {' '}No visible sides → none (unless solid melamine backing → +4). One visible → 2/shelf + 1/filler. Both → 4/shelf + 2/filler. Solid backing adds +4.
+      </p>
       <div className="form-grid form-grid-3">
         <label>
           Bottom material

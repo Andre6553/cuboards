@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   CONNECTING_FITTING_CATALOG,
   CUT_SIZE_MODE_LABELS,
-  DEFAULT_CONNECTING_FITTING_USAGE,
   DEFAULT_INSTALL_RATES,
   DEFAULT_QUOTE_TERMS,
   DEFAULT_SCREW_USAGE,
@@ -1154,7 +1153,7 @@ export function MaterialsForm({
               />
 
               <p className="hint">
-                Corner block with cap: {DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard · packs rounded up on cost estimate.
+                Corner blocks per cupboard: visible sides, shelves, top fillers (2 granite / 3 wooden), +4 for melamine backing inside carcass.
               </p>
 
               <div className="table-wrap gelmar-prices">
