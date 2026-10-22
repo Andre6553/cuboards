@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { buildSheetMapSvg } from '../lib/sheetMapDiagram';
 import type { SheetMapGroup, SheetMapSheet } from '../types';
 
 const MIN_ZOOM = 1;
@@ -7,43 +8,6 @@ const MAX_ZOOM = 10;
 
 function clampZoom(z: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
-}
-
-function fitFontSize(label: string, boxW: number, boxH: number, scale = 1): number {
-  const base = Math.min(boxW, boxH) * 0.22 * scale;
-  const lenFactor = Math.max(1, label.length / 14);
-  return Math.max(5, Math.min(scale > 1 ? 20 : 14, base / lenFactor));
-}
-
-/** Same order as cut list: Length × Height (mm). On the sheet, length is along grain (horizontal). */
-function placementSizeLabel(widthMm: number, heightMm: number): string {
-  return `${Math.round(widthMm)} × ${Math.round(heightMm)}`;
-}
-
-/** Rip (horizontal) and crosscut (vertical) guides from panel-saw strip layout. */
-function guillotineCutLines(placements: SheetMapSheet['placements']): {
-  ripY: number[];
-  cross: { x: number; y: number; h: number }[];
-} {
-  const stripMap = new Map<number, SheetMapSheet['placements']>();
-  for (const p of placements) {
-    const list = stripMap.get(p.yMm) ?? [];
-    list.push(p);
-    stripMap.set(p.yMm, list);
-  }
-  const ripY: number[] = [];
-  const cross: { x: number; y: number; h: number }[] = [];
-  for (const [y, parts] of stripMap) {
-    const stripH = Math.max(...parts.map((p) => p.heightMm));
-    ripY.push(y + stripH);
-    const sorted = [...parts].sort((a, b) => a.xMm - b.xMm);
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const p = sorted[i];
-      cross.push({ x: p.xMm + p.widthMm, y, h: stripH });
-    }
-  }
-  ripY.sort((a, b) => a - b);
-  return { ripY, cross };
 }
 
 type DiagramProps = {
@@ -67,197 +31,25 @@ function SheetDiagramSvg({
   className = '',
   pixelWidth,
 }: DiagramProps) {
-  const w = sheet.grainLengthMm;
-  const h = sheet.crossLengthMm;
-  const pad = expanded ? 14 : 8;
-  const grainBand = showSheetGrainBand ? 22 : 0;
-  const viewW = w + pad * 2;
-  const viewH = h + pad * 2 + grainBand;
-
-  const hasGrainParts = sheet.placements.some((p) => p.grainLocked);
-  const cuts = guillotineCutLines(sheet.placements);
-  const cutStroke = expanded ? 1.2 : 0.75;
+  const markup = useMemo(
+    () =>
+      buildSheetMapSvg(sheet, patternId, {
+        expanded,
+        showSheetGrainBand,
+        showPartGrainArrows,
+        className: `sheet-map-svg ${className}`.trim(),
+        pixelWidth,
+      }),
+    [sheet, patternId, expanded, showSheetGrainBand, showPartGrainArrows, className, pixelWidth],
+  );
 
   return (
-    <svg
-      className={`sheet-map-svg ${className}`.trim()}
-      viewBox={`0 0 ${viewW} ${viewH}`}
-      width={pixelWidth}
-      style={pixelWidth ? { width: pixelWidth, height: 'auto', maxWidth: 'none' } : undefined}
-      role="img"
-      aria-label={`Sheet ${sheet.sheetIndex} layout`}
-    >
-      <defs>
-        <pattern id={patternId} width="8" height="8" patternUnits="userSpaceOnUse">
-          <path d="M0 8 L8 0" stroke="#93c5fd" strokeWidth="0.6" />
-        </pattern>
-        <marker id={`${patternId}-arrow`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#475569" />
-        </marker>
-      </defs>
-
-      {showSheetGrainBand && (
-        <g className="sheet-map-grain-band" aria-hidden>
-          <rect x={pad} y={4} width={w} height={grainBand - 8} rx={3} fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="0.8" />
-          <line
-            x1={pad + 16}
-            y1={grainBand / 2}
-            x2={pad + w - 16}
-            y2={grainBand / 2}
-            stroke="#475569"
-            strokeWidth={expanded ? 2 : 1.2}
-            markerEnd={`url(#${patternId}-arrow)`}
-          />
-          <text x={pad + w / 2} y={grainBand / 2 + 3.5} textAnchor="middle" className="sheet-map-grain-band-label" fontSize={expanded ? 11 : 8}>
-            Sheet grain →
-          </text>
-        </g>
-      )}
-
-      <rect
-        x={pad}
-        y={pad + grainBand}
-        width={w}
-        height={h}
-        className="sheet-map-sheet-outline"
-        rx={1}
-      />
-
-      {sheet.offcutRects.map((r, i) => (
-        <rect
-          key={`o-${i}`}
-          x={pad + r.xMm}
-          y={pad + grainBand + r.yMm}
-          width={r.widthMm}
-          height={r.heightMm}
-          className="sheet-map-offcut"
-        />
-      ))}
-
-      {sheet.placements.map((p, i) => {
-        const fontSize = fitFontSize(p.label, p.widthMm, p.heightMm, expanded ? 1.85 : 1);
-        const cx = pad + p.xMm + p.widthMm / 2;
-        const cy = pad + grainBand + p.yMm + p.heightMm / 2;
-        const lines = p.label.split(' · ');
-        const line1 = lines[0] ?? p.label;
-        const line2 = lines[1];
-        const sizeText = placementSizeLabel(p.widthMm, p.heightMm);
-        const minLabelW = expanded ? 28 : 55;
-        const minLabelH = expanded ? 16 : 28;
-        const minSizeW = expanded ? 22 : 38;
-        const minSizeH = expanded ? 10 : 16;
-        const showName = p.widthMm > minLabelW && p.heightMm > minLabelH;
-        const showUnit = showName && line2 && p.heightMm > (expanded ? 40 : 52);
-        const showSize = p.widthMm > minSizeW && p.heightMm > minSizeH;
-        const grainLift = showPartGrainArrows && p.grainLocked && showName ? fontSize * 0.35 : 0;
-        const rowCount = (showName ? 1 : 0) + (showUnit ? 1 : 0) + (showSize ? 1 : 0);
-        const rowStep = fontSize * 1.05;
-        const blockTop = cy - grainLift - ((rowCount - 1) * rowStep) / 2;
-        let row = 0;
-        return (
-          <g key={`p-${i}`}>
-            <rect
-              x={pad + p.xMm}
-              y={pad + grainBand + p.yMm}
-              width={p.widthMm}
-              height={p.heightMm}
-              className={p.grainLocked ? 'sheet-map-part sheet-map-part--grain' : 'sheet-map-part'}
-              fill={p.grainLocked ? `url(#${patternId})` : undefined}
-            />
-            {showPartGrainArrows && p.grainLocked && p.widthMm > 36 && p.heightMm > 16 && (
-              <line
-                x1={pad + p.xMm + 6}
-                y1={cy - grainLift}
-                x2={pad + p.xMm + p.widthMm - 6}
-                y2={cy - grainLift}
-                className="sheet-map-part-grain-line"
-                strokeWidth={expanded ? 1.4 : 1}
-                markerEnd={`url(#${patternId}-arrow)`}
-              />
-            )}
-            {showName && (
-              <text
-                x={cx}
-                y={blockTop + row++ * rowStep}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="sheet-map-label"
-                fontSize={fontSize}
-              >
-                {line1}
-              </text>
-            )}
-            {showUnit && (
-              <text
-                x={cx}
-                y={blockTop + row++ * rowStep}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="sheet-map-label sheet-map-label-sub"
-                fontSize={fontSize * 0.85}
-              >
-                {line2}
-              </text>
-            )}
-            {showSize && (
-              <text
-                x={cx}
-                y={blockTop + row++ * rowStep}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="sheet-map-label sheet-map-label-size"
-                fontSize={showName ? fontSize * 0.82 : fontSize * 0.9}
-              >
-                {sizeText}
-              </text>
-            )}
-          </g>
-        );
-      })}
-
-      <g className="sheet-map-cut-guides" aria-hidden>
-        {cuts.ripY.map((y, i) => (
-          <line
-            key={`rip-${i}`}
-            x1={pad}
-            y1={pad + grainBand + y}
-            x2={pad + w}
-            y2={pad + grainBand + y}
-            className="sheet-map-cut-line sheet-map-cut-line--rip"
-            strokeWidth={cutStroke}
-          />
-        ))}
-        {cuts.cross.map((c, i) => (
-          <line
-            key={`cross-${i}`}
-            x1={pad + c.x}
-            y1={pad + grainBand + c.y}
-            x2={pad + c.x}
-            y2={pad + grainBand + c.y + c.h}
-            className="sheet-map-cut-line sheet-map-cut-line--cross"
-            strokeWidth={cutStroke}
-          />
-        ))}
-      </g>
-
-      {!showSheetGrainBand && (
-        <text
-          x={pad + w - 4}
-          y={pad + grainBand + 10}
-          textAnchor="end"
-          className="sheet-map-grain-arrow"
-          fontSize={expanded ? 11 : 9}
-        >
-          grain →
-        </text>
-      )}
-
-      {expanded && hasGrainParts && (
-        <text x={pad} y={viewH - 3} className="sheet-map-legend-note" fontSize={9}>
-          Hatched + arrow on part = grain fixed (along sheet length)
-        </text>
-      )}
-    </svg>
+    <div
+      className="sheet-map-svg-host"
+      style={pixelWidth ? { width: pixelWidth, maxWidth: 'none' } : undefined}
+      // SVG is generated locally from cut-list data (not user HTML).
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
   );
 }
 

@@ -30,6 +30,7 @@ Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF ex
 - **2026-10-21:** Factory + full PDF — board/masonite **group headings** (material — edging) **bold 12 pt** (was 9 pt normal).
 - **2026-10-21:** Cut list shows **long-edged side first** (e.g. drawer side **500 × 130** when `longAlong` is width); doors/sides still height × depth when long on length.
 - **2026-10-21:** **No back panel** units can add **Visible back panel** — user width/height (default carcass W×H), material/grain follow door or drawer front; **edging pattern + tape** choosable (defaults from door/drawer).
+- **2026-10-22:** **Factory + full PDF** include **visual sheet maps** (same nest diagrams as on-screen; `sheetMapDiagram.ts` + `sheetMapPdf.ts`) after the cut tables.
 - **2026-10-22:** **Global board + edging catalog** (`materialCatalog.ts`, localStorage `cuboards_board_catalog`) — shared by all jobs; edits in Prices & settings sync to every job on the device.
 - **2026-10-22:** **Corner blocks** (`cornerBlockRules.ts`): from visible sides (checkboxes or material inference), shelf qty, floor top fillers (2 granite / 3 wooden), **+4** for melamine backing inside carcass; 0 visible sides → none except backing. **4×16 mm**: 4 per corner block + floor **12×16** when one exposed side. Floor drawer fronts **4×3.5×28 mm** (1049/4359 pack rule). **2026-10-21:** Floor carcass/drawer **41 mm** (4372/4361). Wall units keep legacy screw rates.
 - **2026-10-21:** **Board costing** — all materials + masonite: sheet count = **max(area × wastage %, nesting + kerf)**; **Buy as** adds **⅓ sheet** option (factory cut house).
@@ -43,7 +44,7 @@ Active (v1 feature set built: client jobs, calculators, edging, hardware, PDF ex
 - **2026-10-09:** Mobile unit form: responsive `auto-fit` grids + drawer box hints moved out of grid so material/edging selects are full width on phone.
 - **2026-10-09:** Cut list tab **Client quote** + portrait PDF (`quotePdf.ts`) — scope, supply/install totals, exclusions; no panel sizes (Factory/Full unchanged).
 - **2026-10-09:** SA quote polish (2–8): VAT breakdown, board wastage %, backup reminder, mobile edging table, sheet presets, runner price note, editable quote terms; dashboard quote incl VAT when enabled.
-- **2026-10-09:** **Board offcuts** on **full** cut list + full PDF only (not factory) — from sheet nesting; board wastage % is quote sheet count only, not offcut geometry.
+- **2026-10-09:** **Board offcuts** on **full** cut list + full PDF only (not factory PDF) — from sheet nesting; board wastage % is quote sheet count only, not offcut geometry.
 - **2026-10-09:** **NumberInput** — mobile-friendly numeric fields (clear/retype without snapping to 0); replaces `type="number"` on units/prices forms.
 - **2026-10-09:** **Quote currency** — Job settings dropdown (ZAR default + regional/common codes); `formatMoney` drives cut list, dashboard, full PDF, client quote PDF. No FX conversion — you enter amounts in that currency.
 - **2026-10-09:** **Hardware pricing mode** — per category (runners, hinges, screws, connecting fittings): checkbox *Use Gelmar catalog & live refresh* (default on). Off → custom product table (description + price; pack qty for screws/fittings). Stored on job + **My default prices** (`hardwarePricing` in `priceList.ts`). Unit dropdowns use custom catalog via `hardwarePricing.ts`.

@@ -15,6 +15,7 @@ import {
   type FactoryCutListRow,
 } from './factoryCutList';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from './sheetLayout';
+import { appendSheetMapsToPdf } from './sheetMapPdf';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
 function renderFactoryCutListTable(
@@ -298,6 +299,10 @@ export async function exportCutListPdf(job: Job, result: CutListResult, mode: Cu
   } else {
     y = renderGroupedSection(doc, y, margin, 'Board cut list', result.boardGroups);
     y = renderGroupedSection(doc, y, margin, 'Masonite cut list', result.masoniteGroups, false);
+  }
+
+  if (result.sheetMaps.length > 0) {
+    y = await appendSheetMapsToPdf(doc, y, margin, result.sheetMaps);
   }
 
   if (!factory && result.boardOffcuts.length > 0) {
