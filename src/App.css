@@ -898,6 +898,20 @@
   margin-bottom: 0.35rem;
 }
 
+.factory-cutlist-group-title {
+  font-size: 0.95rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #111;
+  margin: 1rem 0 0.35rem;
+}
+
+.factory-cutlist-group-title strong {
+  font-weight: 700;
+  color: #111;
+}
+
 .cost-summary {
   max-width: 480px;
   margin-top: 0.5rem;

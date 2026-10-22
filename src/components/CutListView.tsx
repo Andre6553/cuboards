@@ -13,11 +13,37 @@ import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { QuoteTotalsRows } from './QuoteTotals';
 import { SheetMapView } from './SheetMapView';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from '../lib/sheetLayout';
-import { buildFactoryCutListGroups, factoryTickCell } from '../lib/factoryCutList';
+import {
+  buildFactoryCutListGroups,
+  factoryTickCell,
+  type FactoryCutListGroupHeading,
+} from '../lib/factoryCutList';
 import type { CutListGroup, Job } from '../types';
 
 interface Props {
   job: Job;
+}
+
+function FactoryCutListGroupTitle({ heading }: { heading: FactoryCutListGroupHeading }) {
+  return (
+    <h4 className="factory-cutlist-group-title">
+      <strong>Board type</strong>
+      {' - '}
+      {heading.boardType}
+      {heading.edgingType != null && heading.thicknessMm != null && (
+        <>
+          {' -/- '}
+          <strong>Edging Type</strong>
+          {' - '}
+          {heading.edgingType}
+          {' - '}
+          <strong>Thickness</strong>
+          {' - '}
+          {heading.thicknessMm} mm
+        </>
+      )}
+    </h4>
+  );
 }
 
 function FactoryCutListTable({ job, pieces }: { job: Job; pieces: ReturnType<typeof generateCutList>['pieces'] }) {
@@ -29,7 +55,7 @@ function FactoryCutListTable({ job, pieces }: { job: Job; pieces: ReturnType<typ
     <>
       {groups.map((group, gi) => (
         <div key={gi} className="cutlist-group factory-cutlist-group">
-          <h4 className="subsection-title">{group.heading}</h4>
+          <FactoryCutListGroupTitle heading={group.groupHeading} />
           <div className="table-wrap factory-cutlist-wrap">
             <table className="data-table factory-cutlist-table">
               <thead>

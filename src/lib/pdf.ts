@@ -9,6 +9,7 @@ import { calcVatTotalsForJob, resolvePricesEnterAsInclVat, resolveShowVatOnQuote
 import { drawPdfBrandHeader, loadPdfLogoDataUrl } from './pdfBrand';
 import {
   buildFactoryCutListGroups,
+  drawFactoryCutListGroupHeading,
   drawFactoryEdgingTick,
   factoryTickCellPdf,
   type FactoryCutListRow,
@@ -113,13 +114,7 @@ function renderFactoryCutListSection(
       doc.addPage();
       y = margin;
     }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(40);
-    doc.text(group.heading, margin, y);
-    y += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0);
+    y = drawFactoryCutListGroupHeading(doc, margin, y, group.groupHeading);
     y = renderFactoryCutListTable(doc, y, margin, group.rows);
     y += 2;
   }

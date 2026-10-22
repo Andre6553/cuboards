@@ -48,9 +48,17 @@ export interface FactoryCutListRow {
   notes: string;
 }
 
+/** Factory section title — board + edging tape (when applicable). */
+export interface FactoryCutListGroupHeading {
+  boardType: string;
+  edgingType: string | null;
+  thicknessMm: number | null;
+}
+
 export interface FactoryCutListGroup {
-  /** e.g. "White 16mm — Winterland (0.4 mm)" — same grouping as board cut list */
+  /** Plain-text title (PDF fallback, search). */
   heading: string;
+  groupHeading: FactoryCutListGroupHeading;
   rows: FactoryCutListRow[];
 }
 
@@ -61,13 +69,30 @@ function resolveEdgingMaterialId(job: Job, boardMaterialId: string, override?: s
   return job.materials.find((m) => m.id === boardMaterialId)?.edgingMaterialId ?? '';
 }
 
-function tapeHeading(tapeKey: string): string {
-  if (tapeKey === 'none') return 'No edging';
+export function factoryCutListGroupHeading(
+  materialName: string,
+  tapeKey: string,
+): FactoryCutListGroupHeading {
+  if (tapeKey === 'masonite' || tapeKey === 'none') {
+    return { boardType: materialName, edgingType: null, thicknessMm: null };
+  }
   const pipe = tapeKey.lastIndexOf('|');
-  return `${tapeKey.slice(0, pipe)} (${tapeKey.slice(pipe + 1)} mm)`;
+  return {
+    boardType: materialName,
+    edgingType: tapeKey.slice(0, pipe),
+    thicknessMm: Number(tapeKey.slice(pipe + 1)) || null,
+  };
 }
 
-function factoryPieceGroupKeys(job: Job, piece: CutPiece): { sortKey: string; heading: string } {
+export function factoryCutListGroupHeadingPlain(h: FactoryCutListGroupHeading): string {
+  let text = `Board type - ${h.boardType}`;
+  if (h.edgingType != null && h.thicknessMm != null) {
+    text += ` -/- Edging Type - ${h.edgingType} - Thickness - ${h.thicknessMm} mm`;
+  }
+  return text;
+}
+
+function factoryPieceGroupKeys(job: Job, piece: CutPiece): { sortKey: string } {
   const pattern = piece.edgingPattern ?? 'none';
   const edgingMaterialId = resolveEdgingMaterialId(job, piece.materialId, piece.edgingMaterialId);
   const hasEdging = piece.kickplateEdgingCounts
@@ -76,17 +101,10 @@ function factoryPieceGroupKeys(job: Job, piece: CutPiece): { sortKey: string; he
   const tapeKey = hasEdging ? edgingTapeKeyFromMaterial(job, edgingMaterialId) : 'none';
 
   if (piece.materialId === MASONITE_ID) {
-    return {
-      sortKey: `${piece.materialName}|masonite`,
-      heading: piece.materialName,
-    };
+    return { sortKey: `${piece.materialName}|masonite` };
   }
 
-  const sortKey = `${piece.materialName}|${tapeKey}`;
-  return {
-    sortKey,
-    heading: `${piece.materialName} — ${tapeHeading(tapeKey)}`,
-  };
+  return { sortKey: `${piece.materialName}|${tapeKey}` };
 }
 
 function factoryFinish(piece: CutPiece, job: Job): string {
@@ -197,15 +215,15 @@ function sortFactoryRows(a: FactoryCutListRow, b: FactoryCutListRow): number {
 
 /** One section per board + edging tape (matches Full/Factory board groups). */
 export function buildFactoryCutListGroups(job: Job, pieces: CutPiece[]): FactoryCutListGroup[] {
-  const map = new Map<string, { heading: string; materialName: string; tapeKey: string; rows: FactoryCutListRow[] }>();
+  const map = new Map<string, { materialName: string; tapeKey: string; rows: FactoryCutListRow[] }>();
 
   for (const piece of pieces) {
     if (piece.qty <= 0) continue;
-    const { sortKey, heading } = factoryPieceGroupKeys(job, piece);
+    const { sortKey } = factoryPieceGroupKeys(job, piece);
     const pipe = sortKey.indexOf('|');
     const materialName = sortKey.slice(0, pipe);
     const tapeKey = sortKey.slice(pipe + 1);
-    const entry = map.get(sortKey) ?? { heading, materialName, tapeKey, rows: [] };
+    const entry = map.get(sortKey) ?? { materialName, tapeKey, rows: [] };
     entry.rows.push(pieceToFactoryRow(job, piece));
     map.set(sortKey, entry);
   }
@@ -218,10 +236,14 @@ export function buildFactoryCutListGroups(job: Job, pieces: CutPiece[]): Factory
       if (a.tapeKey === 'masonite' && b.tapeKey === 'masonite') return 0;
       return a.tapeKey.localeCompare(b.tapeKey, undefined, { numeric: true });
     })
-    .map(({ heading, rows }) => ({
-      heading,
-      rows: mergeFactoryRowsByCutSpec(rows).sort(sortFactoryRows),
-    }));
+    .map(({ materialName, tapeKey, rows }) => {
+      const groupHeading = factoryCutListGroupHeading(materialName, tapeKey);
+      return {
+        heading: factoryCutListGroupHeadingPlain(groupHeading),
+        groupHeading,
+        rows: mergeFactoryRowsByCutSpec(rows).sort(sortFactoryRows),
+      };
+    });
 }
 
 export function buildFactoryCutListRows(job: Job, pieces: CutPiece[]): FactoryCutListRow[] {
@@ -241,6 +263,44 @@ export function factoryTickCellPdf(_on: boolean): string {
 /** Fixed mm size — must not scale with row height (wrapped Unit ID rows). */
 const FACTORY_TICK_HEIGHT_MM = 3;
 const FACTORY_TICK_WIDTH_MM = 2.6;
+
+type HeadingTextPart = { text: string; bold: boolean };
+
+function factoryGroupHeadingParts(h: FactoryCutListGroupHeading): HeadingTextPart[] {
+  const parts: HeadingTextPart[] = [
+    { text: 'Board type', bold: true },
+    { text: ` - ${h.boardType}`, bold: false },
+  ];
+  if (h.edgingType != null && h.thicknessMm != null) {
+    parts.push(
+      { text: ' -/- ', bold: false },
+      { text: 'Edging Type', bold: true },
+      { text: ` - ${h.edgingType}`, bold: false },
+      { text: ' - ', bold: false },
+      { text: 'Thickness', bold: true },
+      { text: ` - ${h.thicknessMm} mm`, bold: false },
+    );
+  }
+  return parts;
+}
+
+/** Factory PDF group title — bold labels, black text. */
+export function drawFactoryCutListGroupHeading(
+  doc: jsPDF,
+  margin: number,
+  y: number,
+  h: FactoryCutListGroupHeading,
+): number {
+  doc.setFontSize(11);
+  doc.setTextColor(0);
+  let x = margin;
+  for (const part of factoryGroupHeadingParts(h)) {
+    doc.setFont('helvetica', part.bold ? 'bold' : 'normal');
+    doc.text(part.text, x, y);
+    x += doc.getTextWidth(part.text);
+  }
+  return y + 5;
+}
 
 export function drawFactoryEdgingTick(
   doc: jsPDF,
