@@ -134,11 +134,21 @@ export function formatKickplateEdgingLabel(
   return `${summary} · ${em.name} (${em.thickness} mm)`;
 }
 
-export function kickplateEdgingGroupKey(job: Job, counts: KickplateEdgingCounts, edgingMaterialId: string): string {
-  const summary = kickplateEdgingSummary(counts);
-  if (summary === 'No edging') return 'none';
+/** Same as other parts: edging tape name + thickness (group headings / factory tables). */
+export function edgingTapeKeyFromMaterial(job: Job, edgingMaterialId: string): string {
   const em = job.edgingMaterials.find((e) => e.id === edgingMaterialId);
-  return `kp|${summary}|${em?.name ?? '—'}|${em?.thickness ?? 0}`;
+  return `${em?.name ?? '—'}|${em?.thickness ?? 0}`;
+}
+
+/** Distinguish kickplate rows when merging identical sizes — not used for group headings. */
+export function kickplateEdgingMergeKey(counts: KickplateEdgingCounts, edgingMaterialId: string): string {
+  if (counts.long <= 0 && counts.short <= 0) return 'none';
+  return `kp|${counts.long}|${counts.short}|${edgingMaterialId}`;
+}
+
+export function pieceHasKickplateEdging(counts?: KickplateEdgingCounts): boolean {
+  if (!counts) return false;
+  return counts.long > 0 || counts.short > 0;
 }
 
 export type KickplateEdgingToggle = 'none' | 'long1' | 'long2' | 'short1' | 'short2';

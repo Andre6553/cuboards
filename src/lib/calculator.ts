@@ -10,10 +10,12 @@ import { DEFAULT_HINGE_PRESET_ID } from './hingeCatalog';
 import { applyCutSizeMode, edgingRunMm, type LongAlong } from './edgingCutSize';
 import {
   applyKickplateCutSizeMode,
+  edgingTapeKeyFromMaterial,
   formatKickplateEdgingLabel,
-  kickplateEdgingGroupKey,
+  kickplateEdgingMergeKey,
   kickplateEdgingRunMm,
   kickplateEdgingSummary,
+  pieceHasKickplateEdging,
   resolveKickplateEdgingCounts,
   type KickplateEdgingCounts,
 } from './kickplateEdging';
@@ -825,14 +827,18 @@ function consolidatePieces(
   for (const p of filtered) {
     const pattern = p.edgingPattern ?? 'none';
     const edgingMaterialId = p.edgingMaterialId ?? resolveEdgingMaterialId(job, p.materialId);
-    const edgingKey = p.kickplateEdgingCounts
-      ? kickplateEdgingGroupKey(job, p.kickplateEdgingCounts, edgingMaterialId)
+    const mergeEdgingKey = p.kickplateEdgingCounts
+      ? kickplateEdgingMergeKey(p.kickplateEdgingCounts, edgingMaterialId)
       : edgingGroupKey(job, pattern, edgingMaterialId);
-    const key = `${p.materialId}|${p.width}|${p.length}|${p.grain}|${edgingKey}`;
+    const hasEdging = p.kickplateEdgingCounts
+      ? pieceHasKickplateEdging(p.kickplateEdgingCounts)
+      : pattern !== 'none';
+    const tapeKey = hasEdging ? edgingTapeKeyFromMaterial(job, edgingMaterialId) : 'none';
+    const key = `${p.materialId}|${p.width}|${p.length}|${p.grain}|${mergeEdgingKey}`;
     const edgingLabel = p.kickplateEdgingCounts
       ? formatKickplateEdgingLabel(job, p.kickplateEdgingCounts, edgingMaterialId)
       : formatEdgingLabel(job, pattern, edgingMaterialId);
-    const groupKey = `${p.materialName}|${edgingKey}`;
+    const groupKey = `${p.materialName}|${tapeKey}`;
     const existing = map.get(key);
     if (existing) {
       existing.totalQty += p.qty;
@@ -866,13 +872,7 @@ function consolidatePieces(
 
 function edgingTapeKeyFromGroupKey(groupKey: string): string {
   const pipe = groupKey.indexOf('|');
-  const edgingPart = groupKey.slice(pipe + 1);
-  if (edgingPart === 'none') return 'none';
-  const segments = edgingPart.split('|');
-  if (segments.length < 3) return edgingPart;
-  const name = segments.slice(1, -1).join('|');
-  const thickness = segments[segments.length - 1];
-  return `${name}|${thickness}`;
+  return groupKey.slice(pipe + 1);
 }
 
 function tapeHeading(tapeKey: string): string {

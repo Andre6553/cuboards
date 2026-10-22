@@ -1,7 +1,11 @@
 import type { jsPDF } from 'jspdf';
 import { grainLabel } from './sheetLayout';
 import { formatCutListDimensions } from './edgingCutSize';
-import { kickplateEdgingGroupKey, kickplateEdgingToFactoryTicks } from './kickplateEdging';
+import {
+  edgingTapeKeyFromMaterial,
+  kickplateEdgingToFactoryTicks,
+  pieceHasKickplateEdging,
+} from './kickplateEdging';
 import type { CutPiece, EdgingPattern, Job } from '../types';
 
 export interface FactoryEdgingTicks {
@@ -57,21 +61,6 @@ function resolveEdgingMaterialId(job: Job, boardMaterialId: string, override?: s
   return job.materials.find((m) => m.id === boardMaterialId)?.edgingMaterialId ?? '';
 }
 
-function edgingGroupKey(job: Job, pattern: EdgingPattern, edgingMaterialId: string): string {
-  if (pattern === 'none') return 'none';
-  const em = job.edgingMaterials.find((e) => e.id === edgingMaterialId);
-  return `${pattern}|${em?.name ?? '—'}|${em?.thickness ?? 0}`;
-}
-
-function edgingTapeKeyFromEdgingGroupKey(edgingPart: string): string {
-  if (edgingPart === 'none') return 'none';
-  const segments = edgingPart.split('|');
-  if (segments.length < 3) return edgingPart;
-  const name = segments.slice(1, -1).join('|');
-  const thickness = segments[segments.length - 1];
-  return `${name}|${thickness}`;
-}
-
 function tapeHeading(tapeKey: string): string {
   if (tapeKey === 'none') return 'No edging';
   const pipe = tapeKey.lastIndexOf('|');
@@ -81,10 +70,10 @@ function tapeHeading(tapeKey: string): string {
 function factoryPieceGroupKeys(job: Job, piece: CutPiece): { sortKey: string; heading: string } {
   const pattern = piece.edgingPattern ?? 'none';
   const edgingMaterialId = resolveEdgingMaterialId(job, piece.materialId, piece.edgingMaterialId);
-  const edgingPart = piece.kickplateEdgingCounts
-    ? kickplateEdgingGroupKey(job, piece.kickplateEdgingCounts, edgingMaterialId)
-    : edgingGroupKey(job, pattern, edgingMaterialId);
-  const tapeKey = edgingTapeKeyFromEdgingGroupKey(edgingPart);
+  const hasEdging = piece.kickplateEdgingCounts
+    ? pieceHasKickplateEdging(piece.kickplateEdgingCounts)
+    : pattern !== 'none';
+  const tapeKey = hasEdging ? edgingTapeKeyFromMaterial(job, edgingMaterialId) : 'none';
 
   if (piece.materialId === MASONITE_ID) {
     return {
