@@ -9,7 +9,7 @@ export function AccessBlockedScreen() {
 
   let title = 'Subscription required';
   let body =
-    'Your access has ended. Paid plans are coming soon — contact support if you need help migrating jobs from this device.';
+    'Your subscription has ended. Renew below with PayFast to keep full access. Jobs on this device stay in your browser until you export or back them up.';
 
   if (status === 'expired' && access.trial_ends_at) {
     title = 'Free trial ended';

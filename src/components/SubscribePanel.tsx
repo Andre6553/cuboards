@@ -50,9 +50,8 @@ export function SubscribePanel({ compact = false }: Props) {
       </p>
       {!compact ? (
         <p className="auth-sub">
-          PayFast sandbox is used when <code>PAYFAST_SANDBOX=true</code> on the server. ITN confirms payment
-          automatically; use &quot;I&apos;ve paid — refresh access&quot; if you returned from PayFast before
-          the webhook ran.
+          Pay securely on PayFast (card, instant EFT, and other options). Your account usually unlocks within a
+          minute; if you&apos;re back here right after paying, tap &quot;I&apos;ve paid — refresh access&quot;.
         </p>
       ) : null}
       {error ? <p className="auth-error">{error}</p> : null}
