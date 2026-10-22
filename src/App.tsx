@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react';
 import { useCallback, useEffect, useState } from 'react';
 import { AppBrandBar } from './components/AppBrandBar';
 import { Dashboard } from './components/Dashboard';
@@ -42,28 +43,31 @@ function App() {
   const activeJob = jobs.find((j) => j.id === activeJobId);
 
   return (
-    <div className="app-shell">
-      <AppBrandBar
-        homeEnabled={Boolean(activeJob)}
-        onHome={() => setActiveJobId(null)}
-        contextLabel={activeJob ? activeJob.client.name || 'Untitled job' : undefined}
-      />
-      <div className="app">
-        {activeJob ? (
-          <JobEditor
-            job={activeJob}
-            onChange={handleJobChange}
-            onBack={() => setActiveJobId(null)}
-          />
-        ) : (
-          <Dashboard
-            jobs={jobs}
-            onOpen={setActiveJobId}
-            onJobsChange={persist}
-          />
-        )}
+    <>
+      <div className="app-shell">
+        <AppBrandBar
+          homeEnabled={Boolean(activeJob)}
+          onHome={() => setActiveJobId(null)}
+          contextLabel={activeJob ? activeJob.client.name || 'Untitled job' : undefined}
+        />
+        <div className="app">
+          {activeJob ? (
+            <JobEditor
+              job={activeJob}
+              onChange={handleJobChange}
+              onBack={() => setActiveJobId(null)}
+            />
+          ) : (
+            <Dashboard
+              jobs={jobs}
+              onOpen={setActiveJobId}
+              onJobsChange={persist}
+            />
+          )}
+        </div>
       </div>
-    </div>
+      <Analytics />
+    </>
   );
 }
 
