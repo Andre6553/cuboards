@@ -233,7 +233,24 @@
 
 @media (max-width: 640px) {
   .app-brand-account {
+    max-width: none;
+    gap: 0.35rem;
+  }
+
+  .app-brand-email {
     display: none;
+  }
+
+  .app-brand-trial {
+    font-size: 0.7rem;
+    max-width: 6.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-brand-signout {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.75rem;
   }
 }
 
