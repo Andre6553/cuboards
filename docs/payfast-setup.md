@@ -27,4 +27,9 @@ Monthly **Cuboards Pro** after the 90-day trial. Uses the same signing rules as 
 PayFast ITN needs a **public URL**. Use a Vercel preview deploy or `vercel dev` — plain
 `npm run dev` does not run `api/payfast-*` unless you proxy separately.
 
+**Sandbox is not “localhost mode”.** Test checkout on **https://cuboards.vercel.app** (or a
+preview URL). On Vercel, set `APP_URL=https://cuboards.vercel.app` — do **not** copy
+`APP_URL=http://localhost:…` from local `.env` (PayFast returns **400** if return/notify URLs
+are localhost).
+
 Sandbox test cards: [PayFast testing docs](https://developers.payfast.co.za/docs#testing).

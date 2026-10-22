@@ -106,7 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: email.trim(),
       password,
     });
-    if (error) return error.message;
+    if (error) {
+      if (error.message.toLowerCase().includes('email not confirmed')) {
+        return 'Confirm your email first (check inbox/spam for the Supabase link), then sign in again.';
+      }
+      return error.message;
+    }
     if (data.session) setSession(data.session);
     setAccess(await ensureAccessForSession());
     return null;

@@ -8,13 +8,25 @@ export function createAdminClient() {
 }
 
 export function getAppBaseUrl(req) {
-  const env = process.env.APP_URL || process.env.VITE_APP_URL
-  if (env) return env.replace(/\/$/, '')
+  const envRaw = (process.env.APP_URL || process.env.VITE_APP_URL || '').trim()
+  const env = envRaw.replace(/\/$/, '')
+  const isLocalhost =
+    env && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(env)
+
+  // PayFast rejects localhost notify/return URLs — never use local APP_URL on Vercel.
+  if (env && !(process.env.VERCEL && isLocalhost)) {
+    return env
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`
+  }
   const origin = req.headers.origin
-  if (origin) return origin.replace(/\/$/, '')
+  if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)/i.test(origin)) {
+    return origin.replace(/\/$/, '')
+  }
   const host = req.headers['x-forwarded-host'] || req.headers.host
   const proto = req.headers['x-forwarded-proto'] || 'https'
-  if (host) return `${proto}://${host}`
+  if (host) return `${proto}://${host}`.replace(/\/$/, '')
   return 'http://localhost:5199'
 }
 
