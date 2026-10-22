@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useCallback, useEffect, useState } from 'react';
 import { AppBrandBar } from './components/AppBrandBar';
 import { Dashboard } from './components/Dashboard';
@@ -67,6 +68,7 @@ function App() {
         </div>
       </div>
       <Analytics />
+      <SpeedInsights />
     </>
   );
 }
