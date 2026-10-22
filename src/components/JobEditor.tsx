@@ -14,11 +14,12 @@ interface Props {
   job: Job;
   onChange: (job: Job) => void;
   onBack: () => void;
+  onPrefsSaved?: () => void;
 }
 
 type Tab = 'units' | 'prices' | 'cutlist';
 
-export function JobEditor({ job, onChange, onBack }: Props) {
+export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
   const [tab, setTab] = useState<Tab>('units');
   const activeUnitCount = job.units.filter((u) => (u.unitQty ?? 0) > 0).length;
   const savedAt = new Date(job.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -111,7 +112,7 @@ export function JobEditor({ job, onChange, onBack }: Props) {
 
       {tab === 'prices' && (
         <>
-          <PriceListBar job={job} onChange={onChange} />
+          <PriceListBar job={job} onChange={onChange} onPrefsSaved={onPrefsSaved} />
           <MaterialsForm
             materials={job.materials}
             edgingMaterials={job.edgingMaterials}

@@ -8,6 +8,7 @@ import { createNewJob, deleteJob, duplicateJob, exportAllJobsJson, exportJobJson
 
 interface Props {
   jobs: Job[];
+  cloudSyncState?: 'idle' | 'syncing' | 'error';
   onOpen: (id: string) => void;
   onJobsChange: (jobs: Job[]) => void;
 }
@@ -22,7 +23,7 @@ function quoteTotal(job: Job): number | null {
   }
 }
 
-export function Dashboard({ jobs, onOpen, onJobsChange }: Props) {
+export function Dashboard({ jobs, cloudSyncState = 'idle', onOpen, onJobsChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
 
@@ -92,8 +93,10 @@ export function Dashboard({ jobs, onOpen, onJobsChange }: Props) {
 
       <div className={`storage-notice${shouldShowBackupReminder(jobs.length) ? ' storage-notice-warn' : ''}`}>
         <p>
-          <strong>Your jobs are saved in this browser on this device only.</strong> Clearing browser data or using
-          another phone or PC won&apos;t show them. Download a JSON backup and keep it in WhatsApp, email, or OneDrive.
+          <strong>Your jobs belong to this account only.</strong> They sync to the cloud while you&apos;re signed in —
+          use the same email on another device to pick up where you left off. JSON backup below is for your own archive.
+          {cloudSyncState === 'syncing' ? ' Syncing with cloud…' : null}
+          {cloudSyncState === 'error' ? ' Cloud sync failed — check your connection and refresh.' : null}
         </p>
         <p className="hint storage-backup-meta">
           Last backup: {formatLastBackup(getLastBackupIso())}

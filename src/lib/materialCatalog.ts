@@ -1,7 +1,6 @@
 import { DEFAULT_EDGING, DEFAULT_MATERIALS } from './constants';
 import type { EdgingMaterial, Job, Material } from '../types';
-
-const CATALOG_KEY = 'cuboards_board_catalog';
+import { requireUserDataScope, userStorageKeys } from './userDataScope';
 
 export interface BoardCatalog {
   materials: Material[];
@@ -11,7 +10,8 @@ export interface BoardCatalog {
 
 export function loadMaterialCatalog(): BoardCatalog | null {
   try {
-    const raw = localStorage.getItem(CATALOG_KEY);
+    requireUserDataScope();
+    const raw = localStorage.getItem(userStorageKeys.boardCatalog());
     return raw ? (JSON.parse(raw) as BoardCatalog) : null;
   } catch {
     return null;
@@ -24,7 +24,8 @@ export function saveMaterialCatalog(materials: Material[], edgingMaterials: Edgi
     edgingMaterials: edgingMaterials.map((e) => ({ ...e })),
     savedAt: new Date().toISOString(),
   };
-  localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog));
+  requireUserDataScope();
+  localStorage.setItem(userStorageKeys.boardCatalog(), JSON.stringify(catalog));
   return catalog;
 }
 

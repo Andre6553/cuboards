@@ -5,9 +5,10 @@ import { applyPriceListToJob, loadPriceList, savePriceListFromJob } from '../lib
 interface Props {
   job: Job;
   onChange: (job: Job) => void;
+  onPrefsSaved?: () => void;
 }
 
-export function PriceListBar({ job, onChange }: Props) {
+export function PriceListBar({ job, onChange, onPrefsSaved }: Props) {
   const [savedAt, setSavedAt] = useState(() => loadPriceList()?.savedAt ?? null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -15,6 +16,7 @@ export function PriceListBar({ job, onChange }: Props) {
     if (savedAt && !confirm('Replace your saved default prices with the prices in this job?')) return;
     const list = savePriceListFromJob(job);
     setSavedAt(list.savedAt);
+    onPrefsSaved?.();
     setNote('Saved. New jobs will start with these prices and settings.');
   };
 

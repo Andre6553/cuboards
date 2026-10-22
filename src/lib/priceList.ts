@@ -1,7 +1,6 @@
 import { mergeIntoMaterialCatalog, saveMaterialCatalog } from './materialCatalog';
 import type { Job } from '../types';
-
-const PRICE_LIST_KEY = 'cuboards_price_list';
+import { requireUserDataScope, userStorageKeys } from './userDataScope';
 
 export type PriceList = Pick<
   Job,
@@ -20,7 +19,8 @@ export type PriceList = Pick<
 
 export function loadPriceList(): PriceList | null {
   try {
-    const raw = localStorage.getItem(PRICE_LIST_KEY);
+    requireUserDataScope();
+    const raw = localStorage.getItem(userStorageKeys.priceList());
     return raw ? (JSON.parse(raw) as PriceList) : null;
   } catch {
     return null;
@@ -43,7 +43,8 @@ export function savePriceListFromJob(job: Job): PriceList {
     hardwarePricing: job.hardwarePricing,
     savedAt: new Date().toISOString(),
   });
-  localStorage.setItem(PRICE_LIST_KEY, JSON.stringify(list));
+  requireUserDataScope();
+  localStorage.setItem(userStorageKeys.priceList(), JSON.stringify(list));
   return list;
 }
 

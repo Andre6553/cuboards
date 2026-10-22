@@ -1,6 +1,6 @@
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppBrandBar } from './components/AppBrandBar';
 import { AccessBlockedScreen } from './components/AccessBlockedScreen';
 import { AuthScreen } from './components/AuthScreen';
@@ -11,7 +11,17 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { formatTrialEnds } from './lib/accessTypes';
 import { catalogFingerprint, saveMaterialCatalog } from './lib/materialCatalog';
 import { isSupabaseConfigured } from './lib/supabaseClient';
-import { loadJobs, migrateJob, saveJobs, upsertJob } from './lib/storage';
+import {
+  deleteCloudJob,
+  pullUserPrefs,
+  pushUserPrefsFromLocal,
+  schedulePushJobs,
+  schedulePushUserPrefs,
+  setCloudSyncUserId,
+  syncJobsWithCloud,
+} from './lib/jobCloudSync';
+import { setUserDataScope } from './lib/userDataScope';
+import { migrateJob, saveJobs, upsertJob } from './lib/storage';
 import './App.css';
 
 function MissingSupabaseConfig() {
@@ -29,20 +39,65 @@ function MissingSupabaseConfig() {
 }
 
 function CuboardsApp() {
-  const { access, signOut } = useAuth();
+  const { access, signOut, session } = useAuth();
+  const userId = session?.user?.id ?? null;
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
-
+  const [cloudSyncState, setCloudSyncState] = useState<'idle' | 'syncing' | 'error'>('idle');
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
   useEffect(() => {
-    const loaded = loadJobs();
-    saveJobs(loaded);
-    setJobs(loaded);
-  }, []);
+    if (!userId) {
+      setUserDataScope(null);
+      setCloudSyncUserId(null);
+      setJobs([]);
+      setActiveJobId(null);
+      return;
+    }
 
-  const persist = useCallback((next: Job[]) => {
-    setJobs(next);
-    saveJobs(next);
-  }, []);
+    setUserDataScope(userId);
+    setCloudSyncUserId(userId);
+    setJobs([]);
+    setActiveJobId(null);
+    let cancelled = false;
+    setCloudSyncState('syncing');
+
+    void (async () => {
+      try {
+        const merged = await syncJobsWithCloud(userId);
+        await pullUserPrefs(userId);
+        if (cancelled) return;
+        saveJobs(merged);
+        setJobs(merged);
+        await pushUserPrefsFromLocal(userId);
+        setCloudSyncState('idle');
+      } catch (e) {
+        console.error('cloud sync', e);
+        if (!cancelled) setCloudSyncState('error');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const persist = useCallback(
+    (next: Job[]) => {
+      const prev = jobsRef.current;
+      if (userId) {
+        for (const p of prev) {
+          if (!next.some((n) => n.id === p.id)) {
+            void deleteCloudJob(userId, p.id).catch((e) => console.error('deleteCloudJob', e));
+          }
+        }
+        schedulePushJobs(userId, next);
+      }
+      setJobs(next);
+      saveJobs(next);
+    },
+    [userId],
+  );
 
   const handleJobChange = (job: Job) => {
     const prev = jobs.find((j) => j.id === job.id);
@@ -53,6 +108,7 @@ function CuboardsApp() {
 
     if (catalogChanged) {
       const catalog = saveMaterialCatalog(job.materials, job.edgingMaterials);
+      schedulePushUserPrefs();
       const withUpdated = upsertJob(jobs, job);
       persist(
         withUpdated.map((j) =>
@@ -88,9 +144,14 @@ function CuboardsApp() {
       />
       <div className="app">
         {activeJob ? (
-          <JobEditor job={activeJob} onChange={handleJobChange} onBack={() => setActiveJobId(null)} />
+          <JobEditor
+            job={activeJob}
+            onChange={handleJobChange}
+            onBack={() => setActiveJobId(null)}
+            onPrefsSaved={() => schedulePushUserPrefs()}
+          />
         ) : (
-          <Dashboard jobs={jobs} onOpen={setActiveJobId} onJobsChange={persist} />
+          <Dashboard jobs={jobs} cloudSyncState={cloudSyncState} onOpen={setActiveJobId} onJobsChange={persist} />
         )}
       </div>
     </div>

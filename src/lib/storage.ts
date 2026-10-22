@@ -30,8 +30,7 @@ import {
 } from './materialCatalog';
 import { loadPriceList } from './priceList';
 import { DEFAULT_HARDWARE_PRICING, resolveHardwarePricing } from './hardwarePricing';
-
-const STORAGE_KEY = 'cuboards_jobs';
+import { requireUserDataScope, userStorageKeys } from './userDataScope';
 
 function migrateDoor(d: DoorConfig & { gap?: number }, materials: Material[], edgingMaterials: EdgingMaterial[]): DoorConfig {
   const boardMat = materials.find((m) => m.id === d.materialId);
@@ -228,7 +227,8 @@ export function migrateJob(job: Job): Job {
 
 export function loadJobs(): Job[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    requireUserDataScope();
+    const raw = localStorage.getItem(userStorageKeys.jobs());
     if (!raw) {
       ensureMaterialCatalog([]);
       return [];
@@ -242,7 +242,8 @@ export function loadJobs(): Job[] {
 }
 
 export function saveJobs(jobs: Job[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+  requireUserDataScope();
+  localStorage.setItem(userStorageKeys.jobs(), JSON.stringify(jobs));
 }
 
 export function upsertJob(jobs: Job[], job: Job): Job[] {
