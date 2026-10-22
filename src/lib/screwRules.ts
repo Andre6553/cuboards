@@ -2,6 +2,11 @@ import type { Job, ScrewLine, Unit } from '../types';
 import { isFloorUnit } from './constants';
 import { calcCustomPackLines, usesGelmarCatalog } from './hardwarePricing';
 import { getScrewById, SCREW_CATALOG, type ScrewCatalogEntry } from './screwCatalog';
+import {
+  DEFAULT_CONNECTING_FITTING_USAGE,
+  SCREWS_PER_CORNER_BLOCK,
+  totalCornerBlocksOnJob,
+} from './connectingFittingRules';
 import { isActiveDrawer, resolveFrontQty } from './drawerRules';
 
 /** Gelmar screw IDs (SKU-based). */
@@ -108,7 +113,10 @@ function usageDetailForScrewLine(screwId: string, hasFloor: boolean, hasWall: bo
         );
         break;
       case SCREW_ID_CHIPBOARD_4x16:
-        parts.push('12/cupboard (one exposed side)');
+        parts.push(
+          `${SCREWS_PER_CORNER_BLOCK}/corner block (${DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard)`,
+        );
+        parts.push('12/cupboard (one exposed side · carcass)');
         break;
       default:
         break;
@@ -118,6 +126,11 @@ function usageDetailForScrewLine(screwId: string, hasFloor: boolean, hasWall: bo
     const u = DEFAULT_SCREW_USAGE;
     switch (screwId) {
       case SCREW_ID_CHIPBOARD_4x16:
+        if (!hasFloor) {
+          parts.push(
+            `${SCREWS_PER_CORNER_BLOCK}/corner block (${DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard}/cupboard)`,
+          );
+        }
         parts.push(`${u.chipboardPerCupboard}/cupboard (wall)`);
         break;
       case SCREW_ID_DRYWALL_3_5x32:
@@ -190,6 +203,12 @@ export function calcJobScrews(job: Job): ScrewLine[] {
       hasWall = true;
       addWallUnitScrews(unit, cupboards, totals);
     }
+  }
+
+  const cornerBlocks = totalCornerBlocksOnJob(job);
+  if (cornerBlocks > 0) {
+    const chipForBlocks = cornerBlocks * SCREWS_PER_CORNER_BLOCK;
+    totals.set(SCREW_ID_CHIPBOARD_4x16, (totals.get(SCREW_ID_CHIPBOARD_4x16) ?? 0) + chipForBlocks);
   }
 
   const neededBySize = new Map<string, number>();

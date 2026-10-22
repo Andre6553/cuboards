@@ -11,6 +11,19 @@ export const DEFAULT_CONNECTING_FITTING_USAGE = {
   cornerBlockPerCupboard: 8,
 } as const;
 
+/** 4×16 mm chipboard screws per corner block (Gelmar 4386). */
+export const SCREWS_PER_CORNER_BLOCK = 4;
+
+export function totalCornerBlocksOnJob(job: { units: { unitQty?: number }[] }): number {
+  let total = 0;
+  for (const unit of job.units) {
+    const cupboards = Math.max(0, unit.unitQty ?? 0);
+    if (cupboards <= 0) continue;
+    total += DEFAULT_CONNECTING_FITTING_USAGE.cornerBlockPerCupboard * cupboards;
+  }
+  return total;
+}
+
 /** Job-wide connecting fitting totals. */
 export function calcJobConnectingFittings(job: Job): ScrewLine[] {
   if (!usesGelmarCatalog(job, 'connectingFittings')) {
