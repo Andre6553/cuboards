@@ -2,12 +2,20 @@ import type { jsPDF } from 'jspdf';
 import type { SheetMapGroup } from '../types';
 import { buildSheetMapSvg, sheetMapSvgViewBoxSize } from './sheetMapDiagram';
 
-/** Screen px per mm at 96 dpi — used to target ~300 dpi in the embedded PDF image. */
-const PX_PER_MM = 3.78;
-const PDF_RASTER_DPI = 300;
-const PDF_RASTER_SCALE = PDF_RASTER_DPI / 96;
+/** Target raster density for the embedded image (px per mm of print size). */
+const PX_PER_PRINT_MM = 4;
+const MAX_RASTER_WIDTH_PX = 2200;
+const MIN_DIAGRAM_H_MM = 24;
 
-function svgStringToPngDataUrl(svg: string, pixelWidth: number): Promise<string> {
+function pageBottomY(doc: jsPDF, margin: number): number {
+  return doc.internal.pageSize.getHeight() - margin;
+}
+
+function remainingHeight(doc: jsPDF, y: number, margin: number): number {
+  return pageBottomY(doc, margin) - y;
+}
+
+function svgStringToImageDataUrl(svg: string, pixelWidth: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
     const img = new Image();
@@ -29,7 +37,7 @@ function svgStringToPngDataUrl(svg: string, pixelWidth: number): Promise<string>
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/png'));
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -37,6 +45,34 @@ function svgStringToPngDataUrl(svg: string, pixelWidth: number): Promise<string>
     };
     img.src = url;
   });
+}
+
+async function rasterizeSheetForPdf(svg: string, diagramW: number): Promise<string> {
+  let pixelWidth = Math.min(
+    MAX_RASTER_WIDTH_PX,
+    Math.max(900, Math.round(diagramW * PX_PER_PRINT_MM)),
+  );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const dataUrl = await svgStringToImageDataUrl(svg, pixelWidth);
+    if (dataUrl.length < 6_000_000) return dataUrl;
+    pixelWidth = Math.round(pixelWidth * 0.65);
+  }
+  return svgStringToImageDataUrl(svg, 900);
+}
+
+function addSheetMapImage(
+  doc: jsPDF,
+  dataUrl: string,
+  x: number,
+  y: number,
+  diagramW: number,
+  diagramH: number,
+): void {
+  try {
+    doc.addImage(dataUrl, 'JPEG', x, y, diagramW, diagramH, undefined, 'FAST');
+  } catch {
+    doc.addImage(dataUrl, 'JPEG', x, y, diagramW, diagramH);
+  }
 }
 
 export async function appendSheetMapsToPdf(
@@ -48,21 +84,20 @@ export async function appendSheetMapsToPdf(
   if (groups.length === 0) return startY;
 
   const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
   const contentW = pageW - margin * 2;
   const captionH = 7;
-  const maxDiagramH = pageH - margin * 2 - captionH - 8;
 
   let y = startY;
 
-  const ensureSpace = (need: number) => {
-    if (y + need > pageH - margin) {
-      doc.addPage();
-      y = margin;
-    }
+  const newPage = () => {
+    doc.addPage();
+    y = margin;
   };
 
-  ensureSpace(18);
+  if (remainingHeight(doc, y, margin) < 35) {
+    newPage();
+  }
+
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('Visual sheet maps', margin, y);
@@ -71,7 +106,7 @@ export async function appendSheetMapsToPdf(
   doc.setFontSize(8);
   doc.setTextColor(80);
   const hint = doc.splitTextToSize(
-    'Panel-saw layout: rip strips across the sheet, then crosscut parts along the grain. Grain runs along the long side (→). Dashed areas are keeper offcuts. One sheet per row — zoom in for part sizes.',
+    'Panel-saw layout: rip strips across the sheet, then crosscut parts along the grain. Grain runs along the long side. Dashed areas are keeper offcuts.',
     contentW,
   );
   doc.text(hint, margin, y);
@@ -79,7 +114,10 @@ export async function appendSheetMapsToPdf(
   doc.setTextColor(0);
 
   for (const group of groups) {
-    ensureSpace(14);
+    if (remainingHeight(doc, y, margin) < 12) {
+      newPage();
+    }
+
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text(group.materialName, margin, y);
@@ -89,15 +127,28 @@ export async function appendSheetMapsToPdf(
     for (const sheet of group.sheets) {
       const patternId = `pdf-${group.materialId}-${sheet.sheetIndex}`;
       const { viewW, viewH } = sheetMapSvgViewBoxSize(sheet, { forPdf: true });
-      let diagramW = contentW;
-      let diagramH = (diagramW * viewH) / viewW;
-      if (diagramH > maxDiagramH) {
-        diagramH = maxDiagramH;
-        diagramW = (diagramH * viewW) / viewH;
-      }
-      const blockH = captionH + diagramH + 6;
 
-      ensureSpace(blockH);
+      if (remainingHeight(doc, y, margin) < captionH + MIN_DIAGRAM_H_MM) {
+        newPage();
+      }
+
+      const spaceForDiagram = remainingHeight(doc, y + captionH, margin) - 2;
+      let diagramH = Math.min(spaceForDiagram, contentW * (viewH / viewW));
+      let diagramW = (diagramH * viewW) / viewH;
+      if (diagramW > contentW) {
+        diagramW = contentW;
+        diagramH = (diagramW * viewH) / viewW;
+      }
+      if (diagramH < MIN_DIAGRAM_H_MM) {
+        newPage();
+        const space2 = remainingHeight(doc, y + captionH, margin) - 2;
+        diagramH = Math.min(space2, contentW * (viewH / viewW));
+        diagramW = (diagramH * viewW) / viewH;
+        if (diagramW > contentW) {
+          diagramW = contentW;
+          diagramH = (diagramW * viewH) / viewW;
+        }
+      }
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
@@ -109,15 +160,12 @@ export async function appendSheetMapsToPdf(
       doc.setFont('helvetica', 'normal');
 
       const svg = buildSheetMapSvg(sheet, patternId, { forPdf: true });
-      const pixelWidth = Math.max(
-        3200,
-        Math.round(diagramW * PX_PER_MM * PDF_RASTER_SCALE),
-      );
-      const dataUrl = await svgStringToPngDataUrl(svg, pixelWidth);
+      const dataUrl = await rasterizeSheetForPdf(svg, diagramW);
       const x = margin + (contentW - diagramW) / 2;
-      doc.addImage(dataUrl, 'PNG', x, y + captionH, diagramW, diagramH);
+      const imageY = y + captionH;
+      addSheetMapImage(doc, dataUrl, x, imageY, diagramW, diagramH);
 
-      y += blockH;
+      y = imageY + diagramH + 6;
     }
 
     y += 3;
