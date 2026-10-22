@@ -177,6 +177,11 @@ export function migrateJob(job: Job): Job {
             kickplateType: u.plinth?.kickplateType ?? 'wood',
             kickplateCoverage: u.plinth?.kickplateCoverage ?? 'front',
             kickplateSide: u.plinth?.kickplateSide ?? 'left',
+            kickplateEdgingPattern: u.plinth?.kickplateEdgingPattern ?? '1_long',
+            kickplateEdgingMaterialId:
+              u.plinth?.kickplateEdgingMaterialId ??
+              (job.materials ?? []).find((m) => m.id === (u.plinth?.kickplateMaterialId ?? defaultMat))?.edgingMaterialId ??
+              defaultEdgingId,
             feetRequired: u.plinth?.feetRequired ?? true,
           }
         : undefined;

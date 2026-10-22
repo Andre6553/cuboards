@@ -206,6 +206,9 @@ export interface KitchenPlinthConfig {
   kickplateCoverage: KickplateCoverage;
   kickplateSide: KickplateSide;
   kickplateMaterialId: string;
+  /** Wood kickplate only — default 1 long (visible front edge). */
+  kickplateEdgingPattern?: EdgingPattern;
+  kickplateEdgingMaterialId?: string;
   kickplateHeight: number;
   feetPerUnit: number;
   feetRequired: boolean;

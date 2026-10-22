@@ -1,4 +1,4 @@
-import type { ConnectingFittingPrices, EdgingMaterial, HingePrices, JobSettings, KitchenPlinthConfig, MasoniteConfig, Material, MountType, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices, UnitType } from '../types';
+import type { ConnectingFittingPrices, EdgingMaterial, EdgingPattern, HingePrices, JobSettings, KitchenPlinthConfig, MasoniteConfig, Material, MountType, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices, UnitType } from '../types';
 import { CUT_SIZE_MODE_LABELS } from './edgingCutSize';
 import { BRAND_RUNNER_PRESETS, getDefaultRunnerPrices } from './runnerCatalog';
 import { getDefaultHingePrices } from './hingeCatalog';
@@ -40,6 +40,14 @@ export const EDGING_LABELS: Record<string, string> = {
   '2_long_2_short': '2 long + 2 short (all edges)',
   none: 'No edging',
 };
+
+/** Wood kickplate edging — shop labels for the four common patterns. */
+export const KICKPLATE_EDGING_OPTIONS: { pattern: EdgingPattern; label: string }[] = [
+  { pattern: '1_long', label: '1 Long' },
+  { pattern: '2_long', label: '2 Long' },
+  { pattern: '1_long_1_short', label: '1 short' },
+  { pattern: '1_long_2_short', label: '2 short' },
+];
 
 export const UNIT_TYPE_LABELS = {
   kitchen_base: 'Kitchen base unit',
@@ -129,11 +137,15 @@ export function isWallUnit(unit: { carcass?: { mountType?: MountType } }): boole
 }
 
 export function defaultPlinth(job: { settings: JobSettings; materials: Material[] }, visibleMatId?: string): KitchenPlinthConfig {
+  const kickplateMaterialId = visibleMatId ?? job.materials[0]?.id ?? 'mat-white';
+  const boardMat = job.materials.find((m) => m.id === kickplateMaterialId);
   return {
     kickplateType: 'wood',
     kickplateCoverage: 'front',
     kickplateSide: 'left',
-    kickplateMaterialId: visibleMatId ?? job.materials[0]?.id ?? 'mat-white',
+    kickplateMaterialId,
+    kickplateEdgingPattern: '1_long',
+    kickplateEdgingMaterialId: boardMat?.edgingMaterialId,
     kickplateHeight: job.settings.defaultKickplateHeight,
     feetPerUnit: job.settings.feetPerBaseUnit,
     feetRequired: true,

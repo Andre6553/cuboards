@@ -418,6 +418,8 @@ function calcKitchenPlinth(
   const coverage = plinth.kickplateCoverage ?? 'front';
 
   if (kickType === 'wood') {
+    const kickEdgingPattern = plinth.kickplateEdgingPattern ?? '1_long';
+    const kickEdgingMatId = plinth.kickplateEdgingMaterialId;
     for (const kp of woodKickplatePieces(W, D, kh, plinth)) {
       pushBoardPiece(job, pieces, {
         category: 'carcass',
@@ -429,10 +431,22 @@ function calcKitchenPlinth(
         qty: mult,
         grain: materialHasGrain(job.materials, plinth.kickplateMaterialId) ? 'vertical' : 'none',
         notes: joinNotes(kp.notes, coverageLabel(coverage)),
-        edgingPattern: '1_long',
+        edgingPattern: kickEdgingPattern,
         longAlong: 'width',
       });
-      addEdging(edging, job, plinth.kickplateMaterialId, kp.partName, unit.name, '1_long', kp.width, kp.length, mult, undefined, 'width');
+      addEdging(
+        edging,
+        job,
+        plinth.kickplateMaterialId,
+        kp.partName,
+        unit.name,
+        kickEdgingPattern,
+        kp.width,
+        kp.length,
+        mult,
+        kickEdgingMatId,
+        'width',
+      );
     }
   } else {
     const runMm = kickplateRunLengthMm(W, D, coverage);

@@ -1,6 +1,6 @@
 import { useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
-import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, KICKPLATE_COVERAGE_LABELS, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, UNIT_TYPE_LABELS } from '../lib/constants';
+import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_OPTIONS, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, UNIT_TYPE_LABELS } from '../lib/constants';
 import {
   getHingeByIdForJob,
   getHingeGroupsForJob,
@@ -103,7 +103,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
     });
   };
 
-  const setPlinth = (field: keyof NonNullable<Unit['plinth']>, value: string | number | boolean) => {
+  const setPlinth = (field: keyof NonNullable<Unit['plinth']>, value: NonNullable<Unit['plinth']>[typeof field]) => {
     const plinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
     onChange({ ...unit, plinth: { ...plinth, [field]: value } });
   };
@@ -301,12 +301,14 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
 
         <CupboardViewer unit={layoutUnit} thickness={settings.thickness} materials={materials} />
 
-      {isKitchenBase(unit.type) && isFloor && unit.plinth && (
+      {isKitchenBase(unit.type) && isFloor && unit.plinth && (() => {
+        const plinth = unit.plinth;
+        return (
         <CollapsibleSection title="Kitchen plinth — kickplate & feet" variant="nested">
           <div className="form-grid form-grid-4">
             <label>
               Kickplate type
-              <select value={unit.plinth.kickplateType ?? 'wood'} onChange={(e) => setPlinth('kickplateType', e.target.value)}>
+              <select value={plinth.kickplateType ?? 'wood'} onChange={(e) => setPlinth('kickplateType', e.target.value)}>
                 {Object.entries(KICKPLATE_TYPE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
@@ -314,53 +316,109 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             </label>
             <label>
               Kickplate coverage
-              <select value={unit.plinth.kickplateCoverage ?? 'front'} onChange={(e) => setPlinth('kickplateCoverage', e.target.value)}>
+              <select value={plinth.kickplateCoverage ?? 'front'} onChange={(e) => setPlinth('kickplateCoverage', e.target.value)}>
                 {Object.entries(KICKPLATE_COVERAGE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>
             </label>
-            {unit.plinth.kickplateCoverage === 'front-one-side' && (
+            {plinth.kickplateCoverage === 'front-one-side' && (
               <label>
                 Side return
-                <select value={unit.plinth.kickplateSide ?? 'left'} onChange={(e) => setPlinth('kickplateSide', e.target.value)}>
+                <select value={plinth.kickplateSide ?? 'left'} onChange={(e) => setPlinth('kickplateSide', e.target.value)}>
                   <option value="left">Left side</option>
                   <option value="right">Right side</option>
                 </select>
               </label>
             )}
-            {unit.plinth.kickplateType === 'wood' && (
-              <label>
-                Kickplate board material
-                <MaterialSelect value={unit.plinth.kickplateMaterialId} materials={materials} onChange={(v) => setPlinth('kickplateMaterialId', v)} />
-              </label>
+            {plinth.kickplateType === 'wood' && (
+              <>
+                <label>
+                  Kickplate board material
+                  <MaterialSelect
+                    value={plinth.kickplateMaterialId}
+                    materials={materials}
+                    onChange={(v) => {
+                      const plinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
+                      onChange({
+                        ...unit,
+                        plinth: {
+                          ...plinth,
+                          kickplateMaterialId: v,
+                          kickplateEdgingMaterialId: defaultEdgingForMaterial(v),
+                        },
+                      });
+                    }}
+                  />
+                </label>
+                <label>
+                  Edging type
+                  <EdgingTypeSelect
+                    value={plinth.kickplateEdgingMaterialId}
+                    fallbackMaterialId={plinth.kickplateMaterialId}
+                    materials={materials}
+                    edgingMaterials={edgingMaterials}
+                    onChange={(v) => setPlinth('kickplateEdgingMaterialId', v)}
+                  />
+                </label>
+              </>
             )}
             <label>
               Kickplate height (mm)
-              <NumberInput  min={80} max={200} value={unit.plinth.kickplateHeight} onChange={(n) => setPlinth('kickplateHeight', n)} />
+              <NumberInput  min={80} max={200} value={plinth.kickplateHeight} onChange={(n) => setPlinth('kickplateHeight', n)} />
             </label>
             <label className="checkbox-label">
-              <input type="checkbox" checked={unit.plinth.feetRequired !== false} onChange={(e) => setPlinth('feetRequired', e.target.checked)} />
+              <input type="checkbox" checked={plinth.feetRequired !== false} onChange={(e) => setPlinth('feetRequired', e.target.checked)} />
               Plastic feet required
             </label>
-            {unit.plinth.feetRequired !== false && (
+            {plinth.feetRequired !== false && (
               <label>
                 Adjustable feet per cupboard
-                <NumberInput  min={2} max={8} value={unit.plinth.feetPerUnit} onChange={(n) => setPlinth('feetPerUnit', n)} />
+                <NumberInput  min={2} max={8} value={plinth.feetPerUnit} onChange={(n) => setPlinth('feetPerUnit', n)} />
               </label>
             )}
           </div>
+          {plinth.kickplateType === 'wood' && (
+            <div className="kickplate-edging-patterns">
+              <span className="field-label">Edging pattern</span>
+              <div className="checkbox-row">
+                {KICKPLATE_EDGING_OPTIONS.map(({ pattern, label }) => (
+                  <label key={pattern} className="checkbox-label">
+                    <input
+                      type="radio"
+                      name={`kickplate-edging-${unit.id}`}
+                      checked={(plinth.kickplateEdgingPattern ?? '1_long') === pattern}
+                      onChange={() => setPlinth('kickplateEdgingPattern', pattern)}
+                    />
+                    {label}
+                    <span className="hint inline-hint">{EDGING_LABELS[pattern]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <p className="hint">
-            {unit.plinth.kickplateType === 'wood' ? (
-              <>Wood kickplate: cut list includes board pieces with edging on visible long edge.</>
+            {plinth.kickplateType === 'wood' ? (
+              <>
+                Wood kickplate: board cuts with grain along kick height · edging{' '}
+                {EDGING_LABELS[plinth.kickplateEdgingPattern ?? '1_long'] ?? '—'} (
+                {edgingMaterials.find(
+                  (e) =>
+                    e.id ===
+                    (plinth.kickplateEdgingMaterialId ??
+                      defaultEdgingForMaterial(plinth.kickplateMaterialId)),
+                )?.name ?? '—'}
+                ).
+              </>
             ) : (
-              <>Plastic kickplate: {kickplateRunLengthMm(unit.width, unit.depth, unit.plinth.kickplateCoverage ?? 'front')} mm run per cupboard
-                {unit.unitQty > 1 ? ` × ${unit.unitQty} = ${(kickplateRunLengthMm(unit.width, unit.depth, unit.plinth.kickplateCoverage ?? 'front') * unit.unitQty / 1000).toFixed(2)} m total` : ''}.
+              <>Plastic kickplate: {kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front')} mm run per cupboard
+                {unit.unitQty > 1 ? ` × ${unit.unitQty} = ${(kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front') * unit.unitQty / 1000).toFixed(2)} m total` : ''}.
                 Set strip size &amp; price under Materials.</>
             )}
           </p>
         </CollapsibleSection>
-      )}
+        );
+      })()}
 
       <CollapsibleSection title="Carcass" variant="nested">
       {!isFloor && (
