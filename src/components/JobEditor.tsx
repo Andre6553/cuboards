@@ -22,7 +22,6 @@ type Tab = 'units' | 'prices' | 'cutlist';
 export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
   const [tab, setTab] = useState<Tab>('units');
   const activeUnitCount = job.units.filter((u) => (u.unitQty ?? 0) > 0).length;
-  const savedAt = new Date(job.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const addUnit = () => {
     onChange({ ...job, units: [...job.units, createDefaultUnit(job, job.units.length)] });
@@ -46,10 +45,6 @@ export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
         <div>
           <button type="button" className="btn btn-ghost back-btn" onClick={onBack}>← Jobs</button>
           <h1>{job.client.name || 'Untitled job'}</h1>
-          <p className="subtitle">
-            {job.client.ref && `Ref: ${job.client.ref} · `}
-            <span className="saved-indicator">Saved on this device {savedAt}</span>
-          </p>
         </div>
         <div className="tab-bar">
           <button type="button" className={`tab ${tab === 'units' ? 'active' : ''}`} onClick={() => setTab('units')}>
