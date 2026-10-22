@@ -26,7 +26,12 @@ export default async function handler(req, res) {
   }
 
   const raw = await readRawBody(req)
-  const paymentId = new URLSearchParams(raw).get('m_payment_id') || new URLSearchParams(raw).get('custom_str2') || ''
+  const params = new URLSearchParams(raw)
+  let paymentId = params.get('custom_str2') || params.get('m_payment_id') || ''
+  // m_payment_id may be hyphenless UUID from initiate; custom_str2 keeps canonical id.
+  if (paymentId && !paymentId.includes('-') && paymentId.length === 32) {
+    paymentId = `${paymentId.slice(0, 8)}-${paymentId.slice(8, 12)}-${paymentId.slice(12, 16)}-${paymentId.slice(16, 20)}-${paymentId.slice(20)}`
+  }
   const paymentStatus = new URLSearchParams(raw).get('payment_status') ?? ''
   const pfPaymentId = new URLSearchParams(raw).get('pf_payment_id') ?? ''
   const amountGross = new URLSearchParams(raw).get('amount_gross') ?? ''

@@ -45,9 +45,23 @@ export default async function handler(req, res) {
   }
 
   const base = getAppBaseUrl(req)
-  const email = user.email ?? ''
-  const firstName = email.split('@')[0] || 'Customer'
-  const itemName = sandbox ? 'Cuboards Pro (sandbox)' : 'Cuboards Pro — 1 month'
+  if (!/^https:\/\//i.test(base)) {
+    res.status(500).json({
+      error:
+        'PayFast needs HTTPS return/notify URLs. Set APP_URL=https://cuboards.vercel.app on Vercel (not localhost).',
+      debug_base_url: sandbox ? base : undefined,
+    })
+    return
+  }
+
+  const email = (user.email ?? '').trim()
+  const localPart = (email.split('@')[0] || 'Customer').trim()
+  const firstToken = localPart.split(/[._+\-]/)[0]?.replace(/[^a-zA-Z]/g, '') || 'Customer'
+  const firstName =
+    (firstToken.charAt(0).toUpperCase() + firstToken.slice(1).toLowerCase()).slice(0, 50) || 'Customer'
+  const itemName = sandbox ? 'Cuboards Pro sandbox' : 'Cuboards Pro 1 month'
+  // PayFast m_payment_id: keep alphanumeric (UUID without hyphens) to avoid 400 validation errors.
+  const payfastPaymentRef = String(payment.id).replace(/-/g, '')
 
   const fields = [
     ['merchant_id', merchantId],
@@ -57,7 +71,7 @@ export default async function handler(req, res) {
     ['notify_url', `${base}/api/payfast-notify`],
     ['name_first', firstName],
     ['email_address', email],
-    ['m_payment_id', payment.id],
+    ['m_payment_id', payfastPaymentRef],
     ['amount', payfastAmount(amountCents)],
     ['item_name', itemName],
     ['custom_str1', user.id],
@@ -75,5 +89,6 @@ export default async function handler(req, res) {
     fields: out,
     amount_cents: amountCents,
     sandbox,
+    ...(sandbox ? { debug_base_url: base } : {}),
   })
 }

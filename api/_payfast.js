@@ -17,7 +17,11 @@ export function resolvePayfastCredsFromEnv() {
   let merchantKey = (process.env.PAYFAST_MERCHANT_KEY ?? '').trim()
   let passphrase = (process.env.PAYFAST_PASSPHRASE ?? '').trim() || undefined
 
-  if (sandbox && (!merchantId || !merchantKey)) {
+  // Sandbox endpoint only accepts PayFast's universal test merchant (or your own
+  // sandbox-linked merchant). Wrong live IDs in env vars cause HTTP 400 on /eng/process.
+  const forceUniversalSandbox =
+    sandbox && process.env.PAYFAST_USE_OWN_SANDBOX_MERCHANT !== 'true'
+  if (forceUniversalSandbox || (sandbox && (!merchantId || !merchantKey))) {
     merchantId = PAYFAST_SANDBOX_MERCHANT.merchant_id
     merchantKey = PAYFAST_SANDBOX_MERCHANT.merchant_key
     passphrase = PAYFAST_SANDBOX_MERCHANT.passphrase
