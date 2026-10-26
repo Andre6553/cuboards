@@ -1,91 +1,26 @@
 /** Distinct left-border accent per unit (stable for a given unit id). */
-const UNIT_ACCENT_PALETTE = [
-  '#2563eb',
-  '#1d4ed8',
-  '#3b82f6',
-  '#0284c7',
-  '#0891b2',
-  '#0e7490',
-  '#06b6d4',
-  '#059669',
-  '#047857',
-  '#10b981',
-  '#16a34a',
-  '#65a30d',
-  '#84cc16',
-  '#ca8a04',
-  '#d97706',
-  '#ea580c',
-  '#f97316',
-  '#dc2626',
-  '#b91c1c',
-  '#e11d48',
-  '#db2777',
-  '#be185d',
-  '#c026d3',
-  '#a21caf',
-  '#9333ea',
-  '#7c3aed',
-  '#6d28d9',
-  '#4f46e5',
-  '#4338ca',
-  '#6366f1',
-  '#475569',
-  '#334155',
-  '#78716c',
-  '#57534e',
-  '#92400e',
-  '#78350f',
-  '#166534',
-  '#14532d',
-  '#115e59',
-  '#155e75',
-  '#1e3a8a',
-  '#312e81',
-  '#581c87',
-  '#701a75',
-  '#831843',
-  '#9f1239',
-  '#991b1b',
-  '#7c2d12',
-  '#713f12',
-  '#365314',
-  '#3f6212',
-  '#134e4a',
-  '#164e63',
-  '#1e40af',
-  '#3730a3',
-  '#5b21b6',
-  '#6b21a8',
-  '#86198f',
-  '#9d174d',
-  '#be123c',
-  '#b45309',
-  '#a16207',
-  '#4d7c0f',
-  '#15803d',
-  '#0f766e',
-  '#0369a1',
-  '#1d4f91',
-  '#4338ca',
-  '#7e22ce',
-  '#a855f7',
-  '#d946ef',
-  '#ec4899',
-  '#f43f5e',
-  '#ef4444',
-  '#f59e0b',
-  '#eab308',
-  '#22c55e',
-  '#14b8a6',
-  '#0ea5e9',
-  '#6366f1',
-  '#8b5cf6',
-  '#64748b',
-  '#71717a',
-  '#737373',
-  '#a3a3a3',
-] as const;
+
+function hslToHex(h: number, s: number, l: number): string {
+  const sn = s / 100;
+  const ln = l / 100;
+  const a = sn * Math.min(ln, 1 - ln);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+/** 50 hues evenly spaced; saturation/lightness alternate so neighbours do not look alike. */
+const UNIT_ACCENT_PALETTE = Array.from({ length: 50 }, (_, i) => {
+  const h = (i * 360) / 50;
+  const s = i % 2 === 0 ? 72 : 58;
+  const l = 34 + (i % 5) * 4;
+  return hslToHex(h, s, l);
+}) as readonly string[];
 
 export function unitAccentColor(unitId: string): string {
   let hash = 0;
