@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "purpose": "Handoff bundle for bots/tools (e.g. Grok) working on Cuboards Supabase — no secrets in this file",
+    "generatedFor": "Cuboards repository",
+    "projectName": "Cuboards",
+    "doNotUse": {
+      "name": "BizTap",
+      "projectRef": "vsujfqufdyoxfaopqcut",
+      "apiUrl": "https://vsujfqufdyoxfaopqcut.supabase.co"
+    }
+  },
+  "supabaseProject": {
+    "name": "Cuboards",
+    "projectRef": "vnsmgvdmxlrfffehzjpf",
+    "region": "eu-west-1",
+    "apiUrl": "https://vnsmgvdmxlrfffehzjpf.supabase.co",
+    "dashboardUrl": "https://supabase.com/dashboard/project/vnsmgvdmxlrfffehzjpf"
+  },
+  "credentials": {
+    "whereToCopy": "Supabase Dashboard → Project Settings → API (URL, anon key, service_role key); Database → connection string if using SQL clients",
+    "neverCommit": [
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "database password",
+      "connection strings with password"
+    ],
+    "appEnvironmentVariables": {
+      "clientVite": {
+        "VITE_SUPABASE_URL": "Same as apiUrl above",
+        "VITE_SUPABASE_ANON_KEY": "Publishable anon key — browser only, RLS applies"
+      },
+      "serverVercel": {
+        "VITE_SUPABASE_URL": "Same as apiUrl (used by api/_supabaseAdmin.js)",
+        "SUPABASE_URL": "Optional alias for URL",
+        "SUPABASE_SERVICE_ROLE_KEY": "Server only — bypasses RLS; required for PayFast ITN and admin auth"
+      }
+    }
+  },
+  "cursorMcp": {
+    "serverName": "supabase-cuboards",
+    "configHint": "~/.cursor/mcp.json with --project-ref=vnsmgvdmxlrfffehzjpf",
+    "policyFile": ".cursor/rules/supabase-sql.mdc"
+  },
+  "repositoryPaths": {
+    "migrations": "supabase/migrations/",
+    "client": "src/lib/supabaseClient.ts",
+    "serverAdmin": "api/_supabaseAdmin.js",
+    "docs": [
+      "docs/supabase-auth-setup.md",
+      "docs/payfast-setup.md"
+    ]
+  },
+  "publicTables": {
+    "profiles": {
+      "description": "One row per user; access_status, trial_ends_at, paid_until",
+      "rls": "Users read/update own row only"
+    },
+    "device_installs": {
+      "description": "Browser install_id; one trial per install",
+      "rls": "No direct client access (RPC only)"
+    },
+    "user_devices": {
+      "description": "Links users to install_ids",
+      "rls": "No direct client access (RPC only)"
+    },
+    "subscription_payments": {
+      "description": "PayFast payment rows",
+      "rls": "Users select own rows"
+    },
+    "cuboards_jobs": {
+      "description": "Full job JSON per user (client, units, materials)",
+      "rls": "CRUD own rows only"
+    },
+    "cuboards_user_prefs": {
+      "description": "board_catalog, price_list, unit_presets, gelmar_prices",
+      "rls": "Read/write own row only"
+    }
+  },
+  "authSchema": {
+    "auth.users": "Managed by Supabase Auth — not in public migrations; export via service role Admin API"
+  },
+  "rpcFunctions": [
+    "finalize_cuboards_signup",
+    "confirm_cuboards_subscription_payment",
+    "handle_new_cuboards_user"
+  ],
+  "migrationsAppliedInRepo": [
+    "0001_auth_profiles_trial_device.sql",
+    "0002_payfast_subscriptions.sql",
+    "0003_trial_30d_annual_subscription.sql",
+    "0004_jobs_cloud_sync.sql",
+    "0005_user_prefs_presets_gelmar.sql"
+  ],
+  "liveDataExport": {
+    "script": "scripts/export-cuboards-supabase-data.mjs",
+    "command": "node scripts/export-cuboards-supabase-data.mjs",
+    "defaultOutput": "data/cuboards-supabase-data-export.json",
+    "requires": [
+      "VITE_SUPABASE_URL",
+      "SUPABASE_SERVICE_ROLE_KEY in .env at repo root"
+    ]
+  }
+}
