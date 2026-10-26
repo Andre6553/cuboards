@@ -14,6 +14,7 @@ dist-ssr
 .env
 .env.*
 Backup/
+data/cuboards-supabase-data-export.json
 
 # Editor directories and files
 .vscode/*
