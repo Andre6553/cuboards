@@ -14,13 +14,7 @@ export function CouponPanel({ variant = 'card' }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   if (access.coupon_code) {
-    return (
-      <div className={variant === 'plain' ? 'coupon-panel coupon-panel--plain' : 'coupon-panel'}>
-        <p className="coupon-used">
-          Coupon <strong>{access.coupon_code}</strong> applied. This account cannot use another coupon.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -47,8 +41,8 @@ export function CouponPanel({ variant = 'card' }: Props) {
   return (
     <div className={variant === 'plain' ? 'coupon-panel coupon-panel--plain' : 'coupon-panel'}>
       <p className="coupon-hint">
-        Have a coupon? Cub30, Cub60, or Cub90 adds that many days on top of the access you already have. One
-        coupon per account.
+        Have a coupon? Enter your code below to add extra days on top of the access you already have. One coupon
+        per account.
       </p>
       <form className="coupon-form" onSubmit={(e) => void onSubmit(e)}>
         <input

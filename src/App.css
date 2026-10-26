@@ -287,16 +287,11 @@
   background: transparent;
 }
 
-.coupon-hint,
-.coupon-used {
+.coupon-hint {
   margin: 0 0 0.65rem;
   font-size: 0.85rem;
   color: var(--muted);
   line-height: 1.45;
-}
-
-.coupon-used {
-  margin-bottom: 0;
 }
 
 .coupon-form {
