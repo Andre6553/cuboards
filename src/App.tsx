@@ -202,6 +202,23 @@ function AppGate() {
     return <AuthScreen />;
   }
 
+  if (access.access_status === 'pending' && !access.has_access) {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">
+          <h1 className="auth-title">Setting up your trial…</h1>
+          <p className="auth-sub">
+            We are activating your 30-day free trial. This usually takes a moment after you confirm
+            your email.
+          </p>
+          <button type="button" className="auth-submit" onClick={() => void refreshAccess()}>
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!access.has_access) {
     return <AccessBlockedScreen />;
   }
