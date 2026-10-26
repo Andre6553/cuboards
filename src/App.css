@@ -2244,10 +2244,25 @@
   font-size: 0.85rem;
 }
 
-.community-material-check {
-  flex-direction: row !important;
-  align-items: center;
-  gap: 0.5rem !important;
+.community-material-grain {
+  padding-top: 0.25rem;
+  align-self: flex-start;
+}
+
+.community-material-new-edging {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface-2, #f8fafc);
+}
+
+.community-material-new-edging label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .community-material-actions {

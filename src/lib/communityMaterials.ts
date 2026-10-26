@@ -140,13 +140,27 @@ function resolveEdgingId(
   return { edgingMaterials: [...edgingMaterials, created], edgingId: created.id };
 }
 
+export const COMMUNITY_EDGING_SELECT = '__community__';
+export const NEW_EDGING_SELECT = '__new__';
+
+export type CommunityAcceptEdging =
+  | { kind: 'community' }
+  | { kind: 'catalog'; edgingMaterialId: string }
+  | { kind: 'new'; name: string; thickness: number; pricePerMetre: number };
+
+export function communityEdgingLabel(offer: Pick<CommunityMaterialOffer, 'edging_name' | 'edging_thickness'>): string {
+  const name = offer.edging_name?.trim();
+  if (!name) return 'Not specified by installer';
+  return `${name} (${Number(offer.edging_thickness) || 1} mm)`;
+}
+
 export function acceptCommunityMaterialIntoCatalog(
   offer: CommunityMaterialOffer,
   draft: {
     pricePerSheet: number;
     hasGrain: boolean;
     sheetPurchaseUnit: SheetPurchaseUnit;
-    edgingMaterialId: string;
+    edging: CommunityAcceptEdging;
   },
 ): BoardCatalog {
   const current = loadMaterialCatalog() ?? {
@@ -156,14 +170,32 @@ export function acceptCommunityMaterialIntoCatalog(
   };
 
   const edgingMaterials = current.edgingMaterials;
-  let edgingMaterialId = draft.edgingMaterialId;
+  let edgingMaterialId = '';
   let extraEdging: EdgingMaterial[] = [];
-  const existingEdge = edgingMaterials.find((e) => e.id === edgingMaterialId);
-  if (!existingEdge) {
+
+  if (draft.edging.kind === 'new') {
+    const created: EdgingMaterial = {
+      id: crypto.randomUUID(),
+      name: draft.edging.name.trim() || 'Edging',
+      thickness: Math.max(0.5, draft.edging.thickness || 1),
+      pricePerMetre: Math.max(0, draft.edging.pricePerMetre),
+    };
+    extraEdging = [created];
+    edgingMaterialId = created.id;
+  } else if (draft.edging.kind === 'community') {
     const resolved = resolveEdgingId(edgingMaterials, offer.edging_name, offer.edging_thickness);
     edgingMaterialId = resolved.edgingId;
     if (resolved.edgingMaterials.length > edgingMaterials.length) {
       extraEdging = resolved.edgingMaterials.slice(edgingMaterials.length);
+    }
+  } else {
+    edgingMaterialId = draft.edging.edgingMaterialId;
+    if (!edgingMaterials.some((e) => e.id === edgingMaterialId)) {
+      const resolved = resolveEdgingId(edgingMaterials, offer.edging_name, offer.edging_thickness);
+      edgingMaterialId = resolved.edgingId;
+      if (resolved.edgingMaterials.length > edgingMaterials.length) {
+        extraEdging = resolved.edgingMaterials.slice(edgingMaterials.length);
+      }
     }
   }
 
