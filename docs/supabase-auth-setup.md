@@ -10,8 +10,9 @@
 ## Behaviour
 
 - Sign up / sign in with **email + password** (Supabase Auth).
-- After the user **confirms their email**, the database grants a **30-day trial** with full app access (every confirmed account gets one trial; no per-browser limit).
-- Until the trial ends, there is **no payment page**; PayFast appears only when access is **expired** (trial over or subscription lapsed).
+- After the user **confirms their email**, the database grants **30 days of use** (one calendar day in South Africa per day they open the app; `profiles.trial_use_days_remaining`, `trial_last_use_date`, registration in `profiles.created_at`).
+- Until those use days are used up, there is **no payment page**; PayFast appears when access is **expired** (no trial days left or subscription lapsed). Coupon entry shows on the paywall only if they have not redeemed a coupon yet.
+- **PayFast subscription** extends **`paid_until`** by **360 calendar days** from payment (or stacks on an existing active period).
 - **Jobs and client data** sync to `cuboards_jobs` (full job JSON per row). **RLS:** each row’s `user_id` must match `auth.uid()` — installers never see each other’s data. Per account in `cuboards_user_prefs` (same RLS): board catalog, **My default prices**, **unit presets**, and **Gelmar price snapshot** (live refreshed SKU prices — not the full Gelmar catalog JSON). Browser storage keys are scoped by user id so signing in as someone else on the same PC does not mix jobs.
 
 ## SQL
@@ -20,4 +21,4 @@ Migrations live in `supabase/migrations/`.
 
 **Production database** (`vnsmgvdmxlrfffehzjpf`): apply new migrations manually in the Supabase **SQL Editor** (paste the full contents of the migration file). The app repo does not auto-deploy SQL to Supabase from CI.
 
-Minimum for trial-on-confirm behaviour: run `0006_trial_on_email_confirm.sql` after earlier migrations are already applied.
+Apply migrations in order through **`0008_trial_use_days.sql`** (use-based trial + 360-day subscription term).

@@ -4,6 +4,8 @@ export interface MyAccess {
   authenticated: boolean;
   access_status?: AccessStatus;
   trial_ends_at?: string | null;
+  trial_use_days_remaining?: number | null;
+  registered_at?: string | null;
   paid_until?: string | null;
   has_access?: boolean;
   coupon_code?: string | null;
@@ -19,6 +21,9 @@ export function parseMyAccess(raw: unknown): MyAccess {
     authenticated: Boolean(o.authenticated),
     access_status: o.access_status as AccessStatus | undefined,
     trial_ends_at: (o.trial_ends_at as string | null) ?? null,
+    trial_use_days_remaining:
+      typeof o.trial_use_days_remaining === 'number' ? o.trial_use_days_remaining : null,
+    registered_at: typeof o.registered_at === 'string' ? o.registered_at : null,
     paid_until: (o.paid_until as string | null) ?? null,
     has_access: Boolean(o.has_access),
     coupon_code: typeof o.coupon_code === 'string' && o.coupon_code ? o.coupon_code : null,
@@ -44,16 +49,18 @@ export function formatAccessExpiryLabels(access: MyAccess): {
   full: string;
   compact: string;
 } | null {
-  const ends =
-    access.access_status === 'trial'
-      ? access.trial_ends_at
-      : access.access_status === 'active'
-        ? access.paid_until
-        : null;
-  if (!ends) return null;
-  const date = formatTrialEnds(ends);
   if (access.access_status === 'trial') {
-    return { full: `Trial until ${date}`, compact: `Trial · ${date}` };
+    const left = access.trial_use_days_remaining;
+    if (left == null || left <= 0) return null;
+    const dayWord = left === 1 ? 'day' : 'days';
+    return {
+      full: `${left} use ${dayWord} left`,
+      compact: `${left} left`,
+    };
   }
-  return { full: `Paid until ${date}`, compact: `Paid · ${date}` };
+  if (access.access_status === 'active' && access.paid_until) {
+    const date = formatTrialEnds(access.paid_until);
+    return { full: `Paid until ${date}`, compact: `Paid · ${date}` };
+  }
+  return null;
 }

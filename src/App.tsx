@@ -206,7 +206,7 @@ function AppGate() {
         <div className="auth-card">
           <h1 className="auth-title">Setting up your trial…</h1>
           <p className="auth-sub">
-            We are activating your 30-day free trial. This usually takes a moment after you confirm
+            We are activating your 30-day use trial. This usually takes a moment after you confirm
             your email.
           </p>
           <button type="button" className="auth-submit" onClick={() => void refreshAccess()}>

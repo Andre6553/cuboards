@@ -2,7 +2,6 @@ import { CouponPanel } from './CouponPanel';
 import { CuboardsLogo } from './CuboardsLogo';
 import { SubscribePanel } from './SubscribePanel';
 import { useAuth } from '../context/AuthContext';
-import { formatTrialEnds } from '../lib/accessTypes';
 
 export function AccessBlockedScreen() {
   const { access, signOut } = useAuth();
@@ -12,9 +11,10 @@ export function AccessBlockedScreen() {
   let body =
     'Your subscription has ended. Renew below with PayFast to keep full access. Jobs on this device stay in your browser until you export or back them up.';
 
-  if (status === 'expired' && access.trial_ends_at) {
+  if (status === 'expired' && access.trial_use_days_remaining === 0) {
     title = 'Free trial ended';
-    body = `Your 30-day trial ended on ${formatTrialEnds(access.trial_ends_at)}. Subscribe below to keep full access.`;
+    body =
+      'You have used all 30 trial days (one day counts each time you open Cuboards on a new calendar day). Subscribe below to keep full access.';
   }
 
   return (

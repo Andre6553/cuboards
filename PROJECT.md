@@ -29,6 +29,7 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-10-26:** Trial is **30 days of use** (SAST calendar day per app open), not 30 calendar days — migration `0008_trial_use_days.sql` on Supabase. PayFast subscription = **360 days** from payment on `paid_until`.
 - **2026-10-26:** Permanent members (manual DB): `andre.ecprint@gmail.com`, `riaanvdw186@gmail.com` — `access_status = active`, `paid_until = 2099-12-31`.
 - **2026-10-26:** One coupon per account (`0007_coupon_codes.sql`, applied on `vnsmgvdmxlrfffehzjpf`). Cub30 / Cub60 / Cub90 add 30 / 60 / 90 days on top of the later of now, trial end, or paid-until. A second code is rejected. Box is on the dashboard and the paywall.
 - **2026-10-26:** Applied `0006_trial_on_email_confirm` on Cuboards Supabase (`vnsmgvdmxlrfffehzjpf`). Trial starts when email is confirmed. Dropped leftover `finalize_cuboards_signup(uuid)` from migration 0001 — it still granted a 90-day per-device trial and could override the new text function.
