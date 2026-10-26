@@ -14,6 +14,7 @@ import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiv
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
 import { fillersFollowSideMaterial, resolveFillerMaterial } from '../lib/carcassRules';
+import { unitAccentColor } from '../lib/unitAccentColor';
 import {
   cornerBlockUsageDetail,
   cornerBlocksPerCupboard,
@@ -264,7 +265,10 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
   const stopSummaryToggle = (e: MouseEvent | PointerEvent) => e.stopPropagation();
 
   return (
-    <section className={`card unit-card${isOnCutList ? '' : ' unit-inactive'}`}>
+    <section
+      className={`card unit-card${isOnCutList ? '' : ' unit-inactive'}`}
+      style={isOnCutList ? { borderLeftColor: unitAccentColor(unit.id) } : undefined}
+    >
       <div className="unit-header-row">
         <input className="unit-name-input" value={unit.name} onChange={(e) => set('name', e.target.value)} />
         <label className="unit-qty-inline qty-highlight" onClick={stopSummaryToggle} onPointerDown={stopSummaryToggle}>
