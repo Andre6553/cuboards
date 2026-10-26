@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccess({ authenticated: false });
       return;
     }
-    setAccess(await fetchAccess());
+    setAccess(await ensureAccessForSession());
   }, [session]);
 
   useEffect(() => {
@@ -84,21 +84,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       if (!nextSession) {
         setAccess({ authenticated: false });
+        return;
+      }
+      if (event === 'SIGNED_IN') {
+        void ensureAccessForSession().then(setAccess);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (session) {
-      void refreshAccess();
-    }
-  }, [session, refreshAccess]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const supabase = getSupabase();
@@ -122,6 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
     });
     if (error) return error.message;
     if (!data.session) {

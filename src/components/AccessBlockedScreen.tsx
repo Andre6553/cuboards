@@ -13,10 +13,7 @@ export function AccessBlockedScreen() {
 
   if (status === 'expired' && access.trial_ends_at) {
     title = 'Free trial ended';
-    body = `Your 30-day trial ended on ${formatTrialEnds(access.trial_ends_at)}. Creating another account on the same browser will not start a new trial.`;
-  } else if (status === 'pending') {
-    title = 'Account setup incomplete';
-    body = 'Sign out and sign up again, or contact support if this persists.';
+    body = `Your 30-day trial ended on ${formatTrialEnds(access.trial_ends_at)}. Subscribe below to keep full access.`;
   }
 
   return (
@@ -32,7 +29,7 @@ export function AccessBlockedScreen() {
             Signed in as <strong>{access.email}</strong>
           </p>
         ) : null}
-        <SubscribePanel />
+        {status !== 'pending' ? <SubscribePanel /> : null}
         <button type="button" className="auth-submit auth-submit--secondary" onClick={() => void signOut()}>
           Sign out
         </button>
