@@ -1,3 +1,4 @@
+import { CouponPanel } from './CouponPanel';
 import { CuboardsLogo } from './CuboardsLogo';
 import { SubscribePanel } from './SubscribePanel';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +30,12 @@ export function AccessBlockedScreen() {
             Signed in as <strong>{access.email}</strong>
           </p>
         ) : null}
-        {status !== 'pending' ? <SubscribePanel /> : null}
+        {status !== 'pending' ? (
+          <>
+            <CouponPanel variant="plain" />
+            <SubscribePanel />
+          </>
+        ) : null}
         <button type="button" className="auth-submit auth-submit--secondary" onClick={() => void signOut()}>
           Sign out
         </button>

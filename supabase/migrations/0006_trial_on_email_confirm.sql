@@ -83,7 +83,10 @@ where p.id = u.id
 
 -- ---------------------------------------------------------------------------
 -- finalize_cuboards_signup: device tracking only; trial from email confirm
+-- 0001 left a uuid overload that still granted a per-device trial. Drop it.
 -- ---------------------------------------------------------------------------
+
+drop function if exists public.finalize_cuboards_signup(uuid);
 
 create or replace function public.finalize_cuboards_signup(p_install_id text)
 returns jsonb

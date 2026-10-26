@@ -8,7 +8,7 @@ import { Dashboard } from './components/Dashboard';
 import { JobEditor } from './components/JobEditor';
 import type { Job } from './types';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { formatTrialEnds } from './lib/accessTypes';
+import { formatAccessExpiryLabels } from './lib/accessTypes';
 import { catalogFingerprint, saveMaterialCatalog } from './lib/materialCatalog';
 import { isSupabaseConfigured } from './lib/supabaseClient';
 import {
@@ -134,10 +134,7 @@ function CuboardsApp() {
 
   const activeJob = jobs.find((j) => j.id === activeJobId);
 
-  const trialLabel =
-    access.access_status === 'trial' && access.trial_ends_at
-      ? `Trial until ${formatTrialEnds(access.trial_ends_at)}`
-      : undefined;
+  const expiryLabels = formatAccessExpiryLabels(access);
 
   return (
     <div className="app-shell">
@@ -146,7 +143,8 @@ function CuboardsApp() {
         onHome={() => setActiveJobId(null)}
         contextLabel={activeJob ? activeJob.client.name || 'Untitled job' : undefined}
         accountEmail={access.email}
-        trialLabel={trialLabel}
+        trialLabel={expiryLabels?.full}
+        trialLabelCompact={expiryLabels?.compact}
         onSignOut={() => void signOut()}
       />
       <div className="app">

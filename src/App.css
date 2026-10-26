@@ -73,6 +73,11 @@
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.app-brand-trial-compact {
+  display: none;
 }
 
 .app-brand-email {
@@ -231,10 +236,73 @@
   color: #047857;
 }
 
+.coupon-panel {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+}
+
+.coupon-panel--plain {
+  margin: 0 0 0.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.coupon-hint,
+.coupon-used {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.coupon-used {
+  margin-bottom: 0;
+}
+
+.coupon-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.coupon-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
+}
+
+.coupon-form .auth-submit {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.coupon-panel .auth-error {
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 640px) {
+  .app-brand-bar-inner {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
   .app-brand-account {
+    flex: 1 1 100%;
+    justify-content: flex-end;
     max-width: none;
     gap: 0.35rem;
+    margin-left: 0;
   }
 
   .app-brand-email {
@@ -243,9 +311,17 @@
 
   .app-brand-trial {
     font-size: 0.7rem;
-    max-width: 6.5rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: none;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .app-brand-trial-full {
+    display: none;
+  }
+
+  .app-brand-trial-compact {
+    display: inline;
   }
 
   .app-brand-signout {

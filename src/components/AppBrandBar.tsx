@@ -6,6 +6,8 @@ interface Props {
   contextLabel?: string;
   accountEmail?: string;
   trialLabel?: string;
+  /** Shorter expiry text for narrow screens (full date still shown). */
+  trialLabelCompact?: string;
   onSignOut?: () => void;
 }
 
@@ -15,8 +17,10 @@ export function AppBrandBar({
   contextLabel,
   accountEmail,
   trialLabel,
+  trialLabelCompact,
   onSignOut,
 }: Props) {
+  const expiryTitle = trialLabel ?? trialLabelCompact;
   const logo = <CuboardsLogo />;
 
   return (
@@ -38,7 +42,14 @@ export function AppBrandBar({
           </p>
         ) : null}
         <div className="app-brand-account">
-          {trialLabel ? <span className="app-brand-trial">{trialLabel}</span> : null}
+          {trialLabel ? (
+            <span className="app-brand-trial" title={expiryTitle}>
+              <span className="app-brand-trial-full">{trialLabel}</span>
+              {trialLabelCompact ? (
+                <span className="app-brand-trial-compact">{trialLabelCompact}</span>
+              ) : null}
+            </span>
+          ) : null}
           {accountEmail ? (
             <span className="app-brand-email" title={accountEmail}>
               {accountEmail}

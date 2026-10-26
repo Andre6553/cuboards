@@ -29,6 +29,9 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-10-26:** Permanent members (manual DB): `andre.ecprint@gmail.com`, `riaanvdw186@gmail.com` — `access_status = active`, `paid_until = 2099-12-31`.
+- **2026-10-26:** One coupon per account (`0007_coupon_codes.sql`, applied on `vnsmgvdmxlrfffehzjpf`). Cub30 / Cub60 / Cub90 add 30 / 60 / 90 days on top of the later of now, trial end, or paid-until. A second code is rejected. Box is on the dashboard and the paywall.
+- **2026-10-26:** Applied `0006_trial_on_email_confirm` on Cuboards Supabase (`vnsmgvdmxlrfffehzjpf`). Trial starts when email is confirmed. Dropped leftover `finalize_cuboards_signup(uuid)` from migration 0001 — it still granted a 90-day per-device trial and could override the new text function.
 - _Add pricing/packaging plan and installer feedback here._
 - **2026-10-22:** Wood kickplate edging aligned with cut list: **Long** = tape on kick **run** (factory B ticks), **short** = on **height** (factory L ticks); cut list/factory/edging metres all use same counts (not generic door `1_long` labels).
 - **2026-10-06:** Cut-list calc fixes (backup `Backup/calc_20261006_123807/`): 1-long edging uses the front/top run not max(W,H); drawer box front/back width = internal − 2×runner clearance (sides inside; drop-in bottom inner −2T); side depth = D − front − back clearance; drop-in bottoms (no groove); wooden top is one full panel not fillers+top; Blum length rounds down to 50 mm; hinges 5 above 2 m; screw fronts use qty×frontQty. For a drawer tower add one row per height — qty 4 on one row is four matching boxes.

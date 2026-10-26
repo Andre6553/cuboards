@@ -9,6 +9,7 @@ import {
 import { formatMoney } from '../lib/currency';
 import { displayGrandTotal } from './QuoteTotals';
 import { createNewJob, deleteJob, duplicateJob, exportAllJobsJson, exportJobJson, importJobsJson } from '../lib/storage';
+import { CouponPanel } from './CouponPanel';
 
 interface Props {
   jobs: Job[];
@@ -109,6 +110,8 @@ export function Dashboard({
           </button>
         </div>
       </header>
+
+      <CouponPanel />
 
       <div className={`storage-notice${shouldShowBackupReminder(jobs.length) ? ' storage-notice-warn' : ''}`}>
         <p>
