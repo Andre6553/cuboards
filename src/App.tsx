@@ -9,7 +9,19 @@ import { JobEditor } from './components/JobEditor';
 import type { Job } from './types';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { formatAccessExpiryLabels } from './lib/accessTypes';
-import { catalogFingerprint, saveMaterialCatalog } from './lib/materialCatalog';
+import {
+  applyCatalogToAllJobs,
+  catalogFingerprint,
+  loadMaterialCatalog,
+  saveMaterialCatalog,
+} from './lib/materialCatalog';
+import {
+  fetchPendingCommunityMaterials,
+  markCommunityMaterialsSeen,
+  type CommunityMaterialOffer,
+} from './lib/communityMaterials';
+import { CommunityMaterialPrompt } from './components/CommunityMaterialPrompt';
+import { DEFAULT_SETTINGS } from './lib/constants';
 import { isSupabaseConfigured } from './lib/supabaseClient';
 import {
   deleteCloudJob,
@@ -46,6 +58,7 @@ function CuboardsApp() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [cloudSyncState, setCloudSyncState] = useState<'idle' | 'syncing' | 'error'>('idle');
   const [lastCloudSyncIso, setLastCloudSyncIso] = useState<string | null>(() => getLastCloudSyncIso());
+  const [communityQueue, setCommunityQueue] = useState<CommunityMaterialOffer[]>([]);
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
 
@@ -53,6 +66,18 @@ function CuboardsApp() {
     setCloudSaveListener(() => setLastCloudSyncIso(getLastCloudSyncIso()));
     return () => setCloudSaveListener(null);
   }, []);
+
+  const refreshCommunityQueue = useCallback(async () => {
+    const pending = await fetchPendingCommunityMaterials();
+    setCommunityQueue(pending);
+    return pending;
+  }, []);
+
+  useEffect(() => {
+    const onRefreshCommunity = () => void refreshCommunityQueue();
+    window.addEventListener('cuboards-refresh-community-queue', onRefreshCommunity);
+    return () => window.removeEventListener('cuboards-refresh-community-queue', onRefreshCommunity);
+  }, [refreshCommunityQueue]);
 
   const runCloudSync = useCallback(async () => {
     if (!userId) return;
@@ -64,12 +89,33 @@ function CuboardsApp() {
       setJobs(merged);
       recordCloudSync();
       setLastCloudSyncIso(getLastCloudSyncIso());
+      await refreshCommunityQueue();
       setCloudSyncState('idle');
     } catch (e) {
       console.error('cloud sync', e);
       setCloudSyncState('error');
     }
-  }, [userId]);
+  }, [userId, refreshCommunityQueue]);
+
+  const handleCommunityResolved = useCallback(
+    async (added: boolean) => {
+      if (added) {
+        const catalog = loadMaterialCatalog();
+        if (catalog) {
+          const updated = applyCatalogToAllJobs(jobsRef.current, catalog);
+          saveJobs(updated);
+          setJobs(updated);
+        }
+        schedulePushUserPrefs();
+      }
+      const pending = await fetchPendingCommunityMaterials();
+      setCommunityQueue(pending);
+      if (pending.length === 0) {
+        await markCommunityMaterialsSeen();
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!userId) {
@@ -77,6 +123,7 @@ function CuboardsApp() {
       setCloudSyncUserId(null);
       setJobs([]);
       setActiveJobId(null);
+      setCommunityQueue([]);
       return;
     }
 
@@ -166,6 +213,13 @@ function CuboardsApp() {
           />
         )}
       </div>
+      {communityQueue.length > 0 ? (
+        <CommunityMaterialPrompt
+          queue={communityQueue}
+          settings={activeJob?.settings ?? DEFAULT_SETTINGS}
+          onResolved={(added) => void handleCommunityResolved(added)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CONNECTING_FITTING_CATALOG,
   CUT_SIZE_MODE_LABELS,
@@ -52,6 +52,11 @@ import type {
   ScrewPrices,
 } from '../types';
 
+import { schedulePushUserPrefs } from '../lib/cloudPrefsPush';
+import {
+  loadCommunityMaterialsPrefs,
+  saveCommunityMaterialsPrefs,
+} from '../lib/communityMaterials';
 import { CollapsibleSection } from './CollapsibleSection';
 import { NumberInput } from './NumberInput';
 import { CustomHardwareEditor } from './CustomHardwareEditor';
@@ -206,6 +211,15 @@ export function MaterialsForm({
   const [screwRefresh, setScrewRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
   const [refreshingFittings, setRefreshingFittings] = useState(false);
   const [fittingRefresh, setFittingRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
+  const [acceptCommunityBoards, setAcceptCommunityBoards] = useState(
+    () => loadCommunityMaterialsPrefs().acceptUpdates,
+  );
+
+  useEffect(() => {
+    const sync = () => setAcceptCommunityBoards(loadCommunityMaterialsPrefs().acceptUpdates);
+    window.addEventListener('cuboards-community-prefs', sync);
+    return () => window.removeEventListener('cuboards-community-prefs', sync);
+  }, []);
 
   const formatRunnerChangeLabel = (id: string) => {
     const r = getRunnerById(id);
@@ -670,6 +684,27 @@ export function MaterialsForm({
           uses the same catalog. Set melamine prices here too. <strong>Buy as</strong> is the smallest board size your
           supplier will sell (⅓, ¼, ½, or full). Link each board to its edging tape below.
         </p>
+
+        <label className="checkbox-label community-materials-opt-in">
+          <input
+            type="checkbox"
+            checked={acceptCommunityBoards}
+            onChange={(e) => {
+              const acceptUpdates = e.target.checked;
+              setAcceptCommunityBoards(acceptUpdates);
+              saveCommunityMaterialsPrefs({ acceptUpdates });
+              schedulePushUserPrefs();
+              if (acceptUpdates) {
+                try {
+                  window.dispatchEvent(new CustomEvent('cuboards-refresh-community-queue'));
+                } catch {
+                  /* ignore */
+                }
+              }
+            }}
+          />
+          Prompt me when other Cuboards users add new board types — I can add them with my own price and options
+        </label>
 
         <div className="table-wrap">
 

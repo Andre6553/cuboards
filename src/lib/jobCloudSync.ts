@@ -10,6 +10,11 @@ import {
   mergeGelmarSnapshots,
   saveGelmarPriceSnapshot,
 } from './gelmarPriceSnapshot';
+import {
+  applyCommunityMaterialsPrefsFromCloud,
+  loadCommunityMaterialsPrefs,
+  publishCommunityMaterialsFromCatalog,
+} from './communityMaterials';
 import { loadMaterialCatalog, saveMaterialCatalog, type BoardCatalog } from './materialCatalog';
 import {
   adoptLegacyUnitPresetsIfEmpty,
@@ -41,6 +46,8 @@ type PrefsRow = {
   price_list: PriceList | null;
   unit_presets: UnitPresetsBundle | null;
   gelmar_prices: GelmarPriceSnapshot | null;
+  accept_community_materials?: boolean | null;
+  community_materials_seen_at?: string | null;
   updated_at: string;
 };
 
@@ -148,13 +155,17 @@ function applyPrefsFromCloud(row: PrefsRow): void {
   if (mergedGelmar?.savedAt) {
     saveGelmarPriceSnapshot(mergedGelmar);
   }
+
+  applyCommunityMaterialsPrefsFromCloud(row.accept_community_materials);
 }
 
 export async function pullUserPrefs(userId: string): Promise<void> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('cuboards_user_prefs')
-    .select('board_catalog, price_list, unit_presets, gelmar_prices, updated_at')
+    .select(
+      'board_catalog, price_list, unit_presets, gelmar_prices, accept_community_materials, community_materials_seen_at, updated_at',
+    )
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -168,15 +179,18 @@ export async function pushUserPrefsFromLocal(userId: string): Promise<void> {
   const price_list = loadPriceList();
   const unit_presets = loadPresetsBundle();
   const gelmar_prices = loadGelmarPriceSnapshot();
+  const communityPrefs = loadCommunityMaterialsPrefs();
   const { error } = await supabase.from('cuboards_user_prefs').upsert({
     user_id: userId,
     board_catalog,
     price_list,
     unit_presets: unit_presets.presets.length ? unit_presets : null,
     gelmar_prices: gelmar_prices?.savedAt ? gelmar_prices : null,
+    accept_community_materials: communityPrefs.acceptUpdates,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(error.message);
+  await publishCommunityMaterialsFromCatalog(board_catalog);
 }
 
 export function setCloudSyncUserId(userId: string | null): void {
