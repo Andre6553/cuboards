@@ -15,6 +15,11 @@ import {
   type FactoryCutListRow,
 } from './factoryCutList';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from './sheetLayout';
+import {
+  filterPiecesForOrderSupplier,
+  filterSheetMapGroupsForOrderSupplier,
+  slugifySupplierForFilename,
+} from './orderSupplier';
 import { appendSheetMapsToPdf } from './sheetMapPdf';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
@@ -94,9 +99,9 @@ function renderFactoryCutListSection(
   y: number,
   margin: number,
   job: Job,
-  result: CutListResult,
+  pieces: CutListResult['pieces'],
 ): number {
-  const groups = buildFactoryCutListGroups(job, result.pieces);
+  const groups = buildFactoryCutListGroups(job, pieces);
   if (groups.length === 0) return y;
 
   if (y > 150) {
@@ -224,7 +229,17 @@ function drawSizeModeNote(doc: jsPDF, margin: number, y: number, job: Job, promi
 
 export type CutListPdfMode = 'factory' | 'full' | 'quote';
 
-export async function exportCutListPdf(job: Job, result: CutListResult, mode: CutListPdfMode = 'full'): Promise<void> {
+export type CutListPdfOptions = {
+  /** Factory PDF: only boards assigned to this cut house. */
+  factoryOrderSupplier?: string | null;
+};
+
+export async function exportCutListPdf(
+  job: Job,
+  result: CutListResult,
+  mode: CutListPdfMode = 'full',
+  options?: CutListPdfOptions,
+): Promise<void> {
   if (mode === 'quote') {
     await exportClientQuotePdf(job, result);
     return;
@@ -235,13 +250,24 @@ export async function exportCutListPdf(job: Job, result: CutListResult, mode: Cu
   const margin = 14;
   let y = margin;
   const factory = mode === 'factory';
+  const factorySupplier = factory ? options?.factoryOrderSupplier?.trim() || '' : '';
+  const factoryPieces = factorySupplier
+    ? filterPiecesForOrderSupplier(job, result.pieces, factorySupplier)
+    : result.pieces;
+  const factorySheetMaps = factorySupplier
+    ? filterSheetMapGroupsForOrderSupplier(job, result.sheetMaps, factorySupplier)
+    : result.sheetMaps;
   const fmt = (n: number) => formatMoney(n, job.settings);
   const curSym = resolveQuoteCurrency(job.settings).symbol;
 
   y = drawPdfBrandHeader(doc, logoDataUrl, {
     margin,
     y,
-    documentTitle: factory ? 'Factory cut list' : 'Full cut list',
+    documentTitle: factory
+      ? factorySupplier
+        ? `Factory cut list — ${factorySupplier}`
+        : 'Factory cut list'
+      : 'Full cut list',
     logoHeightMm: 12,
   });
 
@@ -295,14 +321,22 @@ export async function exportCutListPdf(job: Job, result: CutListResult, mode: Cu
   }
 
   if (factory) {
-    y = renderFactoryCutListSection(doc, y, margin, job, result);
+    if (factorySupplier) {
+      doc.setFontSize(10);
+      doc.setTextColor(60);
+      doc.text(`Cut house: ${factorySupplier} — boards assigned to this supplier only.`, margin, y);
+      y += 6;
+      doc.setTextColor(0);
+    }
+    y = renderFactoryCutListSection(doc, y, margin, job, factoryPieces);
   } else {
     y = renderGroupedSection(doc, y, margin, 'Board cut list', result.boardGroups);
     y = renderGroupedSection(doc, y, margin, 'Masonite cut list', result.masoniteGroups, false);
   }
 
-  if (result.sheetMaps.length > 0) {
-    y = await appendSheetMapsToPdf(doc, y, margin, result.sheetMaps);
+  const sheetMapsForPdf = factory ? factorySheetMaps : result.sheetMaps;
+  if (sheetMapsForPdf.length > 0) {
+    y = await appendSheetMapsToPdf(doc, y, margin, sheetMapsForPdf);
   }
 
   if (!factory && result.boardOffcuts.length > 0) {
@@ -530,6 +564,7 @@ export async function exportCutListPdf(job: Job, result: CutListResult, mode: Cu
 
   const slug = job.client.ref || job.client.name || 'job';
   const prefix = factory ? 'factory-cutlist' : 'full-cutlist';
-  const filename = `${prefix}-${slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const supplierSlug = factory && factorySupplier ? `-${slugifySupplierForFilename(factorySupplier)}` : '';
+  const filename = `${prefix}-${slug}${supplierSlug}-${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 }

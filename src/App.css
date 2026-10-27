@@ -2327,6 +2327,31 @@
   text-align: center;
 }
 
+.factory-order-supplier-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  min-width: 11rem;
+}
+
+.cutlist-header-actions {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.supplier-name-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 10rem;
+}
+
+.supplier-name-pick-custom {
+  margin-top: 0;
+}
+
 @media (min-width: 769px) {
   .app-brand-bar--with-context .cuboards-logo-wordmark {
     display: inline;

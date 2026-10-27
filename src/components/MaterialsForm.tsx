@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   CONNECTING_FITTING_CATALOG,
   CUT_SIZE_MODE_LABELS,
@@ -59,11 +59,16 @@ import {
 } from '../lib/communityMaterials';
 import {
   addMaterialSupplierRow,
+  canonicalSupplierName,
+  extractSupplierNamesFromMaterials,
+  mergeSupplierNameLists,
   removeMaterialSupplier,
   setMaterialQuoteFromSupplier,
   setMaterialQuoteManual,
   updateMaterialSupplier,
 } from '../lib/materialSupplierPrices';
+import { loadMaterialCatalog } from '../lib/materialCatalog';
+import { SupplierNamePick } from './SupplierNamePick';
 import { CollapsibleSection } from './CollapsibleSection';
 import { NumberInput } from './NumberInput';
 import { CustomHardwareEditor } from './CustomHardwareEditor';
@@ -370,6 +375,18 @@ export function MaterialsForm({
 
   const isManualQuote = (m: Material) => !m.quotePriceSource || m.quotePriceSource === 'manual';
 
+  const knownSupplierNames = useMemo(
+    () =>
+      mergeSupplierNameLists(
+        loadMaterialCatalog()?.supplierNames,
+        extractSupplierNamesFromMaterials(materials),
+        materials.map((m) => m.orderFromSupplier),
+        settings.defaultOrderSupplier ? [settings.defaultOrderSupplier] : [],
+        masonite.orderFromSupplier ? [masonite.orderFromSupplier] : [],
+      ),
+    [materials, settings.defaultOrderSupplier, masonite.orderFromSupplier],
+  );
+
 
 
   const addMaterial = () => {
@@ -393,6 +410,8 @@ export function MaterialsForm({
         sheetPurchaseUnit: 'quarter',
 
         edgingMaterialId: edgingMaterials[0]?.id ?? '',
+
+        orderFromSupplier: settings.defaultOrderSupplier?.trim() || undefined,
 
       },
 
@@ -511,6 +530,22 @@ export function MaterialsForm({
           </label>
 
           <label>
+            Default cut house
+            <input
+              className="table-input"
+              list="cuboards-known-suppliers"
+              value={settings.defaultOrderSupplier ?? ''}
+              placeholder="Optional — used for new boards"
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultOrderSupplier: e.target.value.trim() || undefined,
+                })
+              }
+            />
+          </label>
+
+          <label>
             Quote currency
             <select
               value={settings.quoteCurrency ?? 'ZAR'}
@@ -555,6 +590,12 @@ export function MaterialsForm({
           </label>
 
         </div>
+
+        <datalist id="cuboards-known-suppliers">
+          {knownSupplierNames.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
 
         <p className="hint">
           {settings.pricesEnterAsInclVat ? (
@@ -708,7 +749,8 @@ export function MaterialsForm({
           <strong>Board and edging types are shared across all jobs</strong> on this device — add or edit once, every job
           uses the same catalog. Set melamine prices here too. Add <strong>supplier prices</strong> per board to compare
           Gelmar, Promas, etc., then pick which price drives your <strong>quote</strong>. <strong>Buy as</strong> is the
-          smallest board size your supplier will sell (⅓, ¼, ½, or full). Link each board to its edging tape below.
+          smallest board size your           supplier will sell (⅓, ¼, ½, or full). <strong>Order from</strong> is the cut house that gets that board on
+          the <strong>Factory</strong> cut list PDF. Link each board to its edging tape below.
         </p>
 
         <label className="checkbox-label community-materials-opt-in">
@@ -751,6 +793,8 @@ export function MaterialsForm({
                 <th title="Smallest size supplier sells">Buy as</th>
 
                 <th>Edging tape</th>
+
+                <th title="Cut house for factory PDF">Order from</th>
 
                 <th>Suppliers</th>
 
@@ -815,6 +859,28 @@ export function MaterialsForm({
 
                     </select>
 
+                  </td>
+
+                  <td data-label="Order from">
+                    <select
+                      className="table-input table-select"
+                      value={m.orderFromSupplier ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value.trim();
+                        onMaterialsChange(
+                          materials.map((row) =>
+                            row.id === m.id ? { ...row, orderFromSupplier: v || undefined } : row,
+                          ),
+                        );
+                      }}
+                    >
+                      <option value="">— Not set —</option>
+                      {knownSupplierNames.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
                   </td>
 
                   <td data-label="Suppliers">
@@ -882,14 +948,15 @@ export function MaterialsForm({
                                       />
                                     </td>
                                     <td>
-                                      <input
-                                        className="table-input"
+                                      <SupplierNamePick
                                         value={s.supplierName}
-                                        placeholder="e.g. Gelmar"
-                                        onChange={(e) =>
+                                        knownNames={knownSupplierNames}
+                                        onChange={(name) =>
                                           replaceMaterial(
                                             m.id,
-                                            updateMaterialSupplier(m, s.id, { supplierName: e.target.value }),
+                                            updateMaterialSupplier(m, s.id, {
+                                              supplierName: canonicalSupplierName(knownSupplierNames, name),
+                                            }),
                                           )
                                         }
                                       />
@@ -1042,6 +1109,27 @@ export function MaterialsForm({
               <option value="quarter">¼ sheet</option>
               <option value="half">½ sheet</option>
               <option value="full">Full sheet only</option>
+            </select>
+          </label>
+
+          <label>
+            Order from (cut house)
+            <select
+              className="table-input table-select"
+              value={masonite.orderFromSupplier ?? ''}
+              onChange={(e) =>
+                onMasoniteChange({
+                  ...masonite,
+                  orderFromSupplier: e.target.value.trim() || undefined,
+                })
+              }
+            >
+              <option value="">— Default / not set —</option>
+              {knownSupplierNames.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
             </select>
           </label>
 

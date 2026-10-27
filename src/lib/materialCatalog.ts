@@ -1,4 +1,6 @@
 import { DEFAULT_EDGING, DEFAULT_MATERIALS } from './constants';
+import { extractSupplierNamesFromMaterials, mergeSupplierNameLists } from './materialSupplierPrices';
+import { collectOrderSupplierNamesFromJobMaterials } from './orderSupplier';
 import type { EdgingMaterial, Job, Material } from '../types';
 import { requireUserDataScope, userStorageKeys } from './userDataScope';
 
@@ -6,6 +8,8 @@ export interface BoardCatalog {
   materials: Material[];
   edgingMaterials: EdgingMaterial[];
   savedAt: string;
+  /** Remembered supplier names for dropdowns (syncs with board catalog). */
+  supplierNames?: string[];
 }
 
 export function loadMaterialCatalog(): BoardCatalog | null {
@@ -19,9 +23,16 @@ export function loadMaterialCatalog(): BoardCatalog | null {
 }
 
 export function saveMaterialCatalog(materials: Material[], edgingMaterials: EdgingMaterial[]): BoardCatalog {
+  const previous = loadMaterialCatalog();
+  const supplierNames = mergeSupplierNameLists(
+    previous?.supplierNames,
+    extractSupplierNamesFromMaterials(materials),
+    collectOrderSupplierNamesFromJobMaterials(materials),
+  );
   const catalog: BoardCatalog = {
     materials: materials.map((m) => ({ ...m })),
     edgingMaterials: edgingMaterials.map((e) => ({ ...e })),
+    supplierNames,
     savedAt: new Date().toISOString(),
   };
   requireUserDataScope();

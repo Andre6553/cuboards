@@ -1,5 +1,49 @@
 import type { Material, MaterialSupplierPrice } from '../types';
 
+export function normalizeSupplierName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ');
+}
+
+/** Unique supplier names from board rows (sorted A–Z). */
+export function extractSupplierNamesFromMaterials(materials: Material[]): string[] {
+  const seen = new Map<string, string>();
+  for (const m of materials) {
+    for (const s of m.supplierPrices ?? []) {
+      const n = normalizeSupplierName(s.supplierName);
+      if (!n) continue;
+      const key = n.toLowerCase();
+      if (!seen.has(key)) seen.set(key, n);
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+export function mergeSupplierNameLists(...lists: ((string | undefined)[] | undefined)[]): string[] {
+  const seen = new Map<string, string>();
+  for (const list of lists) {
+    for (const raw of list ?? []) {
+      if (raw == null) continue;
+      const n = normalizeSupplierName(raw);
+      if (!n) continue;
+      const key = n.toLowerCase();
+      if (!seen.has(key)) seen.set(key, n);
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+export function supplierNameInList(knownNames: string[], name: string): boolean {
+  const key = normalizeSupplierName(name).toLowerCase();
+  if (!key) return false;
+  return knownNames.some((k) => k.toLowerCase() === key);
+}
+
+export function canonicalSupplierName(knownNames: string[], name: string): string {
+  const key = normalizeSupplierName(name).toLowerCase();
+  const hit = knownNames.find((k) => k.toLowerCase() === key);
+  return hit ?? normalizeSupplierName(name);
+}
+
 export function normalizeMaterialSuppliers(m: Material): Material {
   const supplierPrices = (m.supplierPrices ?? []).map((s) => ({
     id: s.id,

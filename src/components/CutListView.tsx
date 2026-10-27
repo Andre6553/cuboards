@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { generateCutList } from '../lib/calculator';
 import { getDoorDrawerEdgingWarnings } from '../lib/edgingWarnings';
 import { getDrawerCutListWarnings, jobNeedsPostformTopQuote, POSTFORM_TOP_NOTICE } from '../lib/cutListWarnings';
@@ -18,6 +18,12 @@ import {
   factoryTickCell,
   type FactoryCutListGroupHeading,
 } from '../lib/factoryCutList';
+import {
+  countUnassignedOrderSupplierPieces,
+  filterPiecesForOrderSupplier,
+  filterSheetMapGroupsForOrderSupplier,
+  listOrderSuppliersOnJob,
+} from '../lib/orderSupplier';
 import type { CutListGroup, Job } from '../types';
 
 interface Props {
@@ -46,7 +52,13 @@ function FactoryCutListGroupTitle({ heading }: { heading: FactoryCutListGroupHea
   );
 }
 
-function FactoryCutListTable({ job, pieces }: { job: Job; pieces: ReturnType<typeof generateCutList>['pieces'] }) {
+function FactoryCutListTable({
+  job,
+  pieces,
+}: {
+  job: Job;
+  pieces: ReturnType<typeof generateCutList>['pieces'];
+}) {
   const groups = buildFactoryCutListGroups(job, pieces);
   if (groups.length === 0) {
     return <p className="hint">No board or masonite parts on this job.</p>;
@@ -184,13 +196,37 @@ function QuoteScopeTable({ units }: { units: Unit[] }) {
 
 export function CutListView({ job }: Props) {
   const [mode, setMode] = useState<CutListPdfMode>('full');
+  const [factoryOrderSupplier, setFactoryOrderSupplier] = useState<string>('');
   const factory = mode === 'factory';
   const quote = mode === 'quote';
   const showCutLists = !quote;
   const showPricingDetail = !factory;
   const showTechnical = mode === 'full';
   const result = generateCutList(job);
-  const showSheetMaps = showCutLists && result.sheetMaps.length > 0;
+  const orderSuppliersOnJob = useMemo(
+    () => listOrderSuppliersOnJob(job, result.pieces),
+    [job, result.pieces],
+  );
+  const factoryPieces = useMemo(
+    () =>
+      factory && factoryOrderSupplier
+        ? filterPiecesForOrderSupplier(job, result.pieces, factoryOrderSupplier)
+        : result.pieces,
+    [factory, factoryOrderSupplier, job, result.pieces],
+  );
+  const factorySheetMaps = useMemo(
+    () =>
+      factory && factoryOrderSupplier
+        ? filterSheetMapGroupsForOrderSupplier(job, result.sheetMaps, factoryOrderSupplier)
+        : result.sheetMaps,
+    [factory, factoryOrderSupplier, job, result.sheetMaps],
+  );
+  const unassignedOrderCount = useMemo(
+    () => (factory ? countUnassignedOrderSupplierPieces(job, result.pieces) : 0),
+    [factory, job, result.pieces],
+  );
+  const showSheetMaps =
+    showCutLists && (factory ? factorySheetMaps.length > 0 : result.sheetMaps.length > 0);
   const fmt = (n: number) => formatMoney(n, job.settings);
   const currencySymbol = resolveQuoteCurrency(job.settings).symbol;
   const edgingWarnings = getDoorDrawerEdgingWarnings(job);
@@ -213,7 +249,7 @@ export function CutListView({ job }: Props) {
           <h2>{factory ? 'Factory cut list' : quote ? 'Client quotation' : 'Full cut list'}</h2>
           <p className="hint">
             {factory
-              ? 'Grouped by board type + edging tape. Same length × width + edging ticks in a group → one line, qty added (unit/description blank when combined).'
+              ? 'Grouped by board type + edging tape. Choose a cut house to show only boards you order from them — PDF download follows the same filter.'
               : quote
                 ? 'Client-facing: scope of work and quotation total only — no supply breakdown or cut sizes.'
                 : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
@@ -231,19 +267,49 @@ export function CutListView({ job }: Props) {
               Full
             </button>
           </div>
+          {factory && orderSuppliersOnJob.length > 0 ? (
+            <label className="factory-order-supplier-filter">
+              Send to cut house
+              <select
+                className="table-input table-select"
+                value={factoryOrderSupplier}
+                onChange={(e) => setFactoryOrderSupplier(e.target.value)}
+              >
+                <option value="">All boards (combined)</option>
+                {orderSuppliersOnJob.map((s) => (
+                  <option key={s} value={s}>
+                    {s} only
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <button
             type="button"
             className="btn btn-primary"
             onClick={() => {
-              void exportCutListPdf(job, result, mode).catch(() => {
+              void exportCutListPdf(job, result, mode, {
+                factoryOrderSupplier: factory ? factoryOrderSupplier || null : null,
+              }).catch(() => {
                 alert('Could not create PDF. Check your connection and try again.');
               });
             }}
           >
             Download {factory ? 'factory' : quote ? 'client quote' : 'full'} PDF
+            {factory && factoryOrderSupplier ? ` (${factoryOrderSupplier})` : ''}
           </button>
         </div>
       </div>
+      {factory && unassignedOrderCount > 0 ? (
+        <div className="cutlist-warnings" role="note">
+          <strong>Order from not set on some boards</strong>
+          <p className="hint">
+            {unassignedOrderCount} cut-list line(s) have no cut house (Prices &amp; settings → Board materials →{' '}
+            <strong>Order from</strong>, or job <strong>Default cut house</strong>). They appear only in{' '}
+            <strong>All boards</strong> — not in a single-supplier PDF.
+          </p>
+        </div>
+      ) : null}
       {drawerWarnings.length > 0 && (
         <div className="cutlist-warnings" role="alert">
           <strong>Drawers not on cut list</strong>
@@ -311,8 +377,15 @@ export function CutListView({ job }: Props) {
           <>
           {factory ? (
             <>
-              <h3 className="section-title">Cutting list</h3>
-              <FactoryCutListTable job={job} pieces={result.pieces} />
+              <h3 className="section-title">
+                Cutting list
+                {factoryOrderSupplier ? ` — ${factoryOrderSupplier}` : ''}
+              </h3>
+              {factoryPieces.length === 0 ? (
+                <p className="hint">No parts assigned to this cut house. Set <strong>Order from</strong> on each board in Prices &amp; settings.</p>
+              ) : (
+                <FactoryCutListTable job={job} pieces={factoryPieces} />
+              )}
             </>
           ) : (
             <>
@@ -384,7 +457,7 @@ export function CutListView({ job }: Props) {
                 dashed areas are keeper offcuts ({MIN_OFFCUT_MM} mm+). Included on <strong>Factory</strong> and{' '}
                 <strong>Full</strong> PDF downloads.
               </p>
-              <SheetMapView groups={result.sheetMaps} />
+              <SheetMapView groups={factory ? factorySheetMaps : result.sheetMaps} />
             </>
           )}
           </>

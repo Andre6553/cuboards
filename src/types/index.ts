@@ -36,6 +36,8 @@ export interface Material {
   /** How sheet count is rounded for costing; defaults to quarter if omitted (old jobs). */
   sheetPurchaseUnit?: SheetPurchaseUnit;
   edgingMaterialId: string;
+  /** Cut house / supplier to send factory cut list for this board (optional). */
+  orderFromSupplier?: string;
   /** Other suppliers’ sheet prices for comparison; one can drive {@link pricePerSheet}. */
   supplierPrices?: MaterialSupplierPrice[];
   /** `manual` = quote price edited directly; otherwise id of {@link MaterialSupplierPrice}. */
@@ -58,6 +60,8 @@ export interface MasoniteConfig {
   sheetHeight: number;
   /** Smallest sheet size supplier sells; defaults to quarter if omitted (old jobs). */
   sheetPurchaseUnit?: SheetPurchaseUnit;
+  /** Cut house for masonite backs / drawer bottoms (optional). */
+  orderFromSupplier?: string;
 }
 
 export interface RunnerPrices {
@@ -194,6 +198,8 @@ export interface JobSettings {
   boardWastagePercent?: number;
   /** Saw kerf between cuts on sheet nesting / offcuts (default 4 mm). */
   sawKerfMm?: number;
+  /** Default cut house for new boards and masonite when not set per material. */
+  defaultOrderSupplier?: string;
 }
 
 /** Client quotation footer — editable per job. */
