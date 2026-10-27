@@ -922,65 +922,64 @@ export function MaterialsForm({
                           </label>
                         </div>
                         {supplierRows.length > 0 ? (
-                          <div className="table-wrap">
-                            <table className="data-table material-supplier-table">
-                              <thead>
-                                <tr>
-                                  <th>Use on quote</th>
-                                  <th>Supplier</th>
-                                  <th>{priceInputLabel(settings, 'Price / sheet')}</th>
-                                  <th></th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {supplierRows.map((s) => (
-                                  <tr key={s.id}>
-                                    <td className="center" data-label="Use on quote">
-                                      <input
-                                        type="radio"
-                                        name={`quote-source-${m.id}`}
-                                        checked={m.quotePriceSource === s.id}
-                                        onChange={() => replaceMaterial(m.id, setMaterialQuoteFromSupplier(m, s.id))}
-                                      />
-                                    </td>
-                                    <td data-label="Supplier">
-                                      <SupplierNamePick
-                                        value={s.supplierName}
-                                        knownNames={knownSupplierNames}
-                                        onChange={(name) =>
-                                          replaceMaterial(
-                                            m.id,
-                                            updateMaterialSupplier(m, s.id, { supplierName: name }),
-                                          )
-                                        }
-                                      />
-                                    </td>
-                                    <td data-label={priceInputLabel(settings, 'Price / sheet')}>
-                                      <NumberInput
-                                        className="table-input"
-                                        value={s.pricePerSheet}
-                                        min={0}
-                                        onChange={(n) =>
-                                          replaceMaterial(
-                                            m.id,
-                                            updateMaterialSupplier(m, s.id, { pricePerSheet: n }),
-                                          )
-                                        }
-                                      />
-                                    </td>
-                                    <td className="material-supplier-actions">
-                                      <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm danger"
-                                        onClick={() => replaceMaterial(m.id, removeMaterialSupplier(m, s.id))}
-                                      >
-                                        Remove
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                          <div className="material-supplier-list" role="list">
+                            <div className="material-supplier-list-head" aria-hidden="true">
+                              <span>Use on quote</span>
+                              <span>Supplier</span>
+                              <span>{priceInputLabel(settings, 'Price / sheet')}</span>
+                              <span />
+                            </div>
+                            {supplierRows.map((s) => (
+                              <div key={s.id} className="material-supplier-card" role="listitem">
+                                <label className="material-supplier-field material-supplier-field--quote">
+                                  <span className="material-supplier-field-label">Use on quote</span>
+                                  <input
+                                    type="radio"
+                                    name={`quote-source-${m.id}`}
+                                    checked={m.quotePriceSource === s.id}
+                                    onChange={() => replaceMaterial(m.id, setMaterialQuoteFromSupplier(m, s.id))}
+                                  />
+                                </label>
+                                <div className="material-supplier-field">
+                                  <span className="material-supplier-field-label">Supplier</span>
+                                  <SupplierNamePick
+                                    value={s.supplierName}
+                                    knownNames={knownSupplierNames}
+                                    onChange={(name) =>
+                                      replaceMaterial(
+                                        m.id,
+                                        updateMaterialSupplier(m, s.id, { supplierName: name }),
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <label className="material-supplier-field">
+                                  <span className="material-supplier-field-label">
+                                    {priceInputLabel(settings, 'Price / sheet')}
+                                  </span>
+                                  <NumberInput
+                                    className="table-input"
+                                    value={s.pricePerSheet}
+                                    min={0}
+                                    onChange={(n) =>
+                                      replaceMaterial(
+                                        m.id,
+                                        updateMaterialSupplier(m, s.id, { pricePerSheet: n }),
+                                      )
+                                    }
+                                  />
+                                </label>
+                                <div className="material-supplier-field material-supplier-field--actions">
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm danger"
+                                    onClick={() => replaceMaterial(m.id, removeMaterialSupplier(m, s.id))}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <p className="hint">No supplier prices yet — add Gelmar, Promas, or your cut house below.</p>
