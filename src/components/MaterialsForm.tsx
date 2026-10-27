@@ -61,6 +61,7 @@ import {
   addMaterialSupplierRow,
   canonicalSupplierName,
   extractSupplierNamesFromMaterials,
+  isCompleteSupplierName,
   mergeSupplierNameLists,
   removeMaterialSupplier,
   setMaterialQuoteFromSupplier,
@@ -375,17 +376,16 @@ export function MaterialsForm({
 
   const isManualQuote = (m: Material) => !m.quotePriceSource || m.quotePriceSource === 'manual';
 
-  const knownSupplierNames = useMemo(
-    () =>
-      mergeSupplierNameLists(
-        loadMaterialCatalog()?.supplierNames,
-        extractSupplierNamesFromMaterials(materials),
-        materials.map((m) => m.orderFromSupplier),
-        settings.defaultOrderSupplier ? [settings.defaultOrderSupplier] : [],
-        masonite.orderFromSupplier ? [masonite.orderFromSupplier] : [],
-      ),
-    [materials, settings.defaultOrderSupplier, masonite.orderFromSupplier],
-  );
+  const knownSupplierNames = useMemo(() => {
+    const merged = mergeSupplierNameLists(
+      loadMaterialCatalog()?.supplierNames,
+      extractSupplierNamesFromMaterials(materials),
+      materials.map((m) => m.orderFromSupplier),
+      settings.defaultOrderSupplier ? [settings.defaultOrderSupplier] : [],
+      masonite.orderFromSupplier ? [masonite.orderFromSupplier] : [],
+    );
+    return merged.filter(isCompleteSupplierName);
+  }, [materials, settings.defaultOrderSupplier, masonite.orderFromSupplier]);
 
 
 

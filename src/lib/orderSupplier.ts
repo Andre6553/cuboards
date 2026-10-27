@@ -1,4 +1,4 @@
-import { normalizeSupplierName } from './materialSupplierPrices';
+import { isCompleteSupplierName, normalizeSupplierName } from './materialSupplierPrices';
 import type { CutPiece, Job, SheetMapGroup } from '../types';
 
 export const MASONITE_MATERIAL_ID = 'masonite';
@@ -73,7 +73,7 @@ export function collectOrderSupplierNamesFromJobMaterials(materials: Job['materi
   const names: string[] = [];
   for (const m of materials) {
     const n = normalizeSupplierName(m.orderFromSupplier ?? '');
-    if (n) names.push(n);
+    if (n && isCompleteSupplierName(n)) names.push(n);
   }
   return names;
 }

@@ -4,13 +4,20 @@ export function normalizeSupplierName(name: string): string {
   return name.trim().replace(/\s+/g, ' ');
 }
 
+/** Ignore partial names while typing so dropdowns are not polluted (e.g. "G" → "Gelmar"). */
+export const SUPPLIER_NAME_MIN_LENGTH = 3;
+
+export function isCompleteSupplierName(name: string): boolean {
+  return normalizeSupplierName(name).length >= SUPPLIER_NAME_MIN_LENGTH;
+}
+
 /** Unique supplier names from board rows (sorted A–Z). */
 export function extractSupplierNamesFromMaterials(materials: Material[]): string[] {
   const seen = new Map<string, string>();
   for (const m of materials) {
     for (const s of m.supplierPrices ?? []) {
       const n = normalizeSupplierName(s.supplierName);
-      if (!n) continue;
+      if (!n || !isCompleteSupplierName(n)) continue;
       const key = n.toLowerCase();
       if (!seen.has(key)) seen.set(key, n);
     }
@@ -24,7 +31,7 @@ export function mergeSupplierNameLists(...lists: ((string | undefined)[] | undef
     for (const raw of list ?? []) {
       if (raw == null) continue;
       const n = normalizeSupplierName(raw);
-      if (!n) continue;
+      if (!n || !isCompleteSupplierName(n)) continue;
       const key = n.toLowerCase();
       if (!seen.has(key)) seen.set(key, n);
     }
@@ -34,7 +41,7 @@ export function mergeSupplierNameLists(...lists: ((string | undefined)[] | undef
 
 export function supplierNameInList(knownNames: string[], name: string): boolean {
   const key = normalizeSupplierName(name).toLowerCase();
-  if (!key) return false;
+  if (!key || !isCompleteSupplierName(name)) return false;
   return knownNames.some((k) => k.toLowerCase() === key);
 }
 

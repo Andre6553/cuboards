@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supplierNameInList } from '../lib/materialSupplierPrices';
 
 interface Props {
@@ -10,13 +10,9 @@ interface Props {
 /** Pick a remembered supplier or type a new one. */
 export function SupplierNamePick({ value, knownNames, onChange }: Props) {
   const trimmed = value.trim();
-  const matched = trimmed && supplierNameInList(knownNames, trimmed);
-  const [enterCustom, setEnterCustom] = useState(() => Boolean(trimmed && !matched));
+  const [enterCustom, setEnterCustom] = useState(() => Boolean(trimmed && !supplierNameInList(knownNames, trimmed)));
 
-  useEffect(() => {
-    if (matched) setEnterCustom(false);
-    else if (trimmed && !matched) setEnterCustom(true);
-  }, [matched, trimmed]);
+  const matched = !enterCustom && trimmed && supplierNameInList(knownNames, trimmed);
 
   if (knownNames.length === 0) {
     return (
@@ -29,11 +25,13 @@ export function SupplierNamePick({ value, knownNames, onChange }: Props) {
     );
   }
 
-  const selectValue = matched
-    ? knownNames.find((k) => k.toLowerCase() === trimmed.toLowerCase())!
-    : enterCustom || trimmed
-      ? '__custom__'
-      : '';
+  const selectValue = enterCustom
+    ? '__custom__'
+    : matched
+      ? knownNames.find((k) => k.toLowerCase() === trimmed.toLowerCase())!
+      : trimmed
+        ? '__custom__'
+        : '';
 
   const showCustomInput = enterCustom || Boolean(trimmed && !matched);
 
