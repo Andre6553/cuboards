@@ -56,7 +56,7 @@ export function SupplierNamePick({ value, knownNames, onChange }: Props) {
         />
         <button
           type="button"
-          className="btn-link supplier-name-pick-back"
+          className="supplier-name-pick-back"
           onClick={() => {
             setEnterCustom(false);
             if (!matched) onChange('');

@@ -935,7 +935,7 @@ export function MaterialsForm({
                               <tbody>
                                 {supplierRows.map((s) => (
                                   <tr key={s.id}>
-                                    <td className="center">
+                                    <td className="center" data-label="Use on quote">
                                       <input
                                         type="radio"
                                         name={`quote-source-${m.id}`}
@@ -943,7 +943,7 @@ export function MaterialsForm({
                                         onChange={() => replaceMaterial(m.id, setMaterialQuoteFromSupplier(m, s.id))}
                                       />
                                     </td>
-                                    <td>
+                                    <td data-label="Supplier">
                                       <SupplierNamePick
                                         value={s.supplierName}
                                         knownNames={knownSupplierNames}
@@ -955,7 +955,7 @@ export function MaterialsForm({
                                         }
                                       />
                                     </td>
-                                    <td>
+                                    <td data-label={priceInputLabel(settings, 'Price / sheet')}>
                                       <NumberInput
                                         className="table-input"
                                         value={s.pricePerSheet}
@@ -968,7 +968,7 @@ export function MaterialsForm({
                                         }
                                       />
                                     </td>
-                                    <td>
+                                    <td className="material-supplier-actions">
                                       <button
                                         type="button"
                                         className="btn btn-ghost btn-sm danger"
