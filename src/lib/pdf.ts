@@ -21,6 +21,7 @@ import {
   slugifySupplierForFilename,
 } from './orderSupplier';
 import { appendSheetMapsToPdf } from './sheetMapPdf';
+import { splitQuoteCostLines } from './costSummaryGroups';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
 function renderFactoryCutListTable(
@@ -518,17 +519,19 @@ export async function exportCutListPdf(
   doc.text('Cost summary', margin, y);
   y += 2;
 
+  const { woodLines, hardwareLines } = splitQuoteCostLines(result.costs);
   autoTable(doc, {
     startY: y,
     head: [['Category', 'Item', 'Detail', 'Subtotal']],
     body: [
-      ...result.costs.map((c) => [
-        c.category,
-        c.name,
-        c.detail,
-        fmt(c.subtotal),
-      ]),
-      ['', 'Material cost total', '', fmt(result.materialsTotal)],
+      [{ content: 'Wood material (boards, edging, cut house)', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [237, 242, 247] } }],
+      ...woodLines.map((c) => [c.category, c.name, c.detail, fmt(c.subtotal)]),
+      ['', 'Wood material total', '', fmt(result.woodMaterialTotal)],
+      [{ content: 'Hardware (Gelmar / catalog)', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [237, 242, 247] } }],
+      ...(hardwareLines.length > 0
+        ? hardwareLines.map((c) => [c.category, c.name, c.detail, fmt(c.subtotal)])
+        : [['', 'No hardware', '', fmt(0)]]),
+      ['', 'Hardware total', '', fmt(result.hardwareTotal)],
       [
         'install',
         'Installation cost total',

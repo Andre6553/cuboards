@@ -1302,6 +1302,26 @@
   grid-template-columns: 80px 1fr 1.5fr auto;
 }
 
+.cost-summary-group-title {
+  margin: 1.25rem 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cost-summary-group-title:first-child {
+  margin-top: 0;
+}
+
+.cost-summary-group-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+}
+
+.cost-summary-group-total {
+  margin-bottom: 0.25rem;
+}
+
 .cost-cat {
   text-transform: capitalize;
   font-size: 0.78rem;

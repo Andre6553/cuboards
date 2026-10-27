@@ -10,7 +10,7 @@ import type { Unit } from '../types';
 import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS, formatCutListDimensions } from '../lib/edgingCutSize';
 import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
-import { QuoteTotalsRows } from './QuoteTotals';
+import { QuoteCostSummary, QuoteCostSummaryCompact } from './QuoteCostSummary';
 import { SheetMapView } from './SheetMapView';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from '../lib/sheetLayout';
 import {
@@ -381,9 +381,7 @@ export function CutListView({ job }: Props) {
           {quote && (
             <>
               <QuoteScopeTable units={job.units} />
-              <div className="cost-summary cost-summary-wide quote-total-only">
-                <QuoteTotalsRows settings={job.settings} grandTotal={result.grandTotal} compact />
-              </div>
+              <QuoteCostSummaryCompact settings={job.settings} result={result} />
             </>
           )}
 
@@ -716,41 +714,7 @@ export function CutListView({ job }: Props) {
           {showPricingDetail && !quote && (
           <>
           <h3 className="section-title">Cost estimate</h3>
-          <div className="cost-summary cost-summary-wide">
-              <>
-                {result.costs.map((c, i) => (
-                  <div key={i} className="cost-row">
-                    <span className="cost-cat">{c.category}</span>
-                    <span>{c.name}</span>
-                    <span className="cost-detail">{c.detail}</span>
-                    <span>{fmt(c.subtotal)}</span>
-                  </div>
-                ))}
-                <div className="cost-row subtotal">
-                  <span></span>
-                  <span>Material cost total</span>
-                  <span></span>
-                  <span>{fmt(result.materialsTotal)}</span>
-                </div>
-                <div className="cost-row subtotal">
-                  <span className="cost-cat">install</span>
-                  <span>Installation cost total</span>
-                  <span className="cost-detail">
-                    {result.install
-                      ? `${result.install.lines.length} unit(s)${result.install.minimumApplied > 0 ? ' · min job applied' : ''}`
-                      : 'Not included'}
-                  </span>
-                  <span>{fmt(result.installationTotal)}</span>
-                </div>
-                <div className="cost-row subtotal">
-                  <span></span>
-                  <span>Travel total</span>
-                  <span></span>
-                  <span>{fmt(result.travelTotal)}</span>
-                </div>
-              </>
-            <QuoteTotalsRows settings={job.settings} grandTotal={result.grandTotal} />
-          </div>
+          <QuoteCostSummary settings={job.settings} result={result} fmt={fmt} />
           {showTechnical && showPostformTopNotice && (
             <p className="hint hint-inline warn">{POSTFORM_TOP_NOTICE}</p>
           )}

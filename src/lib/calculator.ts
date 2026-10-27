@@ -77,6 +77,7 @@ import {
   resolveCutHouseCharges,
 } from './cutHouseCharges';
 import { boardQuoteStoredUnitPrice } from './boardQuotePricing';
+import { splitQuoteCostLines } from './costSummaryGroups';
 import { quoteLineSubtotal, quoteUnitPrice } from './vat';
 import type {
   ConsolidatedEdging,
@@ -1101,12 +1102,15 @@ function calcCosts(
       mSheetArea,
     );
     sheetsNeeded = Math.max(sheetsNeeded, sheetsFromLayout);
-    const masoniteBillSheets = masoniteQuoteSheetCount(job, sheetsNeeded, cutHouseCh);
-    masoniteSheetsForCutHouse = masoniteBillSheets;
+    masoniteSheetsForCutHouse = sheetsNeeded;
+    const masoniteBillSheets =
+      cutHouseCh.masoniteOneFullSheetFromCutHouse === true
+        ? masoniteQuoteSheetCount(job, sheetsNeeded, cutHouseCh)
+        : sheetsNeeded;
     const masoniteDetailBase = `${job.masonite.thickness}mm · ${formatSheetCount(masoniteBillSheets)} @ ${mW}×${mH}`;
     const masoniteLayoutNote =
       masoniteBillSheets !== sheetsNeeded
-        ? `${masoniteDetailBase} · cut house HB001 (1 full sheet on quote; layout uses ${formatSheetCount(sheetsNeeded)})`
+        ? `${masoniteDetailBase} · cut house bills 1 full sheet (layout uses ${formatSheetCount(sheetsNeeded)})`
         : `${masoniteDetailBase} · panel layout (${masoniteLabel}; ${sawKerfMm} mm saw cut)`;
     pushUnplacedSheetWarnings(
       `${job.masonite.name} (${job.masonite.colour})`,
@@ -1225,7 +1229,8 @@ export function generateCutList(job: Job): CutListResult {
   const sheetMaps = calcSheetMaps(job, pieces);
   const materialCosts = calcCosts(job, pieces, edging, hardware, plasticKickplateTotalMetres, screws, sheetWarnings);
   const install = calcJobInstall(job);
-  const materialsTotal = materialCosts.reduce((sum, c) => sum + c.subtotal, 0);
+  const { woodMaterialTotal, hardwareTotal } = splitQuoteCostLines(materialCosts);
+  const materialsTotal = woodMaterialTotal + hardwareTotal;
   const installationTotal = install?.installationTotal ?? 0;
   const travelTotal = install?.travelFee ?? 0;
   const grandTotal = materialsTotal + installationTotal + travelTotal;
@@ -1247,6 +1252,8 @@ export function generateCutList(job: Job): CutListResult {
     sheetMaps,
     install,
     materialsTotal,
+    woodMaterialTotal,
+    hardwareTotal,
     installationTotal,
     travelTotal,
     grandTotal,

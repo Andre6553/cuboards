@@ -577,6 +577,10 @@ export interface CutListResult {
   sheetMaps: SheetMapGroup[];
   install: InstallEstimate | null;
   materialsTotal: number;
+  /** Boards, edging, masonite, cut-house SMEL/SHB/BOOR (Cut and Edge style). */
+  woodMaterialTotal: number;
+  /** Gelmar / catalog hardware + screws & fittings summary lines. */
+  hardwareTotal: number;
   installationTotal: number;
   travelTotal: number;
   grandTotal: number;
