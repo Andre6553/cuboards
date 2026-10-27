@@ -1,5 +1,9 @@
 import { DEFAULT_EDGING, DEFAULT_MATERIALS } from './constants';
-import { extractSupplierNamesFromMaterials, mergeSupplierNameLists } from './materialSupplierPrices';
+import {
+  extractSupplierNamesFromMaterials,
+  mergeSupplierNameLists,
+  pruneIncrementalSupplierNames,
+} from './materialSupplierPrices';
 import { collectOrderSupplierNamesFromJobMaterials } from './orderSupplier';
 import type { EdgingMaterial, Job, Material } from '../types';
 import { requireUserDataScope, userStorageKeys } from './userDataScope';
@@ -12,11 +16,32 @@ export interface BoardCatalog {
   supplierNames?: string[];
 }
 
+function sanitizeCatalogSupplierNames(catalog: BoardCatalog): BoardCatalog {
+  const supplierNames = mergeSupplierNameLists(
+    pruneIncrementalSupplierNames(catalog.supplierNames ?? []),
+    extractSupplierNamesFromMaterials(catalog.materials),
+    collectOrderSupplierNamesFromJobMaterials(catalog.materials),
+  );
+  if (
+    supplierNames.length === (catalog.supplierNames?.length ?? 0) &&
+    JSON.stringify(supplierNames) === JSON.stringify(catalog.supplierNames ?? [])
+  ) {
+    return catalog;
+  }
+  return { ...catalog, supplierNames };
+}
+
 export function loadMaterialCatalog(): BoardCatalog | null {
   try {
     requireUserDataScope();
     const raw = localStorage.getItem(userStorageKeys.boardCatalog());
-    return raw ? (JSON.parse(raw) as BoardCatalog) : null;
+    if (!raw) return null;
+    const catalog = JSON.parse(raw) as BoardCatalog;
+    const sanitized = sanitizeCatalogSupplierNames(catalog);
+    if (sanitized !== catalog) {
+      localStorage.setItem(userStorageKeys.boardCatalog(), JSON.stringify(sanitized));
+    }
+    return sanitized;
   } catch {
     return null;
   }
@@ -25,7 +50,7 @@ export function loadMaterialCatalog(): BoardCatalog | null {
 export function saveMaterialCatalog(materials: Material[], edgingMaterials: EdgingMaterial[]): BoardCatalog {
   const previous = loadMaterialCatalog();
   const supplierNames = mergeSupplierNameLists(
-    previous?.supplierNames,
+    pruneIncrementalSupplierNames(previous?.supplierNames ?? []),
     extractSupplierNamesFromMaterials(materials),
     collectOrderSupplierNamesFromJobMaterials(materials),
   );

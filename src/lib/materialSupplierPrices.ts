@@ -25,7 +25,11 @@ export function extractSupplierNamesFromMaterials(materials: Material[]): string
   return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 }
 
-export function mergeSupplierNameLists(...lists: ((string | undefined)[] | undefined)[]): string[] {
+function compactSupplierKey(name: string): string {
+  return normalizeSupplierName(name).toLowerCase().replace(/\s+/g, '');
+}
+
+function mergeSupplierNameListsRaw(...lists: ((string | undefined)[] | undefined)[]): string[] {
   const seen = new Map<string, string>();
   for (const list of lists) {
     for (const raw of list ?? []) {
@@ -37,6 +41,33 @@ export function mergeSupplierNameLists(...lists: ((string | undefined)[] | undef
     }
   }
   return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+/** Drop keystroke debris (Gar, Garden R, …) when a longer name shares the same prefix. */
+export function pruneIncrementalSupplierNames(names: string[]): string[] {
+  const list = mergeSupplierNameListsRaw(names);
+  const withoutPrefixJunk = list.filter((name) => {
+    const compact = compactSupplierKey(name);
+    if (!/^[\p{L}\p{N}\s&'.-]+$/u.test(name)) return false;
+    return !list.some((other) => {
+      if (other === name) return false;
+      const oc = compactSupplierKey(other);
+      return oc.length > compact.length && oc.startsWith(compact);
+    });
+  });
+  const byCompact = new Map<string, string>();
+  for (const n of withoutPrefixJunk) {
+    const c = compactSupplierKey(n);
+    const prev = byCompact.get(c);
+    if (!prev) byCompact.set(c, n);
+    else if (n.includes(' ') && !prev.includes(' ')) byCompact.set(c, n);
+    else if (n.length > prev.length) byCompact.set(c, n);
+  }
+  return [...byCompact.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+export function mergeSupplierNameLists(...lists: ((string | undefined)[] | undefined)[]): string[] {
+  return pruneIncrementalSupplierNames(mergeSupplierNameListsRaw(...lists));
 }
 
 export function supplierNameInList(knownNames: string[], name: string): boolean {
