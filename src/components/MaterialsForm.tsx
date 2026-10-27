@@ -535,7 +535,7 @@ export function MaterialsForm({
               className="table-input"
               list="cuboards-known-suppliers"
               value={settings.defaultOrderSupplier ?? ''}
-              placeholder="Optional — used for new boards"
+              placeholder="Optional — new boards & masonite backs if unset"
               onChange={(e) =>
                 onSettingsChange({
                   ...settings,
@@ -1118,7 +1118,7 @@ export function MaterialsForm({
                 })
               }
             >
-              <option value="">— Default / not set —</option>
+              <option value="">— Default / most common board cut house —</option>
               {knownSupplierNames.map((n) => (
                 <option key={n} value={n}>
                   {n}

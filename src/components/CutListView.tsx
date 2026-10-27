@@ -19,7 +19,7 @@ import {
   type FactoryCutListGroupHeading,
 } from '../lib/factoryCutList';
 import {
-  countUnassignedOrderSupplierPieces,
+  summarizeUnassignedOrderSupplierPieces,
   filterPiecesForOrderSupplier,
   filterSheetMapGroupsForOrderSupplier,
   listOrderSuppliersOnJob,
@@ -221,8 +221,8 @@ export function CutListView({ job }: Props) {
         : result.sheetMaps,
     [factory, factoryOrderSupplier, job, result.sheetMaps],
   );
-  const unassignedOrderCount = useMemo(
-    () => (factory ? countUnassignedOrderSupplierPieces(job, result.pieces) : 0),
+  const unassignedOrder = useMemo(
+    () => (factory ? summarizeUnassignedOrderSupplierPieces(job, result.pieces) : null),
     [factory, job, result.pieces],
   );
   const showSheetMaps =
@@ -300,13 +300,27 @@ export function CutListView({ job }: Props) {
           </button>
         </div>
       </div>
-      {factory && unassignedOrderCount > 0 ? (
+      {factory && unassignedOrder && unassignedOrder.total > 0 ? (
         <div className="cutlist-warnings" role="note">
           <strong>Order from not set on some boards</strong>
           <p className="hint">
-            {unassignedOrderCount} cut-list line(s) have no cut house (Prices &amp; settings → Board materials →{' '}
-            <strong>Order from</strong>, or job <strong>Default cut house</strong>). They appear only in{' '}
+            {unassignedOrder.total} cut-list line(s) have no cut house. They appear only in{' '}
             <strong>All boards</strong> — not in a single-supplier PDF.
+            {unassignedOrder.masoniteLines > 0 && unassignedOrder.otherLines === 0 ? (
+              <>
+                {' '}
+                These look like <strong>masonite backs</strong> ({unassignedOrder.masoniteLines}) — set{' '}
+                <strong>Prices &amp; settings → Masonite → Order from</strong>, or{' '}
+                <strong>Default cut house</strong> on this job.
+              </>
+            ) : (
+              <>
+                {' '}
+                Set <strong>Order from</strong> on each board under Prices &amp; settings,{' '}
+                <strong>Masonite → Order from</strong> for masonite backs, or job{' '}
+                <strong>Default cut house</strong>.
+              </>
+            )}
           </p>
         </div>
       ) : null}
