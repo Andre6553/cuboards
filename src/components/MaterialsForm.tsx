@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   CONNECTING_FITTING_CATALOG,
   CUT_SIZE_MODE_LABELS,
+  DEFAULT_CUT_HOUSE_CHARGES,
   DEFAULT_INSTALL_RATES,
   DEFAULT_QUOTE_TERMS,
   DEFAULT_SCREW_USAGE,
@@ -37,6 +38,7 @@ import {
 
 import type {
   ConnectingFittingPrices,
+  CutHouseChargeSettings,
   CutSizeMode,
   CustomHardwareItem,
   EdgingMaterial,
@@ -738,6 +740,81 @@ export function MaterialsForm({
           does not change panel sizes or the <strong>Board offcuts</strong> list on the cut list — that list comes from nesting
           your actual parts. 0 = area estimate only.
         </p>
+
+        <h4 className="subsection-title">Cut house quote lines (boards · edging · drill)</h4>
+        <p className="hint">
+          Matches a cut-house PDF like Mossel Bay Board Cut and Edge: <strong>SMEL</strong> (melamine cutting per sheet line),{' '}
+          <strong>SHB</strong> (masonite cut batch), <strong>BOOR</strong> (hinge cup holes on doors).{' '}
+          <strong>Gelmar hardware</strong> (hinges, runners, screws) stays in the Hardware tables — not here.
+        </p>
+        {(() => {
+          const ch = { ...DEFAULT_CUT_HOUSE_CHARGES, ...settings.cutHouseCharges };
+          const patchCh = (patch: Partial<CutHouseChargeSettings>) =>
+            onSettingsChange({
+              ...settings,
+              cutHouseCharges: { ...ch, ...patch },
+            });
+          return (
+            <>
+              <label>
+                Melamine cut per sheet (SMEL) — R
+                <NumberInput
+                  min={0}
+                  step={0.01}
+                  value={ch.melamineCutPricePerSheet}
+                  onChange={(n) => patchCh({ melamineCutPricePerSheet: Math.max(0, n) })}
+                />
+              </label>
+              <label>
+                Masonite / hardboard cut (SHB) — R per job
+                <NumberInput
+                  min={0}
+                  step={0.01}
+                  value={ch.hardboardCutPricePerSheet}
+                  onChange={(n) => patchCh({ hardboardCutPricePerSheet: Math.max(0, n) })}
+                />
+              </label>
+              <label>
+                Factory hinge drill (BOOR) — R per hole
+                <NumberInput
+                  min={0}
+                  step={0.01}
+                  value={ch.factoryDrillPricePerHole}
+                  onChange={(n) => patchCh({ factoryDrillPricePerHole: Math.max(0, n) })}
+                />
+              </label>
+              <label>
+                Edging order allowance (%)
+                <NumberInput
+                  min={0}
+                  max={50}
+                  step={1}
+                  value={ch.edgingOrderWastagePercent}
+                  onChange={(n) => patchCh({ edgingOrderWastagePercent: Math.max(0, n) })}
+                />
+              </label>
+              <p className="hint">
+                Extra edging length on the <strong>quote</strong> only (cut-house order waste). Cut list edging stays exact.
+              </p>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={ch.edgingOrderRoundUpMetre}
+                  onChange={(e) => patchCh({ edgingOrderRoundUpMetre: e.target.checked })}
+                />
+                Round billable edging up to whole metres
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={ch.onlyWhenOrderFromSet !== false}
+                  onChange={(e) => patchCh({ onlyWhenOrderFromSet: e.target.checked })}
+                />
+                Only add SMEL / SHB / BOOR when <strong>Order from</strong> is set (per board or default cut house)
+              </label>
+            </>
+          );
+        })()}
 
       </CollapsibleSection>
 

@@ -8,6 +8,7 @@ import {
   DEFAULT_CONNECTING_FITTING_PRICES,
   DEFAULT_INSTALL_RATES,
   DEFAULT_SETTINGS,
+  DEFAULT_CUT_HOUSE_CHARGES,
   defaultPlinth,
   isKitchenBase,
 } from './constants';
@@ -172,6 +173,10 @@ export function migrateJob(job: Job): Job {
     settings: {
       ...DEFAULT_SETTINGS,
       ...job.settings,
+      cutHouseCharges: {
+        ...DEFAULT_CUT_HOUSE_CHARGES,
+        ...job.settings?.cutHouseCharges,
+      },
     },
     materials: (job.materials ?? []).map((m) => migrateMaterial(m, defaultEdgingId)),
     units: (job.units ?? []).map((u) => {

@@ -29,6 +29,7 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-10-27:** **Cut-house quote lines** (Prices → Sheet settings): SMEL / SHB / BOOR + edging order % — separate from **Gelmar hardware** on the quote. Matches Mossel Bay Board Cut and Edge style PDFs (boards, edging, drill only).
 - **2026-10-27:** **Order from** cut house per board (+ masonite, job default) — Factory tab filter + PDF per supplier (`factory-cutlist-{ref}-{supplier}-{date}.pdf`); sheet maps filtered to match.
 - **2026-10-27:** Per-board **supplier prices** (Gelmar, Promas, etc.) in shared catalog JSON — optional list + pick which drives quote / sheet; no Supabase migration (stored in existing `board_catalog`).
 - **2026-10-26:** **Community board catalog** — opt-in (`accept_community_materials` in prefs + checkbox under Board materials). New board types (name+colour) publish to `cuboards_community_materials` on cloud sync; other users get a login/refresh prompt to add with their own price/grain/buy-as/edging. Migration `0009_community_board_materials.sql` on `vnsmgvdmxlrfffehzjpf`.

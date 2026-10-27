@@ -70,6 +70,7 @@ import { cutPiecesToLayout } from './sheetLayoutPieces';
 import { calcJobScrews } from './screwRules';
 import { calcJobConnectingFittings } from './connectingFittingRules';
 import { calcJobInstall } from './installRules';
+import { appendCutHouseCosts, billableEdgingMetres, resolveCutHouseCharges } from './cutHouseCharges';
 import type {
   ConsolidatedEdging,
   ConsolidatedPiece,
@@ -1032,6 +1033,9 @@ function calcCosts(
   const wastagePct = Math.max(0, job.settings.boardWastagePercent ?? 0);
   const wastageFactor = 1 + wastagePct / 100;
   const sawKerfMm = resolveSawKerfMm(job.settings);
+  const cutHouseCh = resolveCutHouseCharges(job);
+  const boardSheetsForCutHouse: { materialId: string; sheets: number }[] = [];
+  let masoniteSheetsForCutHouse = 0;
 
   for (const m of job.materials) {
     const rawAreaMm2 = byMaterial.get(m.id);
@@ -1058,6 +1062,7 @@ function calcCosts(
     let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · ${layoutNote}${wastageNote}`;
     pushUnplacedSheetWarnings(m.name, sheetWidth, sheetHeight, unplaced, sheetWarnings);
 
+    boardSheetsForCutHouse.push({ materialId: m.id, sheets: sheetsNeeded });
     costs.push({
       category: 'board',
       name: m.name,
@@ -1087,6 +1092,7 @@ function calcCosts(
       mSheetArea,
     );
     sheetsNeeded = Math.max(sheetsNeeded, sheetsFromLayout);
+    masoniteSheetsForCutHouse = sheetsNeeded;
     pushUnplacedSheetWarnings(
       `${job.masonite.name} (${job.masonite.colour})`,
       mW,
@@ -1111,15 +1117,18 @@ function calcCosts(
   for (const em of job.edgingMaterials) {
     const totalLm = edgingByMaterial.get(em.id);
     if (!totalLm) continue;
+    const { billableLm, detail } = billableEdgingMetres(totalLm, cutHouseCh);
     costs.push({
       category: 'edging',
       name: `${em.name} (${em.thickness}mm)`,
-      detail: `${totalLm.toFixed(2)} linear metres`,
-      quantity: Math.ceil(totalLm * 10) / 10,
+      detail,
+      quantity: Math.ceil(billableLm * 10) / 10,
       unitPrice: em.pricePerMetre,
-      subtotal: totalLm * em.pricePerMetre,
+      subtotal: billableLm * em.pricePerMetre,
     });
   }
+
+  appendCutHouseCosts(job, costs, boardSheetsForCutHouse, masoniteSheetsForCutHouse);
 
   // One line per group here — the itemised rows live in the Hardware / Screws & fittings tables.
   const hardwareRows = hardware.filter((h) => h.description !== 'Plastic kickplate strip');

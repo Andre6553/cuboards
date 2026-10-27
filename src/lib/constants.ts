@@ -1,4 +1,19 @@
-import type { ConnectingFittingPrices, EdgingMaterial, HingePrices, JobSettings, KitchenPlinthConfig, MasoniteConfig, Material, MountType, PlasticKickplateConfig, QuoteTerms, RunnerPrices, ScrewPrices, UnitType } from '../types';
+import type {
+  ConnectingFittingPrices,
+  CutHouseChargeSettings,
+  EdgingMaterial,
+  HingePrices,
+  JobSettings,
+  KitchenPlinthConfig,
+  MasoniteConfig,
+  Material,
+  MountType,
+  PlasticKickplateConfig,
+  QuoteTerms,
+  RunnerPrices,
+  ScrewPrices,
+  UnitType,
+} from '../types';
 import { CUT_SIZE_MODE_LABELS } from './edgingCutSize';
 import { BRAND_RUNNER_PRESETS, getDefaultRunnerPrices } from './runnerCatalog';
 import { getDefaultHingePrices } from './hingeCatalog';
@@ -86,6 +101,16 @@ export const DEFAULT_PLASTIC_KICKPLATE: PlasticKickplateConfig = {
 
 export { CUT_SIZE_MODE_LABELS };
 
+/** Cut-house quote defaults (0 = off until you enter your cut house’s prices). */
+export const DEFAULT_CUT_HOUSE_CHARGES: Required<CutHouseChargeSettings> = {
+  melamineCutPricePerSheet: 0,
+  hardboardCutPricePerSheet: 0,
+  factoryDrillPricePerHole: 0,
+  edgingOrderWastagePercent: 0,
+  edgingOrderRoundUpMetre: false,
+  onlyWhenOrderFromSet: true,
+};
+
 export const DEFAULT_SETTINGS: JobSettings = {
   thickness: 16,
   sheetWidth: 2750,
@@ -102,6 +127,7 @@ export const DEFAULT_SETTINGS: JobSettings = {
   showVatOnQuote: true,
   boardWastagePercent: 0,
   sawKerfMm: 4,
+  cutHouseCharges: { ...DEFAULT_CUT_HOUSE_CHARGES },
 };
 
 export const DEFAULT_QUOTE_TERMS: QuoteTerms = {

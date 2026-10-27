@@ -200,6 +200,24 @@ export interface JobSettings {
   sawKerfMm?: number;
   /** Default cut house for new boards and masonite when not set per material. */
   defaultOrderSupplier?: string;
+  /** Cut-house line items on quotes (SMEL / SHB / BOOR, edging order waste) — not Gelmar hardware. */
+  cutHouseCharges?: CutHouseChargeSettings;
+}
+
+/** Mossel Bay–style cut-house extras on the client quote (boards, edging order, drill). */
+export interface CutHouseChargeSettings {
+  /** SMEL — per melamine sheet sent for cutting (0 = off). */
+  melamineCutPricePerSheet?: number;
+  /** SHB — one charge per job when masonite backs are ordered from cut house. */
+  hardboardCutPricePerSheet?: number;
+  /** BOOR — per hinge cup hole drilled at factory. */
+  factoryDrillPricePerHole?: number;
+  /** Extra edging length on quote only (cut-house order waste). */
+  edgingOrderWastagePercent?: number;
+  /** Round billable edging up to whole metres after wastage. */
+  edgingOrderRoundUpMetre?: boolean;
+  /** When true (default), only charge when Order from is set on that material. */
+  onlyWhenOrderFromSet?: boolean;
 }
 
 /** Client quotation footer — editable per job. */
@@ -454,7 +472,7 @@ export interface HardwareItem {
 }
 
 export interface CostLine {
-  category: 'board' | 'edging' | 'masonite' | 'hardware' | 'install';
+  category: 'board' | 'edging' | 'masonite' | 'hardware' | 'install' | 'cutHouse';
   name: string;
   detail: string;
   quantity: number;
