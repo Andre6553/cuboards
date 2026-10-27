@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { supplierNameInList } from '../lib/materialSupplierPrices';
 
 interface Props {
@@ -10,13 +11,12 @@ interface Props {
 export function SupplierNamePick({ value, knownNames, onChange }: Props) {
   const trimmed = value.trim();
   const matched = trimmed && supplierNameInList(knownNames, trimmed);
-  const selectValue = matched
-    ? knownNames.find((k) => k.toLowerCase() === trimmed.toLowerCase())!
-    : trimmed
-      ? '__custom__'
-      : '';
+  const [enterCustom, setEnterCustom] = useState(() => Boolean(trimmed && !matched));
 
-  const showCustomInput = knownNames.length === 0 || selectValue === '__custom__';
+  useEffect(() => {
+    if (matched) setEnterCustom(false);
+    else if (trimmed && !matched) setEnterCustom(true);
+  }, [matched, trimmed]);
 
   if (knownNames.length === 0) {
     return (
@@ -29,6 +29,14 @@ export function SupplierNamePick({ value, knownNames, onChange }: Props) {
     );
   }
 
+  const selectValue = matched
+    ? knownNames.find((k) => k.toLowerCase() === trimmed.toLowerCase())!
+    : enterCustom || trimmed
+      ? '__custom__'
+      : '';
+
+  const showCustomInput = enterCustom || Boolean(trimmed && !matched);
+
   return (
     <div className="supplier-name-pick">
       <select
@@ -37,9 +45,10 @@ export function SupplierNamePick({ value, knownNames, onChange }: Props) {
         onChange={(e) => {
           const v = e.target.value;
           if (v === '__custom__') {
-            if (!trimmed) onChange('');
+            setEnterCustom(true);
             return;
           }
+          setEnterCustom(false);
           onChange(v);
         }}
       >
@@ -56,6 +65,7 @@ export function SupplierNamePick({ value, knownNames, onChange }: Props) {
           className="table-input supplier-name-pick-custom"
           value={value}
           placeholder="Type new supplier name"
+          autoFocus={enterCustom && !trimmed}
           onChange={(e) => onChange(e.target.value)}
         />
       ) : null}
