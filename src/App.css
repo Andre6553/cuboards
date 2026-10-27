@@ -2277,6 +2277,56 @@
   line-height: 1.4;
 }
 
+.material-quote-source-hint {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.material-suppliers-toggle {
+  white-space: nowrap;
+}
+
+.material-supplier-expand-row td {
+  padding: 0 !important;
+  border-top: none;
+  background: var(--surface-2, #f8fafc);
+}
+
+.material-supplier-panel {
+  padding: 0.75rem 0.85rem 1rem;
+  border-top: 1px dashed var(--border, #e2e8f0);
+}
+
+.material-supplier-panel-hint {
+  margin-top: 0;
+}
+
+.material-supplier-manual {
+  margin-bottom: 0.65rem;
+}
+
+.material-supplier-quote-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.material-supplier-quote-pick input {
+  width: auto;
+}
+
+.material-supplier-table {
+  margin-bottom: 0.65rem;
+}
+
+.material-supplier-table .center {
+  text-align: center;
+}
+
 @media (min-width: 769px) {
   .app-brand-bar--with-context .cuboards-logo-wordmark {
     display: inline;

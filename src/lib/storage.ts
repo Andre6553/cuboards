@@ -16,6 +16,7 @@ import { getDefaultRunnerPrices, getRunnerClearances } from './runnerCatalog';
 import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
 import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
 import { getDefaultScrewPrices } from './screwCatalog';
+import { normalizeMaterialSuppliers } from './materialSupplierPrices';
 import type { Client, DoorConfig, DoorGaps, DrawerConfig, EdgingMaterial, Job, Material, Unit } from '../types';
 import { DEFAULT_DOOR_GAPS } from './doorRules';
 import { DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
@@ -144,10 +145,10 @@ export function duplicateJob(source: Job): Job {
 }
 
 function migrateMaterial(m: Material, defaultEdgingId: string): Material {
-  return {
+  return normalizeMaterialSuppliers({
     ...m,
     edgingMaterialId: m.edgingMaterialId ?? defaultEdgingId,
-  };
+  });
 }
 
 export function migrateJob(job: Job): Job {

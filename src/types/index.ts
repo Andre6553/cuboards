@@ -19,15 +19,27 @@ export type EdgingPattern =
   | '2_long_2_short'
   | 'none';
 
+/** Optional supplier quote for the same board type (name/colour). */
+export interface MaterialSupplierPrice {
+  id: string;
+  supplierName: string;
+  pricePerSheet: number;
+}
+
 export interface Material {
   id: string;
   name: string;
   colour: string;
+  /** Price used on quotes and costing for this board. */
   pricePerSheet: number;
   hasGrain: boolean;
   /** How sheet count is rounded for costing; defaults to quarter if omitted (old jobs). */
   sheetPurchaseUnit?: SheetPurchaseUnit;
   edgingMaterialId: string;
+  /** Other suppliers’ sheet prices for comparison; one can drive {@link pricePerSheet}. */
+  supplierPrices?: MaterialSupplierPrice[];
+  /** `manual` = quote price edited directly; otherwise id of {@link MaterialSupplierPrice}. */
+  quotePriceSource?: 'manual' | string;
 }
 
 export interface EdgingMaterial {

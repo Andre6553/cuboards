@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import {
   CONNECTING_FITTING_CATALOG,
   CUT_SIZE_MODE_LABELS,
@@ -57,6 +57,13 @@ import {
   loadCommunityMaterialsPrefs,
   saveCommunityMaterialsPrefs,
 } from '../lib/communityMaterials';
+import {
+  addMaterialSupplierRow,
+  removeMaterialSupplier,
+  setMaterialQuoteFromSupplier,
+  setMaterialQuoteManual,
+  updateMaterialSupplier,
+} from '../lib/materialSupplierPrices';
 import { CollapsibleSection } from './CollapsibleSection';
 import { NumberInput } from './NumberInput';
 import { CustomHardwareEditor } from './CustomHardwareEditor';
@@ -214,6 +221,9 @@ export function MaterialsForm({
   const [acceptCommunityBoards, setAcceptCommunityBoards] = useState(
     () => loadCommunityMaterialsPrefs().acceptUpdates,
   );
+  const [expandedSupplierMaterialIds, setExpandedSupplierMaterialIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
     const sync = () => setAcceptCommunityBoards(loadCommunityMaterialsPrefs().acceptUpdates);
@@ -344,6 +354,21 @@ export function MaterialsForm({
     onMaterialsChange(materials.map((m) => (m.id === id ? { ...m, [field]: value } : m)));
 
   };
+
+  const replaceMaterial = (id: string, next: Material) => {
+    onMaterialsChange(materials.map((m) => (m.id === id ? next : m)));
+  };
+
+  const toggleSupplierPanel = (materialId: string) => {
+    setExpandedSupplierMaterialIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(materialId)) next.delete(materialId);
+      else next.add(materialId);
+      return next;
+    });
+  };
+
+  const isManualQuote = (m: Material) => !m.quotePriceSource || m.quotePriceSource === 'manual';
 
 
 
@@ -681,8 +706,9 @@ export function MaterialsForm({
 
         <p className="hint">
           <strong>Board and edging types are shared across all jobs</strong> on this device — add or edit once, every job
-          uses the same catalog. Set melamine prices here too. <strong>Buy as</strong> is the smallest board size your
-          supplier will sell (⅓, ¼, ½, or full). Link each board to its edging tape below.
+          uses the same catalog. Set melamine prices here too. Add <strong>supplier prices</strong> per board to compare
+          Gelmar, Promas, etc., then pick which price drives your <strong>quote</strong>. <strong>Buy as</strong> is the
+          smallest board size your supplier will sell (⅓, ¼, ½, or full). Link each board to its edging tape below.
         </p>
 
         <label className="checkbox-label community-materials-opt-in">
@@ -718,13 +744,15 @@ export function MaterialsForm({
 
                 <th>Colour</th>
 
-                <th>{priceInputLabel(settings, 'Price / sheet')}</th>
+                <th>{priceInputLabel(settings, 'Quote / sheet')}</th>
 
                 <th>Grain</th>
 
                 <th title="Smallest size supplier sells">Buy as</th>
 
                 <th>Edging tape</th>
+
+                <th>Suppliers</th>
 
                 <th></th>
 
@@ -734,15 +762,29 @@ export function MaterialsForm({
 
             <tbody>
 
-              {materials.map((m) => (
+              {materials.map((m) => {
+                const supplierRows = m.supplierPrices ?? [];
+                const suppliersOpen = expandedSupplierMaterialIds.has(m.id);
+                const quoteFromSupplier = supplierRows.find((s) => s.id === m.quotePriceSource);
 
-                <tr key={m.id}>
+                return (
+                <Fragment key={m.id}>
+                <tr>
 
                   <td data-label="Material"><input className="table-input" value={m.name} onChange={(e) => updateMaterial(m.id, 'name', e.target.value)} /></td>
 
                   <td data-label="Colour"><input className="table-input" value={m.colour} onChange={(e) => updateMaterial(m.id, 'colour', e.target.value)} /></td>
 
-                  <td data-label="Price / sheet"><NumberInput className="table-input"  value={m.pricePerSheet} onChange={(n) => updateMaterial(m.id, 'pricePerSheet', n)} /></td>
+                  <td data-label="Quote / sheet">
+                    <NumberInput
+                      className="table-input"
+                      value={m.pricePerSheet}
+                      onChange={(n) => replaceMaterial(m.id, setMaterialQuoteManual(m, n))}
+                    />
+                    {!isManualQuote(m) && quoteFromSupplier ? (
+                      <span className="material-quote-source-hint">From {quoteFromSupplier.supplierName || 'supplier'}</span>
+                    ) : null}
+                  </td>
 
                   <td className="center" data-label="Grain"><input type="checkbox" checked={m.hasGrain} onChange={(e) => updateMaterial(m.id, 'hasGrain', e.target.checked)} /></td>
 
@@ -775,6 +817,17 @@ export function MaterialsForm({
 
                   </td>
 
+                  <td data-label="Suppliers">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm material-suppliers-toggle"
+                      onClick={() => toggleSupplierPanel(m.id)}
+                      aria-expanded={suppliersOpen}
+                    >
+                      {supplierRows.length ? `${supplierRows.length} supplier${supplierRows.length === 1 ? '' : 's'}` : 'Add prices'}
+                    </button>
+                  </td>
+
                   <td data-label="">
 
                     {materials.length > 1 && (
@@ -787,7 +840,104 @@ export function MaterialsForm({
 
                 </tr>
 
-              ))}
+                {suppliersOpen ? (
+                  <tr key={`${m.id}-suppliers`} className="material-supplier-expand-row">
+                    <td colSpan={8}>
+                      <div className="material-supplier-panel">
+                        <p className="hint material-supplier-panel-hint">
+                          Store each supplier&apos;s sheet price for <strong>{m.name || 'this board'}</strong>. Select
+                          which price to use on quotes, or keep a custom quote price in the row above.
+                        </p>
+                        <div className="material-supplier-manual">
+                          <label className="material-supplier-quote-pick">
+                            <input
+                              type="radio"
+                              name={`quote-source-${m.id}`}
+                              checked={isManualQuote(m)}
+                              onChange={() => replaceMaterial(m.id, setMaterialQuoteManual(m, m.pricePerSheet))}
+                            />
+                            Custom quote price (row above)
+                          </label>
+                        </div>
+                        {supplierRows.length > 0 ? (
+                          <div className="table-wrap">
+                            <table className="data-table material-supplier-table">
+                              <thead>
+                                <tr>
+                                  <th>Use on quote</th>
+                                  <th>Supplier</th>
+                                  <th>{priceInputLabel(settings, 'Price / sheet')}</th>
+                                  <th></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {supplierRows.map((s) => (
+                                  <tr key={s.id}>
+                                    <td className="center">
+                                      <input
+                                        type="radio"
+                                        name={`quote-source-${m.id}`}
+                                        checked={m.quotePriceSource === s.id}
+                                        onChange={() => replaceMaterial(m.id, setMaterialQuoteFromSupplier(m, s.id))}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        className="table-input"
+                                        value={s.supplierName}
+                                        placeholder="e.g. Gelmar"
+                                        onChange={(e) =>
+                                          replaceMaterial(
+                                            m.id,
+                                            updateMaterialSupplier(m, s.id, { supplierName: e.target.value }),
+                                          )
+                                        }
+                                      />
+                                    </td>
+                                    <td>
+                                      <NumberInput
+                                        className="table-input"
+                                        value={s.pricePerSheet}
+                                        min={0}
+                                        onChange={(n) =>
+                                          replaceMaterial(
+                                            m.id,
+                                            updateMaterialSupplier(m, s.id, { pricePerSheet: n }),
+                                          )
+                                        }
+                                      />
+                                    </td>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm danger"
+                                        onClick={() => replaceMaterial(m.id, removeMaterialSupplier(m, s.id))}
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="hint">No supplier prices yet — add Gelmar, Promas, or your cut house below.</p>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => replaceMaterial(m.id, addMaterialSupplierRow(m))}
+                        >
+                          + Add supplier price
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
+                );
+              })}
 
             </tbody>
 
