@@ -59,7 +59,6 @@ import {
 } from '../lib/communityMaterials';
 import {
   addMaterialSupplierRow,
-  canonicalSupplierName,
   extractSupplierNamesFromMaterials,
   isCompleteSupplierName,
   mergeSupplierNameLists,
@@ -954,9 +953,7 @@ export function MaterialsForm({
                                         onChange={(name) =>
                                           replaceMaterial(
                                             m.id,
-                                            updateMaterialSupplier(m, s.id, {
-                                              supplierName: canonicalSupplierName(knownSupplierNames, name),
-                                            }),
+                                            updateMaterialSupplier(m, s.id, { supplierName: name }),
                                           )
                                         }
                                       />

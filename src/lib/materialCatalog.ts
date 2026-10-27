@@ -94,6 +94,14 @@ export function catalogFingerprint(materials: Material[], edgingMaterials: Edgin
   return JSON.stringify({ materials, edgingMaterials });
 }
 
+/** Board/edging identity for jobs — excludes per-supplier price rows so typing supplier names does not rewrite every job. */
+export function catalogJobSyncFingerprint(materials: Material[], edgingMaterials: EdgingMaterial[]): string {
+  const materialsSlim = materials.map(
+    ({ supplierPrices: _supplierPrices, ...rest }) => rest,
+  );
+  return JSON.stringify({ materials: materialsSlim, edgingMaterials });
+}
+
 /** Merge imported / price-list boards into the global catalog. */
 export function mergeIntoMaterialCatalog(materials: Material[], edgingMaterials: EdgingMaterial[]): BoardCatalog {
   const current = ensureMaterialCatalog([]);

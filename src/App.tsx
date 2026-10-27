@@ -12,6 +12,7 @@ import { formatAccessExpiryLabels } from './lib/accessTypes';
 import {
   applyCatalogToAllJobs,
   catalogFingerprint,
+  catalogJobSyncFingerprint,
   loadMaterialCatalog,
   saveMaterialCatalog,
 } from './lib/materialCatalog';
@@ -155,12 +156,16 @@ function CuboardsApp() {
 
   const handleJobChange = (job: Job) => {
     const prev = jobs.find((j) => j.id === job.id);
-    const catalogChanged =
+    const catalogFullChanged =
       !prev ||
       catalogFingerprint(prev.materials, prev.edgingMaterials) !==
         catalogFingerprint(job.materials, job.edgingMaterials);
+    const catalogStructureChanged =
+      !prev ||
+      catalogJobSyncFingerprint(prev.materials, prev.edgingMaterials) !==
+        catalogJobSyncFingerprint(job.materials, job.edgingMaterials);
 
-    if (catalogChanged) {
+    if (catalogStructureChanged) {
       const catalog = saveMaterialCatalog(job.materials, job.edgingMaterials);
       schedulePushUserPrefs();
       const withUpdated = upsertJob(jobs, job);
@@ -174,6 +179,11 @@ function CuboardsApp() {
         ),
       );
       return;
+    }
+
+    if (catalogFullChanged) {
+      saveMaterialCatalog(job.materials, job.edgingMaterials);
+      schedulePushUserPrefs();
     }
 
     persist(upsertJob(jobs, job));

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { supplierNameInList } from '../lib/materialSupplierPrices';
+import { useEffect, useRef, useState } from 'react';
+import { normalizeSupplierName, supplierNameInList } from '../lib/materialSupplierPrices';
 
 interface Props {
   value: string;
@@ -11,8 +11,21 @@ interface Props {
 export function SupplierNamePick({ value, knownNames, onChange }: Props) {
   const trimmed = value.trim();
   const [enterCustom, setEnterCustom] = useState(() => Boolean(trimmed && !supplierNameInList(knownNames, trimmed)));
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const matched = !enterCustom && trimmed && supplierNameInList(knownNames, trimmed);
+  const inCustomMode = enterCustom || Boolean(trimmed && !matched);
+
+  useEffect(() => {
+    if (inCustomMode) {
+      inputRef.current?.focus();
+    }
+  }, [inCustomMode]);
+
+  const commitNormalized = () => {
+    const normalized = normalizeSupplierName(value);
+    if (normalized !== value) onChange(normalized);
+  };
 
   if (knownNames.length === 0) {
     return (
@@ -20,29 +33,50 @@ export function SupplierNamePick({ value, knownNames, onChange }: Props) {
         className="table-input"
         value={value}
         placeholder="e.g. Gelmar"
+        autoComplete="off"
         onChange={(e) => onChange(e.target.value)}
+        onBlur={commitNormalized}
+        onKeyDown={(e) => e.stopPropagation()}
       />
     );
   }
 
-  const selectValue = enterCustom
-    ? '__custom__'
-    : matched
-      ? knownNames.find((k) => k.toLowerCase() === trimmed.toLowerCase())!
-      : trimmed
-        ? '__custom__'
-        : '';
-
-  const showCustomInput = enterCustom || Boolean(trimmed && !matched);
+  if (inCustomMode) {
+    return (
+      <div className="supplier-name-pick supplier-name-pick--custom">
+        <input
+          ref={inputRef}
+          className="table-input"
+          value={value}
+          placeholder="Type new supplier name"
+          autoComplete="off"
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={commitNormalized}
+          onKeyDown={(e) => e.stopPropagation()}
+        />
+        <button
+          type="button"
+          className="btn-link supplier-name-pick-back"
+          onClick={() => {
+            setEnterCustom(false);
+            if (!matched) onChange('');
+          }}
+        >
+          Choose saved supplier
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="supplier-name-pick">
       <select
         className="table-input table-select"
-        value={selectValue}
+        value={matched ? knownNames.find((k) => k.toLowerCase() === trimmed.toLowerCase())! : ''}
         onChange={(e) => {
           const v = e.target.value;
           if (v === '__custom__') {
+            (e.target as HTMLSelectElement).blur();
             setEnterCustom(true);
             return;
           }
@@ -58,15 +92,6 @@ export function SupplierNamePick({ value, knownNames, onChange }: Props) {
         ))}
         <option value="__custom__">+ Add new supplier…</option>
       </select>
-      {showCustomInput ? (
-        <input
-          className="table-input supplier-name-pick-custom"
-          value={value}
-          placeholder="Type new supplier name"
-          autoFocus={enterCustom && !trimmed}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : null}
     </div>
   );
 }
