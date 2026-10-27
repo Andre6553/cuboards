@@ -218,6 +218,11 @@ export interface CutHouseChargeSettings {
   edgingOrderRoundUpMetre?: boolean;
   /** When true (default), only charge when Order from is set on that material. */
   onlyWhenOrderFromSet?: boolean;
+  /**
+   * When masonite backs are ordered from the cut house, bill **1 full HB sheet** on the quote
+   * (matches Mossel Bay HB001 line) instead of fractional sheet math.
+   */
+  masoniteOneFullSheetFromCutHouse?: boolean;
 }
 
 /** Client quotation footer — editable per job. */

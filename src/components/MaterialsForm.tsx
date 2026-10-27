@@ -812,6 +812,14 @@ export function MaterialsForm({
                 />
                 Only add SMEL / SHB / BOOR when <strong>Order from</strong> is set (per board or default cut house)
               </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={ch.masoniteOneFullSheetFromCutHouse !== false}
+                  onChange={(e) => patchCh({ masoniteOneFullSheetFromCutHouse: e.target.checked })}
+                />
+                Bill <strong>1 full hardboard sheet</strong> on the quote when masonite comes from the cut house (HB001-style)
+              </label>
             </>
           );
         })()}

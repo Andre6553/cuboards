@@ -70,7 +70,14 @@ import { cutPiecesToLayout } from './sheetLayoutPieces';
 import { calcJobScrews } from './screwRules';
 import { calcJobConnectingFittings } from './connectingFittingRules';
 import { calcJobInstall } from './installRules';
-import { appendCutHouseCosts, billableEdgingMetres, resolveCutHouseCharges } from './cutHouseCharges';
+import {
+  appendCutHouseCosts,
+  billableEdgingMetres,
+  masoniteQuoteSheetCount,
+  resolveCutHouseCharges,
+} from './cutHouseCharges';
+import { boardQuoteStoredUnitPrice } from './boardQuotePricing';
+import { quoteLineSubtotal, quoteUnitPrice } from './vat';
 import type {
   ConsolidatedEdging,
   ConsolidatedPiece,
@@ -1063,13 +1070,15 @@ function calcCosts(
     pushUnplacedSheetWarnings(m.name, sheetWidth, sheetHeight, unplaced, sheetWarnings);
 
     boardSheetsForCutHouse.push({ materialId: m.id, sheets: sheetsNeeded });
+    const boardStored = boardQuoteStoredUnitPrice(m, job);
+    const boardUnit = quoteUnitPrice(boardStored, job.settings);
     costs.push({
       category: 'board',
       name: m.name,
       detail,
       quantity: sheetsNeeded,
-      unitPrice: m.pricePerSheet,
-      subtotal: sheetsNeeded * m.pricePerSheet,
+      unitPrice: boardUnit,
+      subtotal: quoteLineSubtotal(sheetsNeeded, boardStored, job.settings),
     });
   }
 
@@ -1079,9 +1088,9 @@ function calcCosts(
     const mW = job.masonite.sheetWidth;
     const mH = job.masonite.sheetHeight;
     const mSheetArea = mW * mH;
-    const masoniteUnit = resolveMasonitePurchaseUnit(job.masonite);
+    const mPurchaseUnit = resolveMasonitePurchaseUnit(job.masonite);
     const masoniteFrac = masonitePurchaseFraction(job.masonite);
-    const masoniteLabel = sheetPurchaseDetailLabel(masoniteUnit);
+    const masoniteLabel = sheetPurchaseDetailLabel(mPurchaseUnit);
     let sheetsNeeded = estimateSheetsFromArea(masoniteArea, mSheetArea, masoniteFrac);
     const { sheetsFromLayout, unplaced } = sheetCountFromNesting(
       masonitePieces,
@@ -1092,7 +1101,13 @@ function calcCosts(
       mSheetArea,
     );
     sheetsNeeded = Math.max(sheetsNeeded, sheetsFromLayout);
-    masoniteSheetsForCutHouse = sheetsNeeded;
+    const masoniteBillSheets = masoniteQuoteSheetCount(job, sheetsNeeded, cutHouseCh);
+    masoniteSheetsForCutHouse = masoniteBillSheets;
+    const masoniteDetailBase = `${job.masonite.thickness}mm · ${formatSheetCount(masoniteBillSheets)} @ ${mW}×${mH}`;
+    const masoniteLayoutNote =
+      masoniteBillSheets !== sheetsNeeded
+        ? `${masoniteDetailBase} · cut house HB001 (1 full sheet on quote; layout uses ${formatSheetCount(sheetsNeeded)})`
+        : `${masoniteDetailBase} · panel layout (${masoniteLabel}; ${sawKerfMm} mm saw cut)`;
     pushUnplacedSheetWarnings(
       `${job.masonite.name} (${job.masonite.colour})`,
       mW,
@@ -1100,13 +1115,14 @@ function calcCosts(
       unplaced,
       sheetWarnings,
     );
+    const masoniteSheetPrice = quoteUnitPrice(job.masonite.pricePerSheet, job.settings);
     costs.push({
       category: 'masonite',
       name: `${job.masonite.name} (${job.masonite.colour})`,
-      detail: `${job.masonite.thickness}mm · ${formatSheetCount(sheetsNeeded)} @ ${mW}×${mH} · panel layout (${masoniteLabel}; ${sawKerfMm} mm saw cut)`,
-      quantity: sheetsNeeded,
-      unitPrice: job.masonite.pricePerSheet,
-      subtotal: sheetsNeeded * job.masonite.pricePerSheet,
+      detail: masoniteLayoutNote,
+      quantity: masoniteBillSheets,
+      unitPrice: masoniteSheetPrice,
+      subtotal: quoteLineSubtotal(masoniteBillSheets, job.masonite.pricePerSheet, job.settings),
     });
   }
 
@@ -1118,13 +1134,14 @@ function calcCosts(
     const totalLm = edgingByMaterial.get(em.id);
     if (!totalLm) continue;
     const { billableLm, detail } = billableEdgingMetres(totalLm, cutHouseCh);
+    const edgeUnit = quoteUnitPrice(em.pricePerMetre, job.settings);
     costs.push({
       category: 'edging',
       name: `${em.name} (${em.thickness}mm)`,
       detail,
       quantity: Math.ceil(billableLm * 10) / 10,
-      unitPrice: em.pricePerMetre,
-      subtotal: billableLm * em.pricePerMetre,
+      unitPrice: edgeUnit,
+      subtotal: quoteLineSubtotal(billableLm, em.pricePerMetre, job.settings),
     });
   }
 

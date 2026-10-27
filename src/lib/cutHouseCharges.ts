@@ -3,6 +3,7 @@ import { resolveFrontLayout } from './frontLayout';
 import { isCompleteSupplierName } from './materialSupplierPrices';
 import { MASONITE_MATERIAL_ID, resolveOrderSupplierForMaterialId } from './orderSupplier';
 import { DEFAULT_CUT_HOUSE_CHARGES } from './constants';
+import { quoteLineSubtotal, quoteUnitPrice } from './vat';
 import type { CostLine, CutHouseChargeSettings, Job } from '../types';
 
 export function resolveCutHouseCharges(job: Job): Required<CutHouseChargeSettings> {
@@ -46,6 +47,20 @@ export function billableEdgingMetres(
   return { billableLm: rawLm, detail: `${rawLm.toFixed(2)} linear metres` };
 }
 
+/** Masonite sheet count on the client quote (HB001-style full sheet from cut house). */
+export function masoniteQuoteSheetCount(
+  job: Job,
+  computedFullSheetEquiv: number,
+  ch: Required<CutHouseChargeSettings>,
+): number {
+  if (computedFullSheetEquiv <= 0) return 0;
+  if (ch.masoniteOneFullSheetFromCutHouse === false) return computedFullSheetEquiv;
+  if (!materialUsesCutHouse(job, MASONITE_MATERIAL_ID, ch.onlyWhenOrderFromSet !== false)) {
+    return computedFullSheetEquiv;
+  }
+  return 1;
+}
+
 export function appendCutHouseCosts(
   job: Job,
   costs: CostLine[],
@@ -55,8 +70,8 @@ export function appendCutHouseCosts(
   const ch = resolveCutHouseCharges(job);
   const onlyWhen = ch.onlyWhenOrderFromSet;
 
-  const melPrice = ch.melamineCutPricePerSheet;
-  if (melPrice > 0) {
+  const melPrice = quoteUnitPrice(ch.melamineCutPricePerSheet, job.settings);
+  if (ch.melamineCutPricePerSheet > 0) {
     let ops = 0;
     for (const row of boardSheets) {
       if (!materialUsesCutHouse(job, row.materialId, onlyWhen)) continue;
@@ -69,25 +84,25 @@ export function appendCutHouseCosts(
         detail: `${ops} sheet cut(s) at cut house — boards only`,
         quantity: ops,
         unitPrice: melPrice,
-        subtotal: ops * melPrice,
+        subtotal: quoteLineSubtotal(ops, ch.melamineCutPricePerSheet, job.settings),
       });
     }
   }
 
-  const hbPrice = ch.hardboardCutPricePerSheet;
-  if (hbPrice > 0 && masoniteSheets > 0 && materialUsesCutHouse(job, MASONITE_MATERIAL_ID, onlyWhen)) {
+  const hbPrice = quoteUnitPrice(ch.hardboardCutPricePerSheet, job.settings);
+  if (ch.hardboardCutPricePerSheet > 0 && masoniteSheets > 0 && materialUsesCutHouse(job, MASONITE_MATERIAL_ID, onlyWhen)) {
     costs.push({
       category: 'cutHouse',
       name: 'Hardboard / masonite cutting (SHB)',
       detail: '1 cut batch for masonite backs',
       quantity: 1,
       unitPrice: hbPrice,
-      subtotal: hbPrice,
+      subtotal: quoteLineSubtotal(1, ch.hardboardCutPricePerSheet, job.settings),
     });
   }
 
-  const drillPrice = ch.factoryDrillPricePerHole;
-  if (drillPrice > 0) {
+  const drillPrice = quoteUnitPrice(ch.factoryDrillPricePerHole, job.settings);
+  if (ch.factoryDrillPricePerHole > 0) {
     const holes = countFactoryDrillHoles(job);
     if (holes > 0) {
       costs.push({
@@ -96,7 +111,7 @@ export function appendCutHouseCosts(
         detail: `${holes} hinge cup hole(s) on doors — hardware still from Gelmar`,
         quantity: holes,
         unitPrice: drillPrice,
-        subtotal: holes * drillPrice,
+        subtotal: quoteLineSubtotal(holes, ch.factoryDrillPricePerHole, job.settings),
       });
     }
   }
