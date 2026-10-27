@@ -63,6 +63,7 @@ import {
   isCompleteSupplierName,
   mergeSupplierNameLists,
   removeMaterialSupplier,
+  setMaterialOrderFromSupplier,
   setMaterialQuoteFromSupplier,
   setMaterialQuoteManual,
   updateMaterialSupplier,
@@ -866,11 +867,7 @@ export function MaterialsForm({
                       value={m.orderFromSupplier ?? ''}
                       onChange={(e) => {
                         const v = e.target.value.trim();
-                        onMaterialsChange(
-                          materials.map((row) =>
-                            row.id === m.id ? { ...row, orderFromSupplier: v || undefined } : row,
-                          ),
-                        );
+                        replaceMaterial(m.id, setMaterialOrderFromSupplier(m, v || undefined));
                       }}
                     >
                       <option value="">— Not set —</option>

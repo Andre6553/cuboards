@@ -135,6 +135,22 @@ export function removeMaterialSupplier(m: Material, supplierId: string): Materia
   return { ...base, supplierPrices, quotePriceSource };
 }
 
+/** Cut-house picker: also drives quote price when that supplier has a stored sheet price. */
+export function setMaterialOrderFromSupplier(m: Material, supplierName: string | undefined): Material {
+  const base = normalizeMaterialSuppliers(m);
+  if (!supplierName?.trim()) {
+    return { ...base, orderFromSupplier: undefined };
+  }
+  const orderFromSupplier = normalizeSupplierName(supplierName);
+  const row = (base.supplierPrices ?? []).find(
+    (s) => normalizeSupplierName(s.supplierName).toLowerCase() === orderFromSupplier.toLowerCase(),
+  );
+  if (row && isCompleteSupplierName(orderFromSupplier)) {
+    return setMaterialQuoteFromSupplier(base, row.id);
+  }
+  return { ...base, orderFromSupplier };
+}
+
 export function setMaterialQuoteFromSupplier(m: Material, supplierId: string): Material {
   const base = normalizeMaterialSuppliers(m);
   const row = (base.supplierPrices ?? []).find((s) => s.id === supplierId);
