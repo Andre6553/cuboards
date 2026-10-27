@@ -1814,54 +1814,6 @@
     box-sizing: border-box;
   }
 
-  .material-supplier-list-head {
-    display: none;
-  }
-
-  .material-supplier-card {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-    padding: 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface-2, #f8fafc);
-  }
-
-  .material-supplier-card:last-child {
-    margin-bottom: 0;
-    border-radius: 8px;
-  }
-
-  .material-supplier-field-label {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-
-  .material-supplier-field--quote {
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.5rem;
-  }
-
-  .material-supplier-field--quote .material-supplier-field-label {
-    text-transform: none;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text, #0f172a);
-  }
-
-  .material-supplier-field--actions .btn {
-    width: 100%;
-    justify-content: center;
-  }
 }
 
 .sheet-map-view {
@@ -2410,71 +2362,134 @@
 .material-supplier-list {
   margin: 0.65rem 0;
   width: 100%;
+  min-width: 0;
 }
 
+/* Stacked cards by default — avoids crushed columns inside narrow board panels / phones. */
 .material-supplier-list-head {
-  display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr) minmax(5.5rem, 7.5rem) auto;
-  gap: 0.5rem 0.65rem;
-  align-items: center;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  background: #f1f5f9;
-  border-radius: 6px 6px 0 0;
-  border: 1px solid var(--border);
-  border-bottom: none;
+  display: none;
 }
 
 .material-supplier-card {
-  display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr) minmax(5.5rem, 7.5rem) auto;
-  gap: 0.5rem 0.65rem;
-  align-items: center;
-  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
   border: 1px solid var(--border);
-  border-top: none;
-  background: #fff;
+  border-radius: 8px;
+  background: var(--surface-2, #f8fafc);
+  box-sizing: border-box;
 }
 
 .material-supplier-card:last-child {
-  border-radius: 0 0 6px 6px;
+  margin-bottom: 0;
 }
 
 .material-supplier-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
   min-width: 0;
+  width: 100%;
 }
 
 .material-supplier-field-label {
-  display: none;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .material-supplier-field--quote {
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.material-supplier-field--quote .material-supplier-field-label {
+  text-transform: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text, #0f172a);
 }
 
 .material-supplier-field--quote input {
   width: auto;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .material-supplier-field .table-input,
 .material-supplier-field .table-select,
+.material-supplier-field select,
 .material-supplier-field .supplier-name-pick {
   width: 100%;
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.material-supplier-field--actions {
-  justify-content: flex-end;
+.material-supplier-field .table-select,
+.material-supplier-field select {
+  min-width: 0;
+}
+
+.material-supplier-field--actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 1024px) {
+  .material-supplier-list-head {
+    display: grid;
+    grid-template-columns: 4.25rem minmax(12rem, 1fr) minmax(7rem, 9rem) auto;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #f1f5f9;
+    border-radius: 6px 6px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+  }
+
+  .material-supplier-card {
+    display: grid;
+    grid-template-columns: 4.25rem minmax(12rem, 1fr) minmax(7rem, 9rem) auto;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+    margin-bottom: 0;
+    padding: 0.5rem 0.65rem;
+    border-radius: 0;
+    border: 1px solid var(--border);
+    border-top: none;
+    background: #fff;
+  }
+
+  .material-supplier-card:last-child {
+    border-radius: 0 0 6px 6px;
+  }
+
+  .material-supplier-field-label {
+    display: none;
+  }
+
+  .material-supplier-field--quote {
+    justify-content: center;
+  }
+
+  .material-supplier-field--actions .btn {
+    width: auto;
+  }
 }
 
 .factory-order-supplier-filter {
