@@ -118,6 +118,12 @@ export function updateMaterialSupplier(
   if (base.quotePriceSource === supplierId && patch.pricePerSheet != null) {
     next = { ...next, pricePerSheet: Math.max(0, patch.pricePerSheet) };
   }
+  if (base.quotePriceSource === supplierId && patch.supplierName != null) {
+    const name = normalizeSupplierName(patch.supplierName);
+    if (name && isCompleteSupplierName(name)) {
+      next = { ...next, orderFromSupplier: name };
+    }
+  }
   return next;
 }
 
@@ -133,10 +139,14 @@ export function setMaterialQuoteFromSupplier(m: Material, supplierId: string): M
   const base = normalizeMaterialSuppliers(m);
   const row = (base.supplierPrices ?? []).find((s) => s.id === supplierId);
   if (!row) return base;
+  const supplierName = normalizeSupplierName(row.supplierName);
   return {
     ...base,
     quotePriceSource: supplierId,
     pricePerSheet: row.pricePerSheet,
+    ...(supplierName && isCompleteSupplierName(supplierName)
+      ? { orderFromSupplier: supplierName }
+      : {}),
   };
 }
 
