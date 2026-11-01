@@ -93,6 +93,16 @@ export function AuthScreen() {
           <p className="auth-brand-tag">Cut-list software for cupboard installers</p>
         </div>
 
+        {!recovery && mode !== 'forgot' ? (
+          <div className="auth-trial-promo" role="note" aria-label="Free trial offer for new customers">
+            <p className="auth-trial-promo__headline">NEW CUSTOMERS — ENJOY A 30-DAY FREE TRIAL!</p>
+            <p className="auth-trial-promo__text">
+              Try Cuboards free for 30 days and discover how easy cupboard planning and cutting lists can be.
+            </p>
+            <p className="auth-trial-promo__note">No payment required to start.</p>
+          </div>
+        ) : null}
+
         <h1 className="auth-title">{title}</h1>
         <p className="auth-sub">{subtitle}</p>
 
