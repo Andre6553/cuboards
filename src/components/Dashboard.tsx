@@ -31,6 +31,39 @@ function quoteTotal(job: Job): number | null {
   }
 }
 
+function cloudStatusDetail(
+  state: Props['cloudSyncState'],
+  pendingCount: number,
+  lastCloudSyncIso: string | null,
+): { label: string; detail: string } {
+  switch (state) {
+    case 'syncing':
+      return { label: 'Saving', detail: 'Uploading your latest changes to the cloud…' };
+    case 'pending':
+      return {
+        label: 'Pending',
+        detail: `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to sync on this device.`,
+      };
+    case 'error':
+      return {
+        label: 'Needs attention',
+        detail:
+          'Cloud save failed after retries. Tap Sync now — your edits stay on this device until they upload.',
+      };
+    default:
+      if (pendingCount > 0) {
+        return {
+          label: 'Queued',
+          detail: `${pendingCount} change${pendingCount === 1 ? '' : 's'} queued — will retry automatically.`,
+        };
+      }
+      return {
+        label: 'Up to date',
+        detail: `Last saved to cloud ${formatLastBackup(lastCloudSyncIso)}.`,
+      };
+  }
+}
+
 export function Dashboard({
   jobs,
   cloudSyncState = 'idle',
@@ -95,14 +128,23 @@ export function Dashboard({
     }
   };
 
+  const syncStatus = cloudStatusDetail(cloudSyncState, cloudPendingCount, lastCloudSyncIso);
+  const backupReminder = shouldShowBackupReminder(jobs.length);
+  const projectCountLabel =
+    jobs.length === 0
+      ? 'No projects yet'
+      : visibleJobs.length === jobs.length
+        ? `${jobs.length} project${jobs.length === 1 ? '' : 's'}`
+        : `${visibleJobs.length} of ${jobs.length} projects`;
+
   return (
     <div className="dashboard">
-      <header className="page-header page-header--dashboard">
-        <div>
-          <h1 className="visually-hidden">Cuboards</h1>
+      <header className="page-header page-header--dashboard dashboard-intro">
+        <div className="dashboard-intro-text">
+          <h1 className="dashboard-title">My Projects</h1>
           <p className="subtitle page-tagline">Kitchen & bedroom cupboard cut lists for installers</p>
         </div>
-        <div className="header-actions">
+        <div className="header-actions dashboard-header-actions">
           <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
             Import
           </button>
@@ -115,56 +157,46 @@ export function Dashboard({
 
       <CouponPanel />
 
-      <div className={`storage-notice${shouldShowBackupReminder(jobs.length) ? ' storage-notice-warn' : ''}`}>
-        <p>
-          <strong>Your jobs belong to this account only.</strong> They sync to the cloud while you&apos;re signed in —
-          use the same email on another device to pick up where you left off. JSON backup below is for your own archive.
-          {cloudPendingCount > 0
-            ? ` ${cloudPendingCount} change${cloudPendingCount === 1 ? '' : 's'} queued on this device — will retry automatically.`
-            : cloudSyncState === 'pending'
-              ? ' Saving changes to the cloud…'
-              : null}
-          {cloudSyncState === 'error'
-            ? ' Cloud save failed after retries — tap Sync to cloud now, or keep editing (changes stay queued).'
-            : null}
-        </p>
-        <div className="storage-notice-footer">
-          <p className="hint storage-backup-meta">
-            Cloud save:{' '}
-            {cloudSyncState === 'syncing'
-              ? 'Saving…'
-              : cloudSyncState === 'pending'
-                ? `Pending (${cloudPendingCount})`
-                : cloudSyncState === 'error'
-                  ? 'Needs attention'
-                  : `OK · last ${formatLastBackup(lastCloudSyncIso)}`}
-            {' · '}
-            JSON backup: {formatLastBackup(lastJsonBackup)}
-            {shouldShowBackupReminder(jobs.length) ? ' — download a JSON backup for your archive.' : ''}
-          </p>
-          <div className="storage-notice-buttons">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={cloudSyncState === 'syncing' || !onSyncNow}
-              onClick={() => onSyncNow?.()}
-            >
-              {cloudSyncState === 'syncing' ? 'Syncing…' : 'Sync to cloud now'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={handleJsonBackup}
-              disabled={jobs.length === 0}
-            >
-              Back up all jobs
-            </button>
+      <section
+        className={`dashboard-sync-panel dashboard-sync-panel--${cloudSyncState}${backupReminder ? ' dashboard-sync-panel--backup-hint' : ''}`}
+        aria-label="Cloud sync and backup"
+      >
+        <div className="dashboard-sync-status">
+          <span className={`dashboard-sync-badge dashboard-sync-badge--${cloudSyncState}`}>{syncStatus.label}</span>
+          <div className="dashboard-sync-copy">
+            <p className="dashboard-sync-lead">
+              <strong>Cloud sync</strong>
+              <span className="dashboard-sync-account"> · same sign-in on every device</span>
+            </p>
+            <p className="dashboard-sync-detail">{syncStatus.detail}</p>
           </div>
         </div>
-      </div>
+        <div className="dashboard-sync-actions">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm dashboard-sync-btn"
+            disabled={cloudSyncState === 'syncing' || !onSyncNow}
+            onClick={() => onSyncNow?.()}
+          >
+            {cloudSyncState === 'syncing' ? 'Syncing…' : 'Sync now'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleJsonBackup}
+            disabled={jobs.length === 0}
+          >
+            Back up all jobs
+          </button>
+        </div>
+        <p className="dashboard-sync-meta hint">
+          JSON archive last downloaded {formatLastBackup(lastJsonBackup)}
+          {backupReminder ? ' · consider a JSON backup for your records.' : ''}
+        </p>
+      </section>
 
       {jobs.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state dashboard-empty">
           <h2>No jobs yet</h2>
           <p>Create a new job, enter cupboard sizes, and generate a cut list PDF for your cutter.</p>
           <button type="button" className="btn btn-primary" onClick={handleNew}>
@@ -172,41 +204,103 @@ export function Dashboard({
           </button>
         </div>
       ) : (
-        <>
-          <input
-            type="search"
-            className="job-search"
-            placeholder="Search by client, reference, address or phone…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {visibleJobs.length === 0 && <p className="hint">No jobs match "{search}".</p>}
-          <div className="job-grid">
-            {visibleJobs.map((job) => {
-              const total = totals.get(job.id);
-              return (
-                <article key={job.id} className="job-card">
-                  <div className="job-card-body" onClick={() => onOpen(job.id)} role="button" tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && onOpen(job.id)}>
-                    <h3>{job.client.name || 'Untitled job'}</h3>
-                    <p className="job-meta">{job.client.ref && `Ref: ${job.client.ref} · `}{job.units.length} unit{job.units.length !== 1 ? 's' : ''}</p>
-                    <p className="job-total">
-                      {total != null
-                        ? `Quote ${formatMoney(total, job.settings, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                        : 'No units on cut list yet'}
-                    </p>
-                    <p className="job-date">Updated {new Date(job.updatedAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="job-card-actions">
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDuplicate(job)}>Duplicate</button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => exportJobJson(job)}>Export</button>
-                    <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => handleDelete(job.id, job.client.name)}>Delete</button>
-                  </div>
-                </article>
-              );
-            })}
+        <section className="dashboard-projects" aria-labelledby="dashboard-projects-heading">
+          <div className="dashboard-projects-toolbar">
+            <div className="dashboard-projects-heading">
+              <h2 id="dashboard-projects-heading" className="visually-hidden">
+                Project list
+              </h2>
+              <p className="dashboard-project-count" aria-live="polite">
+                {projectCountLabel}
+              </p>
+            </div>
+            <label className="dashboard-search">
+              <span className="visually-hidden">Search projects</span>
+              <span className="dashboard-search-icon" aria-hidden="true">
+                ⌕
+              </span>
+              <input
+                type="search"
+                className="dashboard-search-input"
+                placeholder="Search client, reference, address or phone…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search.trim() ? (
+                <button
+                  type="button"
+                  className="dashboard-search-clear"
+                  aria-label="Clear search"
+                  onClick={() => setSearch('')}
+                >
+                  ×
+                </button>
+              ) : null}
+            </label>
           </div>
-        </>
+
+          {visibleJobs.length === 0 ? (
+            <p className="dashboard-no-results hint">No projects match &ldquo;{search}&rdquo;.</p>
+          ) : (
+            <div className="job-grid">
+              {visibleJobs.map((job) => {
+                const total = totals.get(job.id);
+                const openJob = () => onOpen(job.id);
+                return (
+                  <article key={job.id} className="job-card">
+                    <div
+                      className="job-card-body"
+                      onClick={openJob}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && openJob()}
+                    >
+                      <div className="job-card-top">
+                        <h3 className="job-card-title">{job.client.name || 'Untitled job'}</h3>
+                        <span className="job-card-open" aria-hidden="true">
+                          Open →
+                        </span>
+                      </div>
+                      <div className="job-card-meta-row">
+                        {job.client.ref ? <span className="job-card-ref">Ref {job.client.ref}</span> : null}
+                        <span className="job-card-units">
+                          {job.units.length} unit{job.units.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className={`job-card-quote${total == null ? ' job-card-quote--empty' : ''}`}>
+                        <span className="job-card-quote-label">Quote total</span>
+                        <span className="job-card-quote-amount">
+                          {total != null
+                            ? formatMoney(total, job.settings, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0,
+                              })
+                            : 'Add units to quote'}
+                        </span>
+                      </div>
+                      <p className="job-date">Updated {new Date(job.updatedAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="job-card-actions">
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDuplicate(job)}>
+                        Duplicate
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => exportJobJson(job)}>
+                        Export
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm danger"
+                        onClick={() => handleDelete(job.id, job.client.name)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );
