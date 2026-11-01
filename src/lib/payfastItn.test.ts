@@ -1,6 +1,11 @@
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { pfEncode, signFields, verifyItnSignature } from '../../api/_payfast.js';
+import {
+  livePayfastPassphraseConfigured,
+  pfEncode,
+  signFields,
+  verifyItnSignature,
+} from '../../api/_payfast.js';
 
 function buildSignedBody(fields: [string, string][], passphrase?: string): string {
   const signature = signFields(fields, passphrase);
@@ -8,38 +13,59 @@ function buildSignedBody(fields: [string, string][], passphrase?: string): strin
   return `${pairs.join('&')}&signature=${signature}`;
 }
 
+describe('livePayfastPassphraseConfigured', () => {
+  it('is false for missing or whitespace passphrase', () => {
+    expect(livePayfastPassphraseConfigured(undefined)).toBe(false);
+    expect(livePayfastPassphraseConfigured('')).toBe(false);
+    expect(livePayfastPassphraseConfigured('   ')).toBe(false);
+  });
+
+  it('is true when passphrase has content', () => {
+    expect(livePayfastPassphraseConfigured('live-secret')).toBe(true);
+  });
+});
+
 describe('verifyItnSignature (live PayFast rules)', () => {
-  it('accepts ITN when passphrase-signed hash matches', () => {
-    const fields: [string, string][] = [
-      ['m_payment_id', 'abc123'],
-      ['payment_status', 'COMPLETE'],
-      ['amount_gross', '500.00'],
-    ];
+  const fields: [string, string][] = [
+    ['m_payment_id', 'abc123'],
+    ['payment_status', 'COMPLETE'],
+    ['amount_gross', '500.00'],
+  ];
+
+  it('accepts ITN when passphrase-signed hash matches (liveMode)', () => {
     const passphrase = 'live-secret';
     const raw = buildSignedBody(fields, passphrase);
-    expect(verifyItnSignature(raw, passphrase).ok).toBe(true);
+    expect(verifyItnSignature(raw, passphrase, { liveMode: true }).ok).toBe(true);
+  });
+
+  it('rejects live ITN when passphrase is missing even if param-only MD5 would match', () => {
+    const signStr = fields.map(([k, v]) => `${k}=${pfEncode(v)}`).join('&');
+    const sig = crypto.createHash('md5').update(signStr).digest('hex');
+    const raw = `${signStr}&signature=${sig}`;
+    const result = verifyItnSignature(raw, undefined, { liveMode: true });
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('missing_live_passphrase');
+  });
+
+  it('rejects live ITN with incorrect signature when passphrase is set', () => {
+    const raw = buildSignedBody(fields, 'correct-pass');
+    const result = verifyItnSignature(raw, 'wrong-pass', { liveMode: true });
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('signature_mismatch');
   });
 
   it('rejects param-only MD5 when live passphrase is configured', () => {
-    const fields: [string, string][] = [
-      ['m_payment_id', 'abc123'],
-      ['payment_status', 'COMPLETE'],
-    ];
     const passphrase = 'live-secret';
     const signStr = fields.map(([k, v]) => `${k}=${pfEncode(v)}`).join('&');
     const sig = crypto.createHash('md5').update(signStr).digest('hex');
     const raw = `${signStr}&signature=${sig}`;
-    expect(verifyItnSignature(raw, passphrase).ok).toBe(false);
+    expect(verifyItnSignature(raw, passphrase, { liveMode: true }).ok).toBe(false);
   });
 
-  it('accepts param-only signature when no passphrase (sandbox test merchant)', () => {
-    const fields: [string, string][] = [
-      ['m_payment_id', 'test'],
-      ['payment_status', 'COMPLETE'],
-    ];
+  it('accepts param-only signature in sandbox when no passphrase', () => {
     const signStr = fields.map(([k, v]) => `${k}=${pfEncode(v)}`).join('&');
     const sig = crypto.createHash('md5').update(signStr).digest('hex');
     const raw = `${signStr}&signature=${sig}`;
-    expect(verifyItnSignature(raw, undefined).ok).toBe(true);
+    expect(verifyItnSignature(raw, undefined, { liveMode: false }).ok).toBe(true);
   });
 });

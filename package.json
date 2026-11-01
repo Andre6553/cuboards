@@ -9,6 +9,7 @@
     "build": "npm run icons && tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:access-integration": "node scripts/run-cuboards-access-integration.mjs",
     "preview": "vite preview",
     "refresh-gelmar-runners": "node scripts/export-gelmar-catalog.mjs"
   },

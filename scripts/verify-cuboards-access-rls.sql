@@ -1,4 +1,4 @@
--- Manual verification after 0012 (run in Supabase SQL editor as postgres / service role).
+-- Manual verification after 0012 (+ 0013 for RPC gate) on approved environment only.
 -- Replace :user_a and :user_b with two test auth user uuids when exercising cross-account checks.
 
 -- 1) Function exists

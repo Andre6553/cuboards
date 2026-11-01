@@ -75,11 +75,19 @@ export function payfastAmount(cents) {
 }
 
 /**
- * Verify PayFast ITN MD5 signature.
- * Live merchants: signature must include passphrase (PayFast documented behaviour).
- * Sandbox test merchant without passphrase: param string only.
+ * Live production ITN requires a configured merchant passphrase (PayFast subscriptions).
  */
-export function verifyItnSignature(rawBody, passphrase) {
+export function livePayfastPassphraseConfigured(passphrase) {
+  return Boolean(passphrase?.trim())
+}
+
+/**
+ * Verify PayFast ITN MD5 signature.
+ * Live (liveMode): passphrase required; never param-only MD5.
+ * Sandbox: passphrase path when set; else param-only (test merchant).
+ */
+export function verifyItnSignature(rawBody, passphrase, options = {}) {
+  const liveMode = options.liveMode === true
   const data = {}
   for (const part of rawBody.split('&')) {
     const idx = part.indexOf('=')
@@ -95,14 +103,25 @@ export function verifyItnSignature(rawBody, passphrase) {
     .join('&')
   const md5 = (s) => crypto.createHash('md5').update(s).digest('hex')
   const trimmedPass = passphrase?.trim() ?? ''
+
+  if (liveMode && trimmedPass === '') {
+    return {
+      ok: false,
+      data,
+      expected: null,
+      received,
+      error: 'missing_live_passphrase',
+    }
+  }
+
   let expected
   let ok
-  if (trimmedPass !== '') {
+  if (liveMode || trimmedPass !== '') {
     expected = md5(`${rawParam}&passphrase=${pfEncode(trimmedPass)}`)
     ok = received === expected
   } else {
     expected = md5(rawParam)
     ok = received === expected
   }
-  return { ok, data, expected, received }
+  return { ok, data, expected, received, error: ok ? undefined : 'signature_mismatch' }
 }

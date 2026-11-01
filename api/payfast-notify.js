@@ -1,5 +1,10 @@
 import { createAdminClient } from './_supabaseAdmin.js'
-import { payfastAmount, resolvePayfastCredsFromEnv, verifyItnSignature } from './_payfast.js'
+import {
+  livePayfastPassphraseConfigured,
+  payfastAmount,
+  resolvePayfastCredsFromEnv,
+  verifyItnSignature,
+} from './_payfast.js'
 
 async function readRawBody(req) {
   if (typeof req.body === 'string') return req.body
@@ -54,10 +59,22 @@ export default async function handler(req, res) {
     return
   }
 
-  const { passphrase, validateHost } = resolvePayfastCredsFromEnv()
-  const { ok: sigOk, expected, received } = verifyItnSignature(raw, passphrase)
+  const { sandbox, passphrase, validateHost } = resolvePayfastCredsFromEnv()
+  const liveMode = !sandbox
+  if (liveMode && !livePayfastPassphraseConfigured(passphrase)) {
+    console.error('[payfast-notify] live ITN blocked: PAYFAST_PASSPHRASE missing or empty')
+    res.status(200).end('OK')
+    return
+  }
+  const { ok: sigOk, expected, received, error: sigError } = verifyItnSignature(raw, passphrase, {
+    liveMode,
+  })
   if (!sigOk) {
-    console.error('[payfast-notify] signature mismatch', { expected, received })
+    console.error('[payfast-notify] signature rejected', {
+      reason: sigError ?? 'signature_mismatch',
+      expected,
+      received,
+    })
     res.status(200).end('OK')
     return
   }
