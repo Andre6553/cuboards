@@ -1123,7 +1123,7 @@ function calcCosts(
     costs.push({
       category: 'masonite',
       name: `${job.masonite.name} (${job.masonite.colour})`,
-      detail: masoniteLayoutNote,
+      detail: `${masoniteLayoutNote} · ${formatSheetCount(masoniteBillSheets)} billed @ ${masoniteSheetPrice}/sheet`,
       quantity: masoniteBillSheets,
       unitPrice: masoniteSheetPrice,
       subtotal: quoteLineSubtotal(masoniteBillSheets, job.masonite.pricePerSheet, job.settings),

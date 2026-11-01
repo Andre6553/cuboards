@@ -223,6 +223,8 @@ export interface CutHouseChargeSettings {
    * (matches Mossel Bay HB001 line) instead of fractional sheet math.
    */
   masoniteOneFullSheetFromCutHouse?: boolean;
+  /** Set when user ticks HB001 match — avoids legacy saved `true` from an old app default. */
+  masoniteHb001Explicit?: boolean;
 }
 
 /** Client quotation footer — editable per job. */

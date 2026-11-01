@@ -816,7 +816,12 @@ export function MaterialsForm({
                 <input
                   type="checkbox"
                   checked={ch.masoniteOneFullSheetFromCutHouse === true}
-                  onChange={(e) => patchCh({ masoniteOneFullSheetFromCutHouse: e.target.checked })}
+                  onChange={(e) =>
+                    patchCh({
+                      masoniteOneFullSheetFromCutHouse: e.target.checked,
+                      masoniteHb001Explicit: e.target.checked,
+                    })
+                  }
                 />
                 Match cut-house PDF: bill <strong>1 full hardboard sheet</strong> even when layout needs less (off by default — use calculated sheet count)
               </label>

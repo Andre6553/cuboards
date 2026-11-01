@@ -110,6 +110,7 @@ export const DEFAULT_CUT_HOUSE_CHARGES: Required<CutHouseChargeSettings> = {
   edgingOrderRoundUpMetre: false,
   onlyWhenOrderFromSet: true,
   masoniteOneFullSheetFromCutHouse: false,
+  masoniteHb001Explicit: false,
 };
 
 export const DEFAULT_SETTINGS: JobSettings = {

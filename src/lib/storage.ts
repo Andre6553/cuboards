@@ -18,7 +18,17 @@ import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
 import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
 import { getDefaultScrewPrices } from './screwCatalog';
 import { normalizeMaterialSuppliers } from './materialSupplierPrices';
-import type { Client, DoorConfig, DoorGaps, DrawerConfig, EdgingMaterial, Job, Material, Unit } from '../types';
+import type {
+  Client,
+  CutHouseChargeSettings,
+  DoorConfig,
+  DoorGaps,
+  DrawerConfig,
+  EdgingMaterial,
+  Job,
+  Material,
+  Unit,
+} from '../types';
 import { DEFAULT_DOOR_GAPS } from './doorRules';
 import { DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
 import { syncFrontLayoutToUnit } from './frontLayout';
@@ -145,6 +155,14 @@ export function duplicateJob(source: Job): Job {
   };
 }
 
+export function migrateCutHouseCharges(ch?: CutHouseChargeSettings): Required<CutHouseChargeSettings> {
+  const merged = { ...DEFAULT_CUT_HOUSE_CHARGES, ...ch };
+  if (merged.masoniteOneFullSheetFromCutHouse && !ch?.masoniteHb001Explicit) {
+    merged.masoniteOneFullSheetFromCutHouse = false;
+  }
+  return merged;
+}
+
 function migrateMaterial(m: Material, defaultEdgingId: string): Material {
   return normalizeMaterialSuppliers({
     ...m,
@@ -173,10 +191,7 @@ export function migrateJob(job: Job): Job {
     settings: {
       ...DEFAULT_SETTINGS,
       ...job.settings,
-      cutHouseCharges: {
-        ...DEFAULT_CUT_HOUSE_CHARGES,
-        ...job.settings?.cutHouseCharges,
-      },
+      cutHouseCharges: migrateCutHouseCharges(job.settings?.cutHouseCharges),
     },
     materials: (job.materials ?? []).map((m) => migrateMaterial(m, defaultEdgingId)),
     units: (job.units ?? []).map((u) => {
