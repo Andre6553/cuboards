@@ -25,8 +25,12 @@ import {
 } from './presets';
 import { loadPriceList, type PriceList } from './priceList';
 import { recordCloudSync } from './backupReminder';
-import { enqueueCloudJobDelete, enqueueCloudJobUpsert } from './cloudJobQueue';
-import { fetchCloudJobs, upsertCloudJobs } from './cloudJobOperations';
+import {
+  enqueueCloudJobDelete,
+  enqueueCloudJobUpsert,
+  getCloudJobQueueSnapshot,
+} from './cloudJobQueue';
+import { fetchCloudJobs } from './cloudJobOperations';
 import { loadJobs } from './storage';
 import { getSupabase } from './supabaseClient';
 import { adoptLegacyDeviceStorageIfEmpty, requireUserDataScope, userStorageKeys } from './userDataScope';
@@ -80,8 +84,38 @@ export async function syncJobsWithCloud(userId: string): Promise<Job[]> {
     adoptLegacyDeviceStorageIfEmpty();
     local = loadJobs();
   }
-  const merged = mergeJobLists(local, remote);
-  await upsertCloudJobs(userId, merged);
+
+  // Honour durable queue ops that have not flushed yet so a pull cannot resurrect
+  // deleted jobs, and queued upserts win over older remote copies.
+  const pending = await getCloudJobQueueSnapshot(userId);
+  const pendingDeletes = new Set(pending.filter((op) => op.kind === 'delete').map((op) => op.jobId));
+  const pendingUpserts = new Map<string, Job>();
+  for (const op of pending) {
+    if (op.kind === 'upsert' && op.jobJson) {
+      try {
+        pendingUpserts.set(op.jobId, JSON.parse(op.jobJson) as Job);
+      } catch {
+        /* ignore corrupt queue payload */
+      }
+    }
+  }
+
+  const remoteWithoutDeletes = remote.filter((j) => !pendingDeletes.has(j.id));
+  const localWithQueued = local.map((j) => pendingUpserts.get(j.id) ?? j);
+  for (const [id, job] of pendingUpserts) {
+    if (!localWithQueued.some((j) => j.id === id) && !pendingDeletes.has(id)) {
+      localWithQueued.push(job);
+    }
+  }
+
+  const merged = mergeJobLists(localWithQueued, remoteWithoutDeletes).filter(
+    (j) => !pendingDeletes.has(j.id),
+  );
+
+  // Push via durable queue (not a one-shot network call) so failures still retry.
+  for (const job of merged) {
+    await enqueueCloudJobUpsert(userId, job);
+  }
   return merged;
 }
 
@@ -175,20 +209,14 @@ registerCloudPrefsPushImpl(async (userId) => {
   await pushUserPrefsFromLocal(userId);
 });
 
-let jobsPushTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingJobsPush: { userId: string; jobs: Job[] } | null = null;
-
+/**
+ * Persist upserts to IndexedDB immediately (debouncing happens inside the queue processor).
+ * A refresh mid-save must not lose the queued op.
+ */
 export function schedulePushJobs(userId: string, jobs: Job[]): void {
-  pendingJobsPush = { userId, jobs };
-  if (jobsPushTimer) clearTimeout(jobsPushTimer);
-  jobsPushTimer = setTimeout(() => {
-    const batch = pendingJobsPush;
-    pendingJobsPush = null;
-    if (!batch) return;
-    for (const job of batch.jobs) {
-      void enqueueCloudJobUpsert(batch.userId, job).catch((e) => console.error('enqueueCloudJobUpsert', e));
-    }
-  }, 600);
+  for (const job of jobs) {
+    void enqueueCloudJobUpsert(userId, job).catch((e) => console.error('enqueueCloudJobUpsert', e));
+  }
 }
 
 /** Immediate durable delete (IndexedDB queue + retries). */

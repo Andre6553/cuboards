@@ -14,6 +14,7 @@ import { CouponPanel } from './CouponPanel';
 interface Props {
   jobs: Job[];
   cloudSyncState?: 'idle' | 'pending' | 'syncing' | 'error';
+  cloudPendingCount?: number;
   lastCloudSyncIso?: string | null;
   onOpen: (id: string) => void;
   onJobsChange: (jobs: Job[]) => void;
@@ -33,6 +34,7 @@ function quoteTotal(job: Job): number | null {
 export function Dashboard({
   jobs,
   cloudSyncState = 'idle',
+  cloudPendingCount = 0,
   lastCloudSyncIso = null,
   onOpen,
   onJobsChange,
@@ -117,14 +119,25 @@ export function Dashboard({
         <p>
           <strong>Your jobs belong to this account only.</strong> They sync to the cloud while you&apos;re signed in —
           use the same email on another device to pick up where you left off. JSON backup below is for your own archive.
-          {cloudSyncState === 'pending'
-            ? ' Saving changes to the cloud…'
+          {cloudPendingCount > 0
+            ? ` ${cloudPendingCount} change${cloudPendingCount === 1 ? '' : 's'} queued on this device — will retry automatically.`
+            : cloudSyncState === 'pending'
+              ? ' Saving changes to the cloud…'
+              : null}
+          {cloudSyncState === 'error'
+            ? ' Cloud save failed after retries — tap Sync to cloud now, or keep editing (changes stay queued).'
             : null}
-          {cloudSyncState === 'error' ? ' Cloud sync failed — try Sync to cloud now or refresh.' : null}
         </p>
         <div className="storage-notice-footer">
           <p className="hint storage-backup-meta">
-            Last cloud sync: {formatLastBackup(lastCloudSyncIso)}
+            Cloud save:{' '}
+            {cloudSyncState === 'syncing'
+              ? 'Saving…'
+              : cloudSyncState === 'pending'
+                ? `Pending (${cloudPendingCount})`
+                : cloudSyncState === 'error'
+                  ? 'Needs attention'
+                  : `OK · last ${formatLastBackup(lastCloudSyncIso)}`}
             {' · '}
             JSON backup: {formatLastBackup(lastJsonBackup)}
             {shouldShowBackupReminder(jobs.length) ? ' — download a JSON backup for your archive.' : ''}
@@ -133,14 +146,10 @@ export function Dashboard({
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              disabled={cloudSyncState === 'syncing' || cloudSyncState === 'pending' || !onSyncNow}
+              disabled={cloudSyncState === 'syncing' || !onSyncNow}
               onClick={() => onSyncNow?.()}
             >
-              {cloudSyncState === 'syncing'
-                ? 'Syncing…'
-                : cloudSyncState === 'pending'
-                  ? 'Saving…'
-                  : 'Sync to cloud now'}
+              {cloudSyncState === 'syncing' ? 'Syncing…' : 'Sync to cloud now'}
             </button>
             <button
               type="button"

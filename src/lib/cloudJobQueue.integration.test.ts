@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Job } from '../types';
 import { MemoryCloudJobQueueStore } from './cloudJobQueueDb';
 import {
+  enqueueCloudJobDelete,
   enqueueCloudJobUpsert,
   processCloudJobQueue,
   setCloudJobQueueStoreForTests,
@@ -55,5 +56,21 @@ describe('cloud job queue processor', () => {
     expect(remaining[0].attempts).toBe(1);
     expect(remaining[0].lastError).toBe('network');
     expect(remaining[0].nextRetryAt).toBeGreaterThan(Date.now() - 1000);
+  });
+
+  it('coalesces upsert then delete for the same job id', async () => {
+    await enqueueCloudJobUpsert(userId, job('j1'));
+    await enqueueCloudJobDelete(userId, 'j1');
+    const remaining = await store.listForUser(userId);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].kind).toBe('delete');
+  });
+
+  it('drops upsert when cloud reports a newer remote (conflict)', async () => {
+    vi.mocked(ops.upsertCloudJobIfNotStale).mockResolvedValue('conflict');
+    vi.spyOn(ops, 'fetchCloudJobById').mockResolvedValue(job('j1'));
+    await enqueueCloudJobUpsert(userId, job('j1'));
+    await processCloudJobQueue();
+    expect(await store.listForUser(userId)).toHaveLength(0);
   });
 });

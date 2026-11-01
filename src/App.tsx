@@ -26,6 +26,7 @@ import { DEFAULT_SETTINGS } from './lib/constants';
 import { isSupabaseConfigured } from './lib/supabaseClient';
 import {
   flushCloudJobQueue,
+  getCloudJobQueueSnapshot,
   setCloudQueueDrainedListener,
   setCloudRemoteNewerListener,
   setCloudSaveStatusListener,
@@ -68,20 +69,24 @@ function CuboardsApp() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [cloudSyncState, setCloudSyncState] = useState<CloudSaveStatus>('idle');
+  const [cloudPendingCount, setCloudPendingCount] = useState(0);
   const [manualCloudSync, setManualCloudSync] = useState(false);
   const [lastCloudSyncIso, setLastCloudSyncIso] = useState<string | null>(() => getLastCloudSyncIso());
   const [communityQueue, setCommunityQueue] = useState<CommunityMaterialOffer[]>([]);
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
+  const manualCloudSyncRef = useRef(false);
+  manualCloudSyncRef.current = manualCloudSync;
 
   useEffect(() => {
     setCloudSaveListener(() => setLastCloudSyncIso(getLastCloudSyncIso()));
     setCloudQueueDrainedListener(() => {
       notifyCloudSaved();
       setLastCloudSyncIso(getLastCloudSyncIso());
+      setCloudPendingCount(0);
     });
     setCloudSaveStatusListener((status) => {
-      if (!manualCloudSync) setCloudSyncState(status);
+      if (!manualCloudSyncRef.current) setCloudSyncState(status);
     });
     setCloudRemoteNewerListener((remoteJob) => {
       const merged = mergeJobLists(jobsRef.current, [remoteJob]);
@@ -94,7 +99,26 @@ function CuboardsApp() {
       setCloudSaveStatusListener(null);
       setCloudRemoteNewerListener(null);
     };
-  }, [manualCloudSync]);
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setCloudPendingCount(0);
+      return;
+    }
+    let cancelled = false;
+    const refreshPending = () => {
+      void getCloudJobQueueSnapshot(userId).then((ops) => {
+        if (!cancelled) setCloudPendingCount(ops.length);
+      });
+    };
+    refreshPending();
+    const id = window.setInterval(refreshPending, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [userId, cloudSyncState]);
 
   const refreshCommunityQueue = useCallback(async () => {
     const pending = await fetchPendingCommunityMaterials();
@@ -179,7 +203,13 @@ function CuboardsApp() {
             scheduleDeleteCloudJob(userId, p.id);
           }
         }
-        schedulePushJobs(userId, next);
+        const changed = next.filter((n) => {
+          const p = prev.find((j) => j.id === n.id);
+          return !p || p.updatedAt !== n.updatedAt;
+        });
+        if (changed.length > 0) {
+          schedulePushJobs(userId, changed);
+        }
       }
       setJobs(next);
       saveJobs(next);
@@ -249,6 +279,7 @@ function CuboardsApp() {
           <Dashboard
             jobs={jobs}
             cloudSyncState={cloudSyncState}
+            cloudPendingCount={cloudPendingCount}
             lastCloudSyncIso={lastCloudSyncIso}
             onOpen={setActiveJobId}
             onJobsChange={persist}
