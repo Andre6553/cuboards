@@ -74,6 +74,11 @@ export function payfastAmount(cents) {
   return (Math.max(0, Math.round(cents)) / 100).toFixed(2)
 }
 
+/**
+ * Verify PayFast ITN MD5 signature.
+ * Live merchants: signature must include passphrase (PayFast documented behaviour).
+ * Sandbox test merchant without passphrase: param string only.
+ */
 export function verifyItnSignature(rawBody, passphrase) {
   const data = {}
   for (const part of rawBody.split('&')) {
@@ -89,11 +94,15 @@ export function verifyItnSignature(rawBody, passphrase) {
     .filter((p) => !p.startsWith('signature='))
     .join('&')
   const md5 = (s) => crypto.createHash('md5').update(s).digest('hex')
-  const candidates = [md5(rawParam)]
-  if (passphrase && passphrase.trim() !== '') {
-    candidates.push(md5(`${rawParam}&passphrase=${pfEncode(passphrase)}`))
+  const trimmedPass = passphrase?.trim() ?? ''
+  let expected
+  let ok
+  if (trimmedPass !== '') {
+    expected = md5(`${rawParam}&passphrase=${pfEncode(trimmedPass)}`)
+    ok = received === expected
+  } else {
+    expected = md5(rawParam)
+    ok = received === expected
   }
-  const ok = candidates.includes(received)
-  const expected = candidates[candidates.length - 1]
   return { ok, data, expected, received }
 }
