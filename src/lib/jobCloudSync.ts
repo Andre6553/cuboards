@@ -25,9 +25,18 @@ import {
 } from './presets';
 import { loadPriceList, type PriceList } from './priceList';
 import { recordCloudSync } from './backupReminder';
-import { loadJobs, migrateJob } from './storage';
+import { enqueueCloudJobDelete, enqueueCloudJobUpsert } from './cloudJobQueue';
+import { fetchCloudJobs, upsertCloudJobs } from './cloudJobOperations';
+import { loadJobs } from './storage';
 import { getSupabase } from './supabaseClient';
 import { adoptLegacyDeviceStorageIfEmpty, requireUserDataScope, userStorageKeys } from './userDataScope';
+
+export {
+  deleteCloudJob,
+  fetchCloudJobById,
+  upsertCloudJobIfNotStale,
+  type CloudUpsertResult,
+} from './cloudJobOperations';
 
 let cloudSaveListener: (() => void) | null = null;
 
@@ -40,7 +49,6 @@ export function notifyCloudSaved(): void {
   cloudSaveListener?.();
 }
 
-type JobRow = { id: string; data: Job; updated_at: string };
 type PrefsRow = {
   board_catalog: BoardCatalog | null;
   price_list: PriceList | null;
@@ -61,42 +69,6 @@ export function mergeJobLists(local: Job[], remote: Job[]): Job[] {
     }
   }
   return [...map.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-}
-
-function rowToJob(row: JobRow): Job {
-  const raw = row.data as Job;
-  const job = migrateJob({ ...raw, id: row.id, updatedAt: raw.updatedAt ?? row.updated_at });
-  return job;
-}
-
-export async function fetchCloudJobs(userId: string): Promise<Job[]> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('cuboards_jobs')
-    .select('id, data, updated_at')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data as JobRow[] | null)?.map(rowToJob) ?? [];
-}
-
-export async function upsertCloudJobs(userId: string, jobs: Job[]): Promise<void> {
-  if (jobs.length === 0) return;
-  const supabase = getSupabase();
-  const rows = jobs.map((j) => ({
-    id: j.id,
-    user_id: userId,
-    data: j,
-    updated_at: j.updatedAt,
-  }));
-  const { error } = await supabase.from('cuboards_jobs').upsert(rows, { onConflict: 'user_id,id' });
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteCloudJob(userId: string, jobId: string): Promise<void> {
-  const supabase = getSupabase();
-  const { error } = await supabase.from('cuboards_jobs').delete().eq('user_id', userId).eq('id', jobId);
-  if (error) throw new Error(error.message);
 }
 
 export async function syncJobsWithCloud(userId: string): Promise<Job[]> {
@@ -213,8 +185,13 @@ export function schedulePushJobs(userId: string, jobs: Job[]): void {
     const batch = pendingJobsPush;
     pendingJobsPush = null;
     if (!batch) return;
-    void upsertCloudJobs(batch.userId, batch.jobs)
-      .then(() => notifyCloudSaved())
-      .catch((e) => console.error('pushJobs', e));
+    for (const job of batch.jobs) {
+      void enqueueCloudJobUpsert(batch.userId, job).catch((e) => console.error('enqueueCloudJobUpsert', e));
+    }
   }, 600);
+}
+
+/** Immediate durable delete (IndexedDB queue + retries). */
+export function scheduleDeleteCloudJob(userId: string, jobId: string): void {
+  void enqueueCloudJobDelete(userId, jobId).catch((e) => console.error('enqueueCloudJobDelete', e));
 }

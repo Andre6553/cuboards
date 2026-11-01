@@ -13,7 +13,7 @@ import { CouponPanel } from './CouponPanel';
 
 interface Props {
   jobs: Job[];
-  cloudSyncState?: 'idle' | 'syncing' | 'error';
+  cloudSyncState?: 'idle' | 'pending' | 'syncing' | 'error';
   lastCloudSyncIso?: string | null;
   onOpen: (id: string) => void;
   onJobsChange: (jobs: Job[]) => void;
@@ -117,6 +117,9 @@ export function Dashboard({
         <p>
           <strong>Your jobs belong to this account only.</strong> They sync to the cloud while you&apos;re signed in —
           use the same email on another device to pick up where you left off. JSON backup below is for your own archive.
+          {cloudSyncState === 'pending'
+            ? ' Saving changes to the cloud…'
+            : null}
           {cloudSyncState === 'error' ? ' Cloud sync failed — try Sync to cloud now or refresh.' : null}
         </p>
         <div className="storage-notice-footer">
@@ -130,10 +133,14 @@ export function Dashboard({
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              disabled={cloudSyncState === 'syncing' || !onSyncNow}
+              disabled={cloudSyncState === 'syncing' || cloudSyncState === 'pending' || !onSyncNow}
               onClick={() => onSyncNow?.()}
             >
-              {cloudSyncState === 'syncing' ? 'Syncing…' : 'Sync to cloud now'}
+              {cloudSyncState === 'syncing'
+                ? 'Syncing…'
+                : cloudSyncState === 'pending'
+                  ? 'Saving…'
+                  : 'Sync to cloud now'}
             </button>
             <button
               type="button"
