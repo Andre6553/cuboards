@@ -15,6 +15,8 @@ export interface CloudJobQueueRecord {
   nextRetryAt: number;
   lastError?: string;
   createdAt: string;
+  /** Monotonic per key; bumped on every enqueue so in-flight ops cannot drop superseding edits. */
+  revision: number;
 }
 
 const DB_NAME = 'cuboards-cloud-sync-v1';

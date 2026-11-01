@@ -9,6 +9,7 @@ import {
 import {
   type CloudJobQueueRecord,
   deleteQueueRecord,
+  getQueueRecord,
   listQueueRecordsForUser,
   putQueueRecord,
   queueRecordKey,
@@ -31,15 +32,28 @@ export function mergeQueueStatus(records: CloudJobQueueRecord[], processing: boo
   return 'idle';
 }
 
+/** When nothing is ready now, schedule the next retry — never for exhausted ops. */
+export function pickNextRetryAtMs(
+  records: CloudJobQueueRecord[],
+  nowMs = Date.now(),
+): number | null {
+  const retryable = records.filter((r) => r.attempts < MAX_CLOUD_SYNC_ATTEMPTS);
+  if (retryable.length === 0) return null;
+  const nextAt = Math.min(...retryable.map((r) => r.nextRetryAt));
+  return nextAt > nowMs ? nextAt : null;
+}
+
 type QueueStore = {
   put: (record: CloudJobQueueRecord) => Promise<void>;
   delete: (key: string) => Promise<void>;
+  get: (key: string) => Promise<CloudJobQueueRecord | undefined>;
   listForUser: (userId: string) => Promise<CloudJobQueueRecord[]>;
 };
 
 let activeStore: QueueStore = {
   put: putQueueRecord,
   delete: deleteQueueRecord,
+  get: getQueueRecord,
   listForUser: listQueueRecordsForUser,
 };
 
@@ -54,11 +68,17 @@ let remoteNewerListener: ((job: Job) => void) | null = null;
 /** Test hook — swap IndexedDB for in-memory store. */
 export function setCloudJobQueueStoreForTests(store: MemoryCloudJobQueueStore | null): void {
   if (store) {
-    activeStore = store;
+    activeStore = {
+      put: (record) => store.put(record),
+      delete: (key) => store.delete(key),
+      get: (key) => store.get(key),
+      listForUser: (userId) => store.listForUser(userId),
+    };
   } else {
     activeStore = {
       put: putQueueRecord,
       delete: deleteQueueRecord,
+      get: getQueueRecord,
       listForUser: listQueueRecordsForUser,
     };
   }
@@ -103,6 +123,7 @@ export async function enqueueCloudJobUpsert(userId: string, job: Job): Promise<v
   const key = queueRecordKey(userId, job.id);
   const existing = await activeStore.listForUser(userId);
   const prev = existing.find((r) => r.key === key);
+  const samePayload = prev?.kind === 'upsert' && prev.updatedAt === job.updatedAt;
   const record: CloudJobQueueRecord = {
     key,
     userId,
@@ -110,11 +131,11 @@ export async function enqueueCloudJobUpsert(userId: string, job: Job): Promise<v
     kind: 'upsert',
     jobJson: JSON.stringify(job),
     updatedAt: job.updatedAt,
-    attempts:
-      prev?.kind === 'upsert' && prev.updatedAt === job.updatedAt ? prev.attempts : 0,
+    attempts: samePayload ? prev.attempts : 0,
     nextRetryAt: Date.now(),
     lastError: undefined,
     createdAt: prev?.createdAt ?? new Date().toISOString(),
+    revision: (prev?.revision ?? 0) + 1,
   };
   await activeStore.put(record);
   activeUserId = userId;
@@ -124,6 +145,7 @@ export async function enqueueCloudJobUpsert(userId: string, job: Job): Promise<v
 
 export async function enqueueCloudJobDelete(userId: string, job: Job): Promise<void> {
   const key = queueRecordKey(userId, job.id);
+  const prev = (await activeStore.listForUser(userId)).find((r) => r.key === key);
   const record: CloudJobQueueRecord = {
     key,
     userId,
@@ -133,6 +155,7 @@ export async function enqueueCloudJobDelete(userId: string, job: Job): Promise<v
     attempts: 0,
     nextRetryAt: Date.now(),
     createdAt: new Date().toISOString(),
+    revision: (prev?.revision ?? 0) + 1,
   };
   await activeStore.put(record);
   activeUserId = userId;
@@ -164,6 +187,16 @@ export function stopCloudJobQueue(): void {
 
 function onOnline(): void {
   scheduleProcessDebounced(0);
+}
+
+async function commitIfStillCurrent(
+  key: string,
+  claimRevision: number,
+): Promise<'committed' | 'superseded'> {
+  const latest = await activeStore.get(key);
+  if (!latest || latest.revision !== claimRevision) return 'superseded';
+  await activeStore.delete(key);
+  return 'committed';
 }
 
 async function applyOp(record: CloudJobQueueRecord): Promise<'done' | 'conflict'> {
@@ -198,9 +231,9 @@ export async function processCloudJobQueue(): Promise<void> {
     .sort((a, b) => a.nextRetryAt - b.nextRetryAt || a.createdAt.localeCompare(b.createdAt));
 
   if (ready.length === 0) {
-    const nextAt = Math.min(...records.map((r) => r.nextRetryAt));
     statusListener?.(mergeQueueStatus(records, false));
-    scheduleRetryAt(nextAt);
+    const nextAt = pickNextRetryAtMs(records, now);
+    if (nextAt !== null) scheduleRetryAt(nextAt);
     return;
   }
 
@@ -210,22 +243,31 @@ export async function processCloudJobQueue(): Promise<void> {
   let hadFailure = false;
   let earliestRetry = Infinity;
 
+  let supersededDuringRun = false;
+
   for (const record of ready) {
+    const claimRevision = record.revision;
     try {
       const outcome = await applyOp(record);
       if (outcome === 'done' || outcome === 'conflict') {
-        await activeStore.delete(record.key);
+        const commit = await commitIfStillCurrent(record.key, claimRevision);
+        if (commit === 'superseded') supersededDuringRun = true;
         continue;
       }
       hadFailure = true;
     } catch (e) {
+      const latest = await activeStore.get(record.key);
+      if (!latest || latest.revision !== claimRevision) {
+        supersededDuringRun = true;
+        continue;
+      }
       hadFailure = true;
       const attempts = record.attempts + 1;
       const nextRetryAt = Date.now() + computeRetryDelayMs(attempts);
       earliestRetry = Math.min(earliestRetry, nextRetryAt);
       const message = e instanceof Error ? e.message : String(e);
       await activeStore.put({
-        ...record,
+        ...latest,
         attempts,
         nextRetryAt,
         lastError: message,
@@ -242,11 +284,13 @@ export async function processCloudJobQueue(): Promise<void> {
     drainedListener?.();
   } else if (hadFailure) {
     scheduleRetryAt(earliestRetry === Infinity ? Date.now() + 2000 : earliestRetry);
-  } else if (remaining.some((r) => r.nextRetryAt > Date.now())) {
-    scheduleRetryAt(Math.min(...remaining.map((r) => r.nextRetryAt)));
-  } else if (remaining.length > 0) {
-    scheduleProcessDebounced(0);
+  } else {
+    const nextAt = pickNextRetryAtMs(remaining, Date.now());
+    if (nextAt !== null) scheduleRetryAt(nextAt);
+    else if (remaining.length > 0) scheduleProcessDebounced(0);
   }
+
+  if (supersededDuringRun) scheduleProcessDebounced(0);
 }
 
 /** Wait until the queue is empty or attempts are exhausted (for manual sync). */
@@ -257,10 +301,12 @@ export async function flushCloudJobQueue(): Promise<void> {
     await processCloudJobQueue();
     const records = await activeStore.listForUser(userId);
     if (records.length === 0) return;
-    const blocked = records.every((r) => r.nextRetryAt > Date.now());
-    if (blocked) {
-      await new Promise((r) => setTimeout(r, Math.min(...records.map((x) => x.nextRetryAt)) - Date.now() + 50));
+    const nextAt = pickNextRetryAtMs(records, Date.now());
+    if (nextAt !== null) {
+      await new Promise((r) => setTimeout(r, nextAt - Date.now() + 50));
+      continue;
     }
+    if (records.every((r) => r.attempts >= MAX_CLOUD_SYNC_ATTEMPTS)) return;
   }
 }
 

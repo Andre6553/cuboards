@@ -9,6 +9,12 @@ function rowToJob(row: JobRow): Job {
   return migrateJob({ ...raw, id: row.id, updatedAt: raw.updatedAt ?? row.updated_at });
 }
 
+/** Pure conflict rule shared with client-side fallback and tests. */
+export function shouldAcceptLocalWrite(remoteUpdatedAt: string | null, localUpdatedAt: string): boolean {
+  if (!remoteUpdatedAt) return true;
+  return remoteUpdatedAt.localeCompare(localUpdatedAt) <= 0;
+}
+
 export async function fetchCloudJobs(userId: string): Promise<Job[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -49,8 +55,30 @@ export async function upsertCloudJobs(userId: string, jobs: Job[]): Promise<void
 export type CloudUpsertResult = 'ok' | 'conflict';
 export type CloudDeleteResult = 'ok' | 'conflict';
 
-/** Upsert only when local job is not older than the cloud row (by updated_at). */
-export async function upsertCloudJobIfNotStale(userId: string, job: Job): Promise<CloudUpsertResult> {
+function isMissingRpcError(error: { message?: string; code?: string }): boolean {
+  const msg = (error.message ?? '').toLowerCase();
+  return (
+    error.code === 'PGRST202' ||
+    msg.includes('could not find the function') ||
+    msg.includes('schema cache')
+  );
+}
+
+async function upsertCloudJobViaRpc(_userId: string, job: Job): Promise<CloudUpsertResult | 'missing'> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc('cuboards_upsert_job_if_not_stale', {
+    p_job_id: job.id,
+    p_data: job,
+    p_updated_at: job.updatedAt,
+  });
+  if (error) {
+    if (isMissingRpcError(error)) return 'missing';
+    throw new Error(error.message);
+  }
+  return data === 'conflict' ? 'conflict' : 'ok';
+}
+
+async function upsertCloudJobViaSelect(userId: string, job: Job): Promise<CloudUpsertResult> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('cuboards_jobs')
@@ -59,12 +87,36 @@ export async function upsertCloudJobIfNotStale(userId: string, job: Job): Promis
     .eq('id', job.id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const remoteUpdated = (data as { updated_at: string } | null)?.updated_at;
-  if (remoteUpdated && remoteUpdated.localeCompare(job.updatedAt) > 0) {
+  const remoteUpdated = (data as { updated_at: string } | null)?.updated_at ?? null;
+  if (!shouldAcceptLocalWrite(remoteUpdated, job.updatedAt)) {
     return 'conflict';
   }
   await upsertCloudJobs(userId, [job]);
   return 'ok';
+}
+
+/** Upsert only when local job is not older than the cloud row (atomic RPC when deployed). */
+export async function upsertCloudJobIfNotStale(userId: string, job: Job): Promise<CloudUpsertResult> {
+  const viaRpc = await upsertCloudJobViaRpc(userId, job);
+  if (viaRpc !== 'missing') return viaRpc;
+  return upsertCloudJobViaSelect(userId, job);
+}
+
+async function deleteCloudJobViaRpc(
+  _userId: string,
+  jobId: string,
+  localUpdatedAt: string,
+): Promise<CloudDeleteResult | 'missing'> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc('cuboards_delete_job_if_not_stale', {
+    p_job_id: jobId,
+    p_updated_at: localUpdatedAt,
+  });
+  if (error) {
+    if (isMissingRpcError(error)) return 'missing';
+    throw new Error(error.message);
+  }
+  return data === 'conflict' ? 'conflict' : 'ok';
 }
 
 export async function deleteCloudJob(userId: string, jobId: string): Promise<void> {
@@ -79,6 +131,9 @@ export async function deleteCloudJobIfNotStale(
   jobId: string,
   localUpdatedAt: string,
 ): Promise<CloudDeleteResult> {
+  const viaRpc = await deleteCloudJobViaRpc(userId, jobId, localUpdatedAt);
+  if (viaRpc !== 'missing') return viaRpc;
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('cuboards_jobs')
@@ -87,8 +142,8 @@ export async function deleteCloudJobIfNotStale(
     .eq('id', jobId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const remoteUpdated = (data as { updated_at: string } | null)?.updated_at;
-  if (remoteUpdated && remoteUpdated.localeCompare(localUpdatedAt) > 0) {
+  const remoteUpdated = (data as { updated_at: string } | null)?.updated_at ?? null;
+  if (remoteUpdated && !shouldAcceptLocalWrite(remoteUpdated, localUpdatedAt)) {
     return 'conflict';
   }
   await deleteCloudJob(userId, jobId);

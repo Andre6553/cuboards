@@ -3,6 +3,7 @@ import {
   computeRetryDelayMs,
   mergeQueueStatus,
   MAX_CLOUD_SYNC_ATTEMPTS,
+  pickNextRetryAtMs,
 } from './cloudJobQueue';
 import type { CloudJobQueueRecord } from './cloudJobQueueDb';
 
@@ -16,6 +17,7 @@ function record(partial: Partial<CloudJobQueueRecord>): CloudJobQueueRecord {
     attempts: 0,
     nextRetryAt: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
+    revision: 0,
     ...partial,
   };
 }
@@ -49,5 +51,33 @@ describe('mergeQueueStatus', () => {
 
   it('reports idle when queue is empty', () => {
     expect(mergeQueueStatus([], false)).toBe('idle');
+  });
+});
+
+describe('pickNextRetryAtMs', () => {
+  it('returns null when every op exhausted attempts', () => {
+    const now = 1_000_000;
+    expect(
+      pickNextRetryAtMs([record({ attempts: MAX_CLOUD_SYNC_ATTEMPTS, nextRetryAt: now - 1 })], now),
+    ).toBeNull();
+  });
+
+  it('returns null when retryable ops are already due', () => {
+    const now = 1_000_000;
+    expect(pickNextRetryAtMs([record({ nextRetryAt: now - 500 })], now)).toBeNull();
+  });
+
+  it('returns earliest future retry among retryable ops', () => {
+    const now = 1_000_000;
+    expect(
+      pickNextRetryAtMs(
+        [
+          record({ nextRetryAt: now + 5000 }),
+          record({ nextRetryAt: now + 2000 }),
+          record({ attempts: MAX_CLOUD_SYNC_ATTEMPTS, nextRetryAt: now + 100 }),
+        ],
+        now,
+      ),
+    ).toBe(now + 2000);
   });
 });
