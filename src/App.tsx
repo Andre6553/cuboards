@@ -74,9 +74,21 @@ function CuboardsApp() {
   const [lastCloudSyncIso, setLastCloudSyncIso] = useState<string | null>(() => getLastCloudSyncIso());
   const [communityQueue, setCommunityQueue] = useState<CommunityMaterialOffer[]>([]);
   const jobsRef = useRef(jobs);
-  jobsRef.current = jobs;
   const manualCloudSyncRef = useRef(false);
-  manualCloudSyncRef.current = manualCloudSync;
+
+  useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
+
+  useEffect(() => {
+    manualCloudSyncRef.current = manualCloudSync;
+  }, [manualCloudSync]);
+
+  const resetLocalSessionState = useCallback(() => {
+    setJobs([]);
+    setActiveJobId(null);
+    setCommunityQueue([]);
+  }, []);
 
   useEffect(() => {
     setCloudSaveListener(() => setLastCloudSyncIso(getLastCloudSyncIso()));
@@ -179,20 +191,17 @@ function CuboardsApp() {
     if (!userId) {
       setUserDataScope(null);
       setCloudSyncUserId(null);
-      setJobs([]);
-      setActiveJobId(null);
-      setCommunityQueue([]);
+      queueMicrotask(resetLocalSessionState);
       return;
     }
 
     setUserDataScope(userId);
     setCloudSyncUserId(userId);
     startCloudJobQueue(userId);
-    setJobs([]);
-    setActiveJobId(null);
-    void runCloudSync();
+    queueMicrotask(resetLocalSessionState);
+    queueMicrotask(() => void runCloudSync());
     return () => stopCloudJobQueue();
-  }, [userId, runCloudSync]);
+  }, [userId, runCloudSync, resetLocalSessionState]);
 
   const persist = useCallback(
     (next: Job[]) => {
@@ -200,7 +209,7 @@ function CuboardsApp() {
       if (userId) {
         for (const p of prev) {
           if (!next.some((n) => n.id === p.id)) {
-            scheduleDeleteCloudJob(userId, p.id);
+            scheduleDeleteCloudJob(userId, p);
           }
         }
         const changed = next.filter((n) => {

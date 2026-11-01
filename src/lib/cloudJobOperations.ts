@@ -47,6 +47,7 @@ export async function upsertCloudJobs(userId: string, jobs: Job[]): Promise<void
 }
 
 export type CloudUpsertResult = 'ok' | 'conflict';
+export type CloudDeleteResult = 'ok' | 'conflict';
 
 /** Upsert only when local job is not older than the cloud row (by updated_at). */
 export async function upsertCloudJobIfNotStale(userId: string, job: Job): Promise<CloudUpsertResult> {
@@ -70,4 +71,26 @@ export async function deleteCloudJob(userId: string, jobId: string): Promise<voi
   const supabase = getSupabase();
   const { error } = await supabase.from('cuboards_jobs').delete().eq('user_id', userId).eq('id', jobId);
   if (error) throw new Error(error.message);
+}
+
+/** Delete only when the cloud row is not newer than the job that was deleted locally. */
+export async function deleteCloudJobIfNotStale(
+  userId: string,
+  jobId: string,
+  localUpdatedAt: string,
+): Promise<CloudDeleteResult> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('cuboards_jobs')
+    .select('updated_at')
+    .eq('user_id', userId)
+    .eq('id', jobId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const remoteUpdated = (data as { updated_at: string } | null)?.updated_at;
+  if (remoteUpdated && remoteUpdated.localeCompare(localUpdatedAt) > 0) {
+    return 'conflict';
+  }
+  await deleteCloudJob(userId, jobId);
+  return 'ok';
 }

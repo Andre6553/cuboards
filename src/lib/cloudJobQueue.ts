@@ -1,8 +1,9 @@
 import type { Job } from '../types';
 import {
-  deleteCloudJob,
+  deleteCloudJobIfNotStale,
   fetchCloudJobById,
   upsertCloudJobIfNotStale,
+  type CloudDeleteResult,
   type CloudUpsertResult,
 } from './cloudJobOperations';
 import {
@@ -121,14 +122,14 @@ export async function enqueueCloudJobUpsert(userId: string, job: Job): Promise<v
   scheduleProcessDebounced();
 }
 
-export async function enqueueCloudJobDelete(userId: string, jobId: string): Promise<void> {
-  const key = queueRecordKey(userId, jobId);
+export async function enqueueCloudJobDelete(userId: string, job: Job): Promise<void> {
+  const key = queueRecordKey(userId, job.id);
   const record: CloudJobQueueRecord = {
     key,
     userId,
-    jobId,
+    jobId: job.id,
     kind: 'delete',
-    updatedAt: new Date().toISOString(),
+    updatedAt: job.updatedAt,
     attempts: 0,
     nextRetryAt: Date.now(),
     createdAt: new Date().toISOString(),
@@ -167,8 +168,11 @@ function onOnline(): void {
 
 async function applyOp(record: CloudJobQueueRecord): Promise<'done' | 'conflict'> {
   if (record.kind === 'delete') {
-    await deleteCloudJob(record.userId, record.jobId);
-    return 'done';
+    const result: CloudDeleteResult = await deleteCloudJobIfNotStale(record.userId, record.jobId, record.updatedAt);
+    if (result === 'ok') return 'done';
+    const remote = await fetchCloudJobById(record.userId, record.jobId);
+    if (remote) remoteNewerListener?.(remote);
+    return 'conflict';
   }
   const job = JSON.parse(record.jobJson ?? '{}') as Job;
   const result: CloudUpsertResult = await upsertCloudJobIfNotStale(record.userId, job);

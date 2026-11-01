@@ -6,6 +6,7 @@ import {
   enqueueCloudJobUpsert,
   processCloudJobQueue,
   setCloudJobQueueStoreForTests,
+  setCloudRemoteNewerListener,
   startCloudJobQueue,
   stopCloudJobQueue,
 } from './cloudJobQueue';
@@ -36,6 +37,7 @@ describe('cloud job queue processor', () => {
 
   afterEach(() => {
     stopCloudJobQueue();
+    setCloudRemoteNewerListener(null);
     setCloudJobQueueStoreForTests(null);
     vi.restoreAllMocks();
   });
@@ -59,11 +61,13 @@ describe('cloud job queue processor', () => {
   });
 
   it('coalesces upsert then delete for the same job id', async () => {
-    await enqueueCloudJobUpsert(userId, job('j1'));
-    await enqueueCloudJobDelete(userId, 'j1');
+    const deletedJob = job('j1');
+    await enqueueCloudJobUpsert(userId, deletedJob);
+    await enqueueCloudJobDelete(userId, deletedJob);
     const remaining = await store.listForUser(userId);
     expect(remaining).toHaveLength(1);
     expect(remaining[0].kind).toBe('delete');
+    expect(remaining[0].updatedAt).toBe(deletedJob.updatedAt);
   });
 
   it('drops upsert when cloud reports a newer remote (conflict)', async () => {
@@ -71,6 +75,22 @@ describe('cloud job queue processor', () => {
     vi.spyOn(ops, 'fetchCloudJobById').mockResolvedValue(job('j1'));
     await enqueueCloudJobUpsert(userId, job('j1'));
     await processCloudJobQueue();
+    expect(await store.listForUser(userId)).toHaveLength(0);
+  });
+
+  it('does not delete a newer cloud job when a stale local delete is queued', async () => {
+    const deletedJob = job('j1');
+    const remoteJob = { ...deletedJob, updatedAt: '2026-01-02T13:00:00.000Z' };
+    const remoteNewer: Job[] = [];
+    vi.spyOn(ops, 'deleteCloudJobIfNotStale').mockResolvedValue('conflict');
+    vi.spyOn(ops, 'fetchCloudJobById').mockResolvedValue(remoteJob);
+    setCloudRemoteNewerListener((nextJob) => remoteNewer.push(nextJob));
+
+    await enqueueCloudJobDelete(userId, deletedJob);
+    await processCloudJobQueue();
+
+    expect(ops.deleteCloudJobIfNotStale).toHaveBeenCalledWith(userId, deletedJob.id, deletedJob.updatedAt);
+    expect(remoteNewer).toEqual([remoteJob]);
     expect(await store.listForUser(userId)).toHaveLength(0);
   });
 });

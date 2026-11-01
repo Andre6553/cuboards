@@ -37,8 +37,10 @@ import { adoptLegacyDeviceStorageIfEmpty, requireUserDataScope, userStorageKeys 
 
 export {
   deleteCloudJob,
+  deleteCloudJobIfNotStale,
   fetchCloudJobById,
   upsertCloudJobIfNotStale,
+  type CloudDeleteResult,
   type CloudUpsertResult,
 } from './cloudJobOperations';
 
@@ -220,6 +222,6 @@ export function schedulePushJobs(userId: string, jobs: Job[]): void {
 }
 
 /** Immediate durable delete (IndexedDB queue + retries). */
-export function scheduleDeleteCloudJob(userId: string, jobId: string): void {
-  void enqueueCloudJobDelete(userId, jobId).catch((e) => console.error('enqueueCloudJobDelete', e));
+export function scheduleDeleteCloudJob(userId: string, job: Job): void {
+  void enqueueCloudJobDelete(userId, job).catch((e) => console.error('enqueueCloudJobDelete', e));
 }
