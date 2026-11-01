@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cuboards cloud queue smoke (real IndexedDB)</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 1.5rem;
+        max-width: 52rem;
+      }
+      .pass {
+        color: #047857;
+      }
+      .fail {
+        color: #b91c1c;
+      }
+      li {
+        margin: 0.35rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Cloud queue smoke</h1>
+    <p>Real browser IndexedDB — offline, restart, reconnect, delete, recovery.</p>
+    <ul id="results"></ul>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

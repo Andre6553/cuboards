@@ -59,6 +59,41 @@ export async function putQueueRecord(record: CloudJobQueueRecord): Promise<void>
   });
 }
 
+export type QueueRevisionCommitResult = 'committed' | 'superseded';
+
+/** Read revision and delete in a single readwrite transaction (atomic commit). */
+export async function deleteQueueRecordIfRevisionMatches(
+  key: string,
+  revision: number,
+): Promise<QueueRevisionCommitResult> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    let outcome: QueueRevisionCommitResult = 'superseded';
+    const req = store.get(key);
+    req.onerror = () => {
+      db.close();
+      reject(req.error ?? new Error('IndexedDB get failed'));
+    };
+    req.onsuccess = () => {
+      const record = req.result as CloudJobQueueRecord | undefined;
+      if (record && record.revision === revision) {
+        store.delete(key);
+        outcome = 'committed';
+      }
+    };
+    tx.oncomplete = () => {
+      db.close();
+      resolve(outcome);
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error ?? new Error('IndexedDB revision commit failed'));
+    };
+  });
+}
+
 export async function deleteQueueRecord(key: string): Promise<void> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
@@ -137,6 +172,13 @@ export class MemoryCloudJobQueueStore {
 
   async delete(key: string): Promise<void> {
     this.map.delete(key);
+  }
+
+  async deleteIfRevisionMatches(key: string, revision: number): Promise<QueueRevisionCommitResult> {
+    const record = this.map.get(key);
+    if (!record || record.revision !== revision) return 'superseded';
+    this.map.delete(key);
+    return 'committed';
   }
 
   async get(key: string): Promise<CloudJobQueueRecord | undefined> {

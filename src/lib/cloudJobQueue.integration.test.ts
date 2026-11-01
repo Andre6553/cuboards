@@ -125,6 +125,18 @@ describe('cloud job queue processor', () => {
     expect(await store.listForUser(userId)).toHaveLength(0);
   });
 
+  it('uses atomic revision commit (memory store)', async () => {
+    await enqueueCloudJobUpsert(userId, job('j1'));
+    await enqueueCloudJobUpsert(userId, { ...job('j1'), updatedAt: '2026-01-02T13:00:00.000Z' });
+    const pending = await store.listForUser(userId);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].revision).toBe(2);
+    expect(await store.deleteIfRevisionMatches(pending[0].key, 1)).toBe('superseded');
+    expect(await store.listForUser(userId)).toHaveLength(1);
+    expect(await store.deleteIfRevisionMatches(pending[0].key, 2)).toBe('committed');
+    expect(await store.listForUser(userId)).toHaveLength(0);
+  });
+
   it('stops retry scheduling after attempts are exhausted', async () => {
     vi.mocked(ops.upsertCloudJobIfNotStale).mockRejectedValue(new Error('network down'));
     await enqueueCloudJobUpsert(userId, job('j1'));

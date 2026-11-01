@@ -9,11 +9,13 @@ import {
 import {
   type CloudJobQueueRecord,
   deleteQueueRecord,
+  deleteQueueRecordIfRevisionMatches,
   getQueueRecord,
   listQueueRecordsForUser,
   putQueueRecord,
   queueRecordKey,
   type MemoryCloudJobQueueStore,
+  type QueueRevisionCommitResult,
 } from './cloudJobQueueDb';
 
 export type CloudSaveStatus = 'idle' | 'pending' | 'syncing' | 'error';
@@ -46,6 +48,7 @@ export function pickNextRetryAtMs(
 type QueueStore = {
   put: (record: CloudJobQueueRecord) => Promise<void>;
   delete: (key: string) => Promise<void>;
+  commitIfRevision: (key: string, revision: number) => Promise<QueueRevisionCommitResult>;
   get: (key: string) => Promise<CloudJobQueueRecord | undefined>;
   listForUser: (userId: string) => Promise<CloudJobQueueRecord[]>;
 };
@@ -53,6 +56,7 @@ type QueueStore = {
 let activeStore: QueueStore = {
   put: putQueueRecord,
   delete: deleteQueueRecord,
+  commitIfRevision: deleteQueueRecordIfRevisionMatches,
   get: getQueueRecord,
   listForUser: listQueueRecordsForUser,
 };
@@ -71,6 +75,7 @@ export function setCloudJobQueueStoreForTests(store: MemoryCloudJobQueueStore | 
     activeStore = {
       put: (record) => store.put(record),
       delete: (key) => store.delete(key),
+      commitIfRevision: (key, revision) => store.deleteIfRevisionMatches(key, revision),
       get: (key) => store.get(key),
       listForUser: (userId) => store.listForUser(userId),
     };
@@ -78,6 +83,7 @@ export function setCloudJobQueueStoreForTests(store: MemoryCloudJobQueueStore | 
     activeStore = {
       put: putQueueRecord,
       delete: deleteQueueRecord,
+      commitIfRevision: deleteQueueRecordIfRevisionMatches,
       get: getQueueRecord,
       listForUser: listQueueRecordsForUser,
     };
@@ -193,10 +199,7 @@ async function commitIfStillCurrent(
   key: string,
   claimRevision: number,
 ): Promise<'committed' | 'superseded'> {
-  const latest = await activeStore.get(key);
-  if (!latest || latest.revision !== claimRevision) return 'superseded';
-  await activeStore.delete(key);
-  return 'committed';
+  return activeStore.commitIfRevision(key, claimRevision);
 }
 
 async function applyOp(record: CloudJobQueueRecord): Promise<'done' | 'conflict'> {

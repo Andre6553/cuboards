@@ -1,5 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url))
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -125,5 +129,13 @@ export default defineConfig({
   preview: {
     port: 5199,
     strictPort: true,
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(rootDir, 'index.html'),
+        queueSmoke: path.resolve(rootDir, 'queue-smoke/index.html'),
+      },
+    },
   },
 })

@@ -9,10 +9,43 @@ function rowToJob(row: JobRow): Job {
   return migrateJob({ ...raw, id: row.id, updatedAt: raw.updatedAt ?? row.updated_at });
 }
 
-/** Pure conflict rule shared with client-side fallback and tests. */
+export type CloudUpsertResult = 'ok' | 'conflict';
+export type CloudDeleteResult = 'ok' | 'conflict';
+
+/** Pure conflict rule shared with client-side fallback, RPC, and tests (equal timestamps allowed). */
 export function shouldAcceptLocalWrite(remoteUpdatedAt: string | null, localUpdatedAt: string): boolean {
   if (!remoteUpdatedAt) return true;
   return remoteUpdatedAt.localeCompare(localUpdatedAt) <= 0;
+}
+
+/** Mirrors post-lock upsert write result when ON CONFLICT DO UPDATE may no-op (regression tests). */
+export function resolveUpsertAfterConditionalWrite(
+  remoteUpdatedAt: string | null,
+  localUpdatedAt: string,
+  returningUpdatedAt: string | null,
+): CloudUpsertResult {
+  if (remoteUpdatedAt && remoteUpdatedAt.localeCompare(localUpdatedAt) > 0) {
+    return 'conflict';
+  }
+  if (returningUpdatedAt) return 'ok';
+  if (!remoteUpdatedAt) return 'conflict';
+  return remoteUpdatedAt.localeCompare(localUpdatedAt) <= 0 ? 'ok' : 'conflict';
+}
+
+export type CloudSyncTestHooks = {
+  upsertCloudJobIfNotStale?: (userId: string, job: Job) => Promise<CloudUpsertResult>;
+  deleteCloudJobIfNotStale?: (
+    userId: string,
+    jobId: string,
+    localUpdatedAt: string,
+  ) => Promise<CloudDeleteResult>;
+};
+
+let cloudSyncTestHooks: CloudSyncTestHooks | null = null;
+
+/** Browser smoke / manual QA — bypasses Supabase when set. */
+export function setCloudSyncTestHooks(hooks: CloudSyncTestHooks | null): void {
+  cloudSyncTestHooks = hooks;
 }
 
 export async function fetchCloudJobs(userId: string): Promise<Job[]> {
@@ -51,9 +84,6 @@ export async function upsertCloudJobs(userId: string, jobs: Job[]): Promise<void
   const { error } = await supabase.from('cuboards_jobs').upsert(rows, { onConflict: 'user_id,id' });
   if (error) throw new Error(error.message);
 }
-
-export type CloudUpsertResult = 'ok' | 'conflict';
-export type CloudDeleteResult = 'ok' | 'conflict';
 
 function isMissingRpcError(error: { message?: string; code?: string }): boolean {
   const msg = (error.message ?? '').toLowerCase();
@@ -97,6 +127,9 @@ async function upsertCloudJobViaSelect(userId: string, job: Job): Promise<CloudU
 
 /** Upsert only when local job is not older than the cloud row (atomic RPC when deployed). */
 export async function upsertCloudJobIfNotStale(userId: string, job: Job): Promise<CloudUpsertResult> {
+  if (cloudSyncTestHooks?.upsertCloudJobIfNotStale) {
+    return cloudSyncTestHooks.upsertCloudJobIfNotStale(userId, job);
+  }
   const viaRpc = await upsertCloudJobViaRpc(userId, job);
   if (viaRpc !== 'missing') return viaRpc;
   return upsertCloudJobViaSelect(userId, job);
@@ -131,6 +164,9 @@ export async function deleteCloudJobIfNotStale(
   jobId: string,
   localUpdatedAt: string,
 ): Promise<CloudDeleteResult> {
+  if (cloudSyncTestHooks?.deleteCloudJobIfNotStale) {
+    return cloudSyncTestHooks.deleteCloudJobIfNotStale(userId, jobId, localUpdatedAt);
+  }
   const viaRpc = await deleteCloudJobViaRpc(userId, jobId, localUpdatedAt);
   if (viaRpc !== 'missing') return viaRpc;
 
