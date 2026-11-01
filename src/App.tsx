@@ -115,7 +115,7 @@ function CuboardsApp() {
 
   useEffect(() => {
     if (!userId) {
-      setCloudPendingCount(0);
+      queueMicrotask(() => setCloudPendingCount(0));
       return;
     }
     let cancelled = false;
