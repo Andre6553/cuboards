@@ -2,95 +2,205 @@ import { useState } from 'react';
 import { CuboardsLogo } from './CuboardsLogo';
 import { useAuth } from '../context/AuthContext';
 
-type Mode = 'signin' | 'signup';
+type Mode = 'signin' | 'signup' | 'forgot';
 
 export function AuthScreen() {
-  const { signIn, signUp } = useAuth();
+  const {
+    signIn,
+    signUp,
+    passwordRecoveryPending,
+    requestPasswordReset,
+    completePasswordRecovery,
+  } = useAuth();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setInfo(null);
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     setBusy(true);
+
+    if (passwordRecoveryPending) {
+      if (password !== confirmPassword) {
+        setBusy(false);
+        setError('Passwords do not match.');
+        return;
+      }
+      const err = await completePasswordRecovery(password);
+      setBusy(false);
+      if (err) setError(err);
+      return;
+    }
+
+    if (mode === 'forgot') {
+      const err = await requestPasswordReset(email);
+      setBusy(false);
+      if (err) {
+        setError(err);
+      } else {
+        setInfo(
+          'If an account exists for that email, we sent a reset link. Check your inbox and spam, then open the link on this device.',
+        );
+      }
+      return;
+    }
+
     const err = mode === 'signin' ? await signIn(email, password) : await signUp(email, password);
     setBusy(false);
     if (err) setError(err);
   }
 
+  const recovery = passwordRecoveryPending;
+  const title = recovery
+    ? 'Choose a new password'
+    : mode === 'signup'
+      ? 'Create account'
+      : mode === 'forgot'
+        ? 'Reset password'
+        : 'Welcome back!';
+
+  const subtitle = recovery
+    ? 'Enter a new password for your Cuboards account (at least 8 characters).'
+    : mode === 'signup'
+      ? 'Confirm your email for 30 days of use (one day per calendar day you open the app). A coupon can add more days later, once per account.'
+      : mode === 'forgot'
+        ? 'We will email you a secure link to choose a new password.'
+        : 'Sign in to manage your cupboard projects.';
+
   return (
     <div className="auth-screen">
-      <div className="auth-card">
-        <div className="auth-logo">
-          <CuboardsLogo />
+      <div className="auth-card auth-card--login">
+        <div className="auth-card-brand">
+          <div className="auth-logo auth-logo--hero">
+            <CuboardsLogo />
+          </div>
+          <p className="auth-brand-tag">Cut-list software for cupboard installers</p>
         </div>
-        <h1 className="auth-title">{mode === 'signin' ? 'Sign in' : 'Create account'}</h1>
-        <p className="auth-sub">
-          {mode === 'signup'
-            ? 'Confirm your email for 30 days of use (one day per calendar day you open the app). A coupon can add more days later, once per account.'
-            : 'Email and password are stored securely with Supabase Auth.'}
-        </p>
+
+        <h1 className="auth-title">{title}</h1>
+        <p className="auth-sub">{subtitle}</p>
 
         <form className="auth-form" onSubmit={onSubmit}>
-          <label>
-            Email
-            <input
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label>
-            Password
-            <span className="auth-password-wrap">
+          {!recovery && (
+            <label>
+              Email
               <input
-                type={showPassword ? 'text' : 'password'}
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                type="email"
+                autoComplete="email"
                 required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
-              <button
-                type="button"
-                className="auth-password-toggle"
-                aria-pressed={showPassword}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                onClick={() => setShowPassword((v) => !v)}
-              >
-                {showPassword ? 'Hide' : 'Show'}
+            </label>
+          )}
+
+          {(mode === 'signin' || mode === 'signup' || recovery) && (
+            <label>
+              {recovery ? 'New password' : 'Password'}
+              <span className="auth-password-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={recovery ? 'new-password' : mode === 'signin' ? 'current-password' : 'new-password'}
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </span>
+            </label>
+          )}
+
+          {recovery && (
+            <label>
+              Confirm new password
+              <span className="auth-password-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </span>
+            </label>
+          )}
+
+          {mode === 'signin' && !recovery && (
+            <p className="auth-forgot-row">
+              <button type="button" className="auth-link" onClick={() => switchMode('forgot')}>
+                Forgot password?
               </button>
-            </span>
-          </label>
+            </p>
+          )}
+
           {error ? <p className="auth-error">{error}</p> : null}
+          {info ? <p className="auth-info">{info}</p> : null}
+
           <button type="submit" className="auth-submit" disabled={busy}>
-            {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
+            {busy
+              ? 'Please wait…'
+              : recovery
+                ? 'Update password'
+                : mode === 'forgot'
+                  ? 'Send reset link'
+                  : mode === 'signin'
+                    ? 'Sign in'
+                    : 'Sign up'}
           </button>
         </form>
 
-        <p className="auth-switch">
-          {mode === 'signin' ? (
-            <>
-              No account?{' '}
-              <button type="button" className="auth-link" onClick={() => setMode('signup')}>
-                Sign up
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{' '}
-              <button type="button" className="auth-link" onClick={() => setMode('signin')}>
-                Sign in
-              </button>
-            </>
-          )}
-        </p>
+        {!recovery && (
+          <p className="auth-switch">
+            {mode === 'signin' ? (
+              <>
+                No account?{' '}
+                <button type="button" className="auth-link" onClick={() => switchMode('signup')}>
+                  Sign up
+                </button>
+              </>
+            ) : mode === 'signup' ? (
+              <>
+                Already have an account?{' '}
+                <button type="button" className="auth-link" onClick={() => switchMode('signin')}>
+                  Sign in
+                </button>
+              </>
+            ) : (
+              <>
+                Remember your password?{' '}
+                <button type="button" className="auth-link" onClick={() => switchMode('signin')}>
+                  Back to sign in
+                </button>
+              </>
+            )}
+          </p>
+        )}
       </div>
     </div>
   );

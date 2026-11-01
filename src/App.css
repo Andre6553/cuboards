@@ -106,6 +106,7 @@
 
 .auth-screen {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,10 +124,54 @@
   padding: 1.75rem 1.5rem;
 }
 
+.auth-card--login {
+  padding: 0 0 1.5rem;
+  overflow: hidden;
+}
+
+.auth-card-brand {
+  padding: 1.15rem 1.35rem 1rem;
+  margin-bottom: 0.35rem;
+  background: linear-gradient(165deg, var(--brand) 0%, #1e3a5f 55%, var(--primary) 140%);
+  color: #fff;
+  text-align: center;
+}
+
 .auth-logo {
   display: flex;
   justify-content: center;
   margin-bottom: 1rem;
+}
+
+.auth-card-brand .auth-logo {
+  margin-bottom: 0;
+}
+
+.auth-logo--hero .cuboards-logo-mark {
+  height: 2.65rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.auth-logo--hero .cuboards-logo-wordmark {
+  font-size: 1.65rem;
+  color: #fff;
+}
+
+.auth-brand-tag {
+  margin: 0.55rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+.auth-card--login .auth-title,
+.auth-card--login .auth-sub,
+.auth-card--login .auth-form,
+.auth-card--login .auth-switch {
+  padding-left: 1.35rem;
+  padding-right: 1.35rem;
 }
 
 .auth-title {
@@ -135,12 +180,67 @@
   text-align: center;
 }
 
+.auth-card--login .auth-title {
+  margin: 0.85rem 0 0.35rem;
+  color: var(--brand);
+}
+
 .auth-sub {
   margin: 0 0 1.25rem;
   font-size: 0.9rem;
   color: var(--muted);
   text-align: center;
   line-height: 1.45;
+}
+
+.auth-forgot-row {
+  margin: -0.35rem 0 0;
+  text-align: right;
+}
+
+.auth-info {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--primary-hover);
+  line-height: 1.45;
+}
+
+@media (max-width: 480px) {
+  .auth-screen {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px)) 1rem 1.25rem;
+  }
+
+  .auth-card--login {
+    margin-top: 0.25rem;
+  }
+
+  .auth-card--login .auth-card-brand {
+    padding: 1rem 1.15rem 0.85rem;
+  }
+
+  .auth-card--login .auth-title {
+    margin-top: 0.65rem;
+    font-size: 1.25rem;
+  }
+
+  .auth-card--login .auth-sub {
+    margin-bottom: 0.85rem;
+    font-size: 0.875rem;
+  }
+
+  .auth-card--login .auth-title,
+  .auth-card--login .auth-sub,
+  .auth-card--login .auth-form,
+  .auth-card--login .auth-switch {
+    padding-left: 1.15rem;
+    padding-right: 1.15rem;
+  }
+
+  .auth-switch {
+    margin-top: 1rem;
+  }
 }
 
 .auth-meta {

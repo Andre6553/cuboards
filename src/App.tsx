@@ -308,7 +308,7 @@ function CuboardsApp() {
 }
 
 function AppGate() {
-  const { loading, session, access, refreshAccess } = useAuth();
+  const { loading, session, access, refreshAccess, passwordRecoveryPending } = useAuth();
 
   useEffect(() => {
     if (!session) return;
@@ -333,7 +333,7 @@ function AppGate() {
     );
   }
 
-  if (!session) {
+  if (!session || passwordRecoveryPending) {
     return <AuthScreen />;
   }
 
