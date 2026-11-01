@@ -7,6 +7,7 @@ import {
   clearQueueRecordsForUser,
   deleteQueueRecordIfRevisionMatches,
   listQueueRecordsForUser,
+  mutateQueueRecordIfRevisionMatches,
   putQueueRecord,
   queueRecordKey,
   type CloudJobQueueRecord,
@@ -49,5 +50,28 @@ describe('IndexedDB revision commit (real IDB via fake-indexeddb)', () => {
     const remaining = await listQueueRecordsForUser(userId);
     expect(remaining).toHaveLength(1);
     expect(remaining[0].revision).toBe(2);
+  });
+
+  it('mutates retry metadata atomically without clobbering newer revision', async () => {
+    await putQueueRecord(record(1, '2026-01-01T00:00:00.000Z'));
+    await putQueueRecord(record(2, '2026-01-02T00:00:00.000Z'));
+    expect(
+      await mutateQueueRecordIfRevisionMatches(key, 1, (r) => ({
+        ...r,
+        attempts: 99,
+        lastError: 'stale',
+      })),
+    ).toBe('superseded');
+    const row = (await listQueueRecordsForUser(userId))[0];
+    expect(row.revision).toBe(2);
+    expect(row.attempts).toBe(0);
+    expect(
+      await mutateQueueRecordIfRevisionMatches(key, 2, (r) => ({
+        ...r,
+        attempts: 1,
+        lastError: 'network',
+      })),
+    ).toBe('updated');
+    expect((await listQueueRecordsForUser(userId))[0].attempts).toBe(1);
   });
 });

@@ -12,10 +12,12 @@ import {
   deleteQueueRecordIfRevisionMatches,
   getQueueRecord,
   listQueueRecordsForUser,
+  mutateQueueRecordIfRevisionMatches,
   putQueueRecord,
   queueRecordKey,
   type MemoryCloudJobQueueStore,
   type QueueRevisionCommitResult,
+  type QueueRevisionMutateResult,
 } from './cloudJobQueueDb';
 
 export type CloudSaveStatus = 'idle' | 'pending' | 'syncing' | 'error';
@@ -49,6 +51,11 @@ type QueueStore = {
   put: (record: CloudJobQueueRecord) => Promise<void>;
   delete: (key: string) => Promise<void>;
   commitIfRevision: (key: string, revision: number) => Promise<QueueRevisionCommitResult>;
+  updateIfRevision: (
+    key: string,
+    revision: number,
+    mutate: (record: CloudJobQueueRecord) => CloudJobQueueRecord,
+  ) => Promise<QueueRevisionMutateResult>;
   get: (key: string) => Promise<CloudJobQueueRecord | undefined>;
   listForUser: (userId: string) => Promise<CloudJobQueueRecord[]>;
 };
@@ -57,6 +64,7 @@ let activeStore: QueueStore = {
   put: putQueueRecord,
   delete: deleteQueueRecord,
   commitIfRevision: deleteQueueRecordIfRevisionMatches,
+  updateIfRevision: mutateQueueRecordIfRevisionMatches,
   get: getQueueRecord,
   listForUser: listQueueRecordsForUser,
 };
@@ -76,6 +84,7 @@ export function setCloudJobQueueStoreForTests(store: MemoryCloudJobQueueStore | 
       put: (record) => store.put(record),
       delete: (key) => store.delete(key),
       commitIfRevision: (key, revision) => store.deleteIfRevisionMatches(key, revision),
+      updateIfRevision: (key, revision, mutate) => store.mutateIfRevisionMatches(key, revision, mutate),
       get: (key) => store.get(key),
       listForUser: (userId) => store.listForUser(userId),
     };
@@ -84,6 +93,7 @@ export function setCloudJobQueueStoreForTests(store: MemoryCloudJobQueueStore | 
       put: putQueueRecord,
       delete: deleteQueueRecord,
       commitIfRevision: deleteQueueRecordIfRevisionMatches,
+      updateIfRevision: mutateQueueRecordIfRevisionMatches,
       get: getQueueRecord,
       listForUser: listQueueRecordsForUser,
     };
@@ -259,22 +269,21 @@ export async function processCloudJobQueue(): Promise<void> {
       }
       hadFailure = true;
     } catch (e) {
-      const latest = await activeStore.get(record.key);
-      if (!latest || latest.revision !== claimRevision) {
-        supersededDuringRun = true;
-        continue;
-      }
-      hadFailure = true;
       const attempts = record.attempts + 1;
       const nextRetryAt = Date.now() + computeRetryDelayMs(attempts);
-      earliestRetry = Math.min(earliestRetry, nextRetryAt);
       const message = e instanceof Error ? e.message : String(e);
-      await activeStore.put({
+      const updated = await activeStore.updateIfRevision(record.key, claimRevision, (latest) => ({
         ...latest,
         attempts,
         nextRetryAt,
         lastError: message,
-      });
+      }));
+      if (updated === 'superseded') {
+        supersededDuringRun = true;
+        continue;
+      }
+      hadFailure = true;
+      earliestRetry = Math.min(earliestRetry, nextRetryAt);
     }
   }
 

@@ -1,4 +1,5 @@
 import type { Job } from '../types';
+import { jobPayloadsEqual } from './jobSyncFingerprint';
 import { migrateJob } from './storage';
 import { getSupabase } from './supabaseClient';
 
@@ -12,10 +13,24 @@ function rowToJob(row: JobRow): Job {
 export type CloudUpsertResult = 'ok' | 'conflict';
 export type CloudDeleteResult = 'ok' | 'conflict';
 
-/** Pure conflict rule shared with client-side fallback, RPC, and tests (equal timestamps allowed). */
+/** Timestamp-only rule (legacy); prefer shouldAcceptJobUpsert when payload is available. */
 export function shouldAcceptLocalWrite(remoteUpdatedAt: string | null, localUpdatedAt: string): boolean {
   if (!remoteUpdatedAt) return true;
   return remoteUpdatedAt.localeCompare(localUpdatedAt) <= 0;
+}
+
+/** Full upsert conflict rule: equal updatedAt requires identical job payload. */
+export function shouldAcceptJobUpsert(
+  remoteUpdatedAt: string | null,
+  remoteJob: Job | null,
+  localJob: Job,
+): boolean {
+  if (!remoteUpdatedAt) return true;
+  const cmp = remoteUpdatedAt.localeCompare(localJob.updatedAt);
+  if (cmp > 0) return false;
+  if (cmp < 0) return true;
+  if (!remoteJob) return true;
+  return jobPayloadsEqual(remoteJob, localJob);
 }
 
 /** Mirrors post-lock upsert write result when ON CONFLICT DO UPDATE may no-op (regression tests). */
@@ -23,13 +38,20 @@ export function resolveUpsertAfterConditionalWrite(
   remoteUpdatedAt: string | null,
   localUpdatedAt: string,
   returningUpdatedAt: string | null,
+  remoteJob: Job | null = null,
+  localJob: Job | null = null,
 ): CloudUpsertResult {
+  if (localJob && !shouldAcceptJobUpsert(remoteUpdatedAt, remoteJob, localJob)) {
+    return 'conflict';
+  }
   if (remoteUpdatedAt && remoteUpdatedAt.localeCompare(localUpdatedAt) > 0) {
     return 'conflict';
   }
   if (returningUpdatedAt) return 'ok';
   if (!remoteUpdatedAt) return 'conflict';
-  return remoteUpdatedAt.localeCompare(localUpdatedAt) <= 0 ? 'ok' : 'conflict';
+  if (remoteUpdatedAt.localeCompare(localUpdatedAt) < 0) return 'ok';
+  if (remoteJob && localJob && !jobPayloadsEqual(remoteJob, localJob)) return 'conflict';
+  return 'ok';
 }
 
 export type CloudSyncTestHooks = {
@@ -112,14 +134,19 @@ async function upsertCloudJobViaSelect(userId: string, job: Job): Promise<CloudU
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('cuboards_jobs')
-    .select('updated_at')
+    .select('id, data, updated_at')
     .eq('user_id', userId)
     .eq('id', job.id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const remoteUpdated = (data as { updated_at: string } | null)?.updated_at ?? null;
-  if (!shouldAcceptLocalWrite(remoteUpdated, job.updatedAt)) {
+  const row = data as JobRow | null;
+  const remoteUpdated = row?.updated_at ?? null;
+  const remoteJob = row ? rowToJob(row) : null;
+  if (!shouldAcceptJobUpsert(remoteUpdated, remoteJob, job)) {
     return 'conflict';
+  }
+  if (remoteJob && jobPayloadsEqual(remoteJob, job)) {
+    return 'ok';
   }
   await upsertCloudJobs(userId, [job]);
   return 'ok';

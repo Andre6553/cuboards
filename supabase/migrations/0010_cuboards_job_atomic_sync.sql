@@ -1,6 +1,6 @@
 -- Atomic job upsert/delete guarded by updated_at (apply on Cuboards Supabase when approved).
 -- Uses per-job advisory locks so simultaneous creates and concurrent edits serialize safely.
--- Equal timestamps are treated as acceptable (remote must be strictly newer to conflict).
+-- Equal timestamps: idempotent when jsonb payload matches; conflict when payload differs.
 
 create or replace function public.cuboards_job_sync_lock(p_job_id uuid)
 returns void
@@ -33,6 +33,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_remote timestamptz;
+  v_remote_data jsonb;
   v_written timestamptz;
 begin
   if v_uid is null then
@@ -41,8 +42,8 @@ begin
 
   perform public.cuboards_job_sync_lock(p_job_id);
 
-  select j.updated_at
-  into v_remote
+  select j.updated_at, j.data
+  into v_remote, v_remote_data
   from public.cuboards_jobs as j
   where j.user_id = v_uid and j.id = p_job_id
   for update;
@@ -51,20 +52,29 @@ begin
     return 'conflict';
   end if;
 
+  if v_remote is not null and v_remote = p_updated_at and v_remote_data is distinct from p_data then
+    return 'conflict';
+  end if;
+
+  if v_remote is not null and v_remote = p_updated_at and v_remote_data is not distinct from p_data then
+    return 'ok';
+  end if;
+
   insert into public.cuboards_jobs as j (user_id, id, data, updated_at)
   values (v_uid, p_job_id, p_data, p_updated_at)
   on conflict (user_id, id) do update
     set data = excluded.data,
         updated_at = excluded.updated_at
-    where j.updated_at <= excluded.updated_at
+    where j.updated_at < excluded.updated_at
+       or (j.updated_at = excluded.updated_at and j.data is not distinct from excluded.data)
   returning j.updated_at into v_written;
 
   if v_written is not null then
     return 'ok';
   end if;
 
-  select j.updated_at
-  into v_remote
+  select j.updated_at, j.data
+  into v_remote, v_remote_data
   from public.cuboards_jobs as j
   where j.user_id = v_uid and j.id = p_job_id;
 
@@ -73,6 +83,10 @@ begin
   end if;
 
   if v_remote > p_updated_at then
+    return 'conflict';
+  end if;
+
+  if v_remote = p_updated_at and v_remote_data is distinct from p_data then
     return 'conflict';
   end if;
 

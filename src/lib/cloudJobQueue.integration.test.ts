@@ -137,6 +137,21 @@ describe('cloud job queue processor', () => {
     expect(await store.listForUser(userId)).toHaveLength(0);
   });
 
+  it('does not apply retry failure metadata to a superseding queue revision', async () => {
+    vi.mocked(ops.upsertCloudJobIfNotStale).mockRejectedValue(new Error('offline'));
+    await enqueueCloudJobUpsert(userId, job('j1'));
+    const first = (await store.listForUser(userId))[0];
+    await enqueueCloudJobUpsert(userId, { ...job('j1'), updatedAt: '2026-01-02T14:00:00.000Z' });
+    expect(await store.mutateIfRevisionMatches(first.key, first.revision, (r) => ({
+      ...r,
+      attempts: 99,
+      lastError: 'would clobber',
+    }))).toBe('superseded');
+    const current = (await store.listForUser(userId))[0];
+    expect(current.revision).toBeGreaterThan(first.revision);
+    expect(current.attempts).toBe(0);
+  });
+
   it('stops retry scheduling after attempts are exhausted', async () => {
     vi.mocked(ops.upsertCloudJobIfNotStale).mockRejectedValue(new Error('network down'));
     await enqueueCloudJobUpsert(userId, job('j1'));
