@@ -511,6 +511,20 @@
   margin-top: 0.25rem;
 }
 
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 1.125rem;
+}
+
+.dashboard > .page-header,
+.dashboard > .coupon-panel,
+.dashboard > .dashboard-sync-panel {
+  margin-bottom: 0;
+}
+
 .dashboard-title {
   margin: 0;
   font-size: 1.65rem;
@@ -521,7 +535,7 @@
 
 .dashboard-intro-text {
   min-width: 0;
-  flex: 1 1 14rem;
+  flex: 1 1 auto;
 }
 
 .page-tagline {
@@ -1002,7 +1016,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.125rem;
 }
 
 .dashboard-project-count {
@@ -1016,10 +1030,12 @@
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1 1 16rem;
+  flex: 1 1 auto;
+  min-width: min(100%, 16rem);
   max-width: 100%;
   width: min(100%, 26rem);
   margin-left: auto;
+  height: auto;
 }
 
 .dashboard-search-icon {
@@ -1369,10 +1385,20 @@
     padding: 1rem;
   }
 
+  .dashboard {
+    gap: 1rem;
+  }
+
   .dashboard-intro {
     flex-direction: column;
     align-items: stretch;
-    margin-bottom: 1rem;
+    justify-content: flex-start;
+    gap: 1rem;
+    margin-bottom: 0;
+  }
+
+  .dashboard-intro-text {
+    flex: 0 0 auto;
   }
 
   .dashboard-header-actions {
@@ -1402,10 +1428,15 @@
   .dashboard-projects-toolbar {
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
   }
 
   .dashboard-search {
+    flex: 0 0 auto;
     width: 100%;
+    min-width: 0;
     margin-left: 0;
   }
 
