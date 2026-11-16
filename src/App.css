@@ -1282,6 +1282,17 @@
   justify-content: center;
 }
 
+.page-header-tab-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.collapse-all-units-btn {
+  white-space: nowrap;
+}
+
 .tab-bar {
   display: flex;
   gap: 0.25rem;

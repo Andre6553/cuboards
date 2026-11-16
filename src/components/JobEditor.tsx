@@ -21,7 +21,17 @@ type Tab = 'units' | 'prices' | 'cutlist';
 
 export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
   const [tab, setTab] = useState<Tab>('units');
+  const [unitsCollapseGeneration, setUnitsCollapseGeneration] = useState(0);
   const activeUnitCount = job.units.filter((u) => (u.unitQty ?? 0) > 0).length;
+
+  const selectTab = (next: Tab) => {
+    if (tab === 'units' && next !== 'units') {
+      setUnitsCollapseGeneration((g) => g + 1);
+    }
+    setTab(next);
+  };
+
+  const collapseAllUnits = () => setUnitsCollapseGeneration((g) => g + 1);
 
   const addUnit = () => {
     onChange({ ...job, units: [...job.units, createDefaultUnit(job, job.units.length)] });
@@ -46,16 +56,23 @@ export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
           <button type="button" className="btn btn-ghost back-btn" onClick={onBack}>← Jobs</button>
           <h1>{job.client.name || 'Untitled job'}</h1>
         </div>
-        <div className="tab-bar">
-          <button type="button" className={`tab ${tab === 'units' ? 'active' : ''}`} onClick={() => setTab('units')}>
-            Units ({activeUnitCount})
-          </button>
-          <button type="button" className={`tab ${tab === 'prices' ? 'active' : ''}`} onClick={() => setTab('prices')}>
-            Prices &amp; settings
-          </button>
-          <button type="button" className={`tab ${tab === 'cutlist' ? 'active' : ''}`} onClick={() => setTab('cutlist')}>
-            Cut list
-          </button>
+        <div className="page-header-tab-cluster">
+          {tab === 'units' && job.units.length > 0 && (
+            <button type="button" className="btn btn-secondary btn-sm collapse-all-units-btn" onClick={collapseAllUnits}>
+              Collapse all units
+            </button>
+          )}
+          <div className="tab-bar">
+            <button type="button" className={`tab ${tab === 'units' ? 'active' : ''}`} onClick={() => selectTab('units')}>
+              Units ({activeUnitCount})
+            </button>
+            <button type="button" className={`tab ${tab === 'prices' ? 'active' : ''}`} onClick={() => selectTab('prices')}>
+              Prices &amp; settings
+            </button>
+            <button type="button" className={`tab ${tab === 'cutlist' ? 'active' : ''}`} onClick={() => selectTab('cutlist')}>
+              Cut list
+            </button>
+          </div>
         </div>
       </header>
 
@@ -89,6 +106,7 @@ export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
               materials={job.materials}
               edgingMaterials={job.edgingMaterials}
               settings={job.settings}
+              unitsCollapseGeneration={unitsCollapseGeneration}
               onChange={(updated) =>
                 onChange({ ...job, units: job.units.map((u) => (u.id === unit.id ? updated : u)) })
               }
@@ -99,7 +117,7 @@ export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
           {job.units.length > 0 && (
             <div className="units-footer">
               <button type="button" className="btn btn-secondary" onClick={addUnit}>+ Add another unit</button>
-              <button type="button" className="btn btn-primary" onClick={() => setTab('cutlist')}>View cut list →</button>
+              <button type="button" className="btn btn-primary" onClick={() => selectTab('cutlist')}>View cut list →</button>
             </div>
           )}
         </>

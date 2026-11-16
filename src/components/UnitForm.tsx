@@ -61,6 +61,8 @@ interface Props {
   materials: Material[];
   edgingMaterials: EdgingMaterial[];
   settings: Job['settings'];
+  /** Bumped by parent to collapse unit settings (e.g. leave Units tab or Collapse all). */
+  unitsCollapseGeneration: number;
   onChange: (unit: Unit) => void;
   onRemove: () => void;
 }
@@ -108,8 +110,22 @@ function EdgingTypeSelect({
   );
 }
 
-export function UnitForm({ job, unit, materials, edgingMaterials, settings, onChange, onRemove }: Props) {
+export function UnitForm({
+  job,
+  unit,
+  materials,
+  edgingMaterials,
+  settings,
+  unitsCollapseGeneration,
+  onChange,
+  onRemove,
+}: Props) {
   const [presets, setPresets] = useState(loadPresets);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    setSettingsOpen(false);
+  }, [unitsCollapseGeneration]);
   const layoutUnit = resolveFrontLayout(unit);
   const activeDrawerRows = activeDrawers(layoutUnit.drawers);
   const hasActiveDrawers = activeDrawerRows.length > 0;
@@ -372,7 +388,11 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         <p className="hint qty-note">Cut list will multiply all parts × {unit.unitQty} identical cupboards.</p>
       )}
 
-      <details className="detail-breakdown collapsible-section collapsible-subsection unit-settings-details" open={isOnCutList}>
+      <details
+        className="detail-breakdown collapsible-section collapsible-subsection unit-settings-details"
+        open={settingsOpen}
+        onToggle={(e) => setSettingsOpen(e.currentTarget.open)}
+      >
         <summary>
           Unit settings — {unit.width} × {unit.height} × {unit.depth} mm
           {!isOnCutList && <span className="unit-settings-badge">inactive</span>}
