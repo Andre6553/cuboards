@@ -17,6 +17,8 @@ import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHei
 import { fillersFollowSideMaterial, resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
 import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
 import { defaultBedroomWallExtra } from '../lib/extrasRules';
+import { usesBedroomExtrasForm, usesCustomExtrasForm } from '../lib/customExtrasRules';
+import { ExtraCustomPartsForm } from './ExtraCustomPartsForm';
 import { ExtraInnerForm } from './ExtraInnerForm';
 import { unitAccentColor } from '../lib/unitAccentColor';
 import {
@@ -1633,41 +1635,57 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         >
           <p className="hint">
             {unit.extrasEnabled
-              ? 'Inner carcass (sides/bottom/top) plus optional drawers that sit in their own typed carcass — floor-unit drawer calc with runner clearance. Pick board per part. No kickplate or feet.'
+              ? usesBedroomExtrasForm(unit)
+                ? 'Bedroom inner boxes: sides/bottom, optional top, shelves, division, drawer stacks (typed drawer carcass). No kickplate or feet on the extra.'
+                : 'Kitchen / wall: add custom doors, panels, and fillers with your own length, width, qty, board, edging pattern, and tape.'
               : 'Extras are off for this unit — nothing from this section is added to the cut list. Tick Include extras to enable.'}
           </p>
-          {(unit.extras ?? []).map((extra, i) => (
-            <ExtraInnerForm
-              key={extra.id}
-              index={i}
+          {usesBedroomExtrasForm(unit) &&
+            (unit.extras ?? []).map((extra, i) => (
+              <ExtraInnerForm
+                key={extra.id}
+                index={i}
+                job={job}
+                unit={unit}
+                extra={extra}
+                materials={materials}
+                edgingMaterials={edgingMaterials}
+                settings={settings}
+                disabled={unit.extrasEnabled !== true}
+                onChange={(next) => {
+                  const extras = [...(unit.extras ?? [])];
+                  extras[i] = next;
+                  onChange({ ...unit, extras });
+                }}
+                onRemove={() => {
+                  onChange({ ...unit, extras: (unit.extras ?? []).filter((e) => e.id !== extra.id) });
+                }}
+              />
+            ))}
+          {usesBedroomExtrasForm(unit) && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={unit.extrasEnabled !== true}
+              onClick={() => {
+                const extra = defaultBedroomWallExtra(unit, defaultEdgingForMaterial(unit.carcass.leftMaterialId));
+                onChange({ ...unit, extras: [...(unit.extras ?? []), extra] });
+              }}
+            >
+              + Add extra inner unit
+            </button>
+          )}
+          {usesCustomExtrasForm(unit) && (
+            <ExtraCustomPartsForm
               job={job}
               unit={unit}
-              extra={extra}
+              parts={unit.customExtras ?? []}
               materials={materials}
               edgingMaterials={edgingMaterials}
-              settings={settings}
               disabled={unit.extrasEnabled !== true}
-              onChange={(next) => {
-                const extras = [...(unit.extras ?? [])];
-                extras[i] = next;
-                onChange({ ...unit, extras });
-              }}
-              onRemove={() => {
-                onChange({ ...unit, extras: (unit.extras ?? []).filter((e) => e.id !== extra.id) });
-              }}
+              onChange={(customExtras) => onChange({ ...unit, customExtras })}
             />
-          ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            disabled={unit.extrasEnabled !== true}
-            onClick={() => {
-              const extra = defaultBedroomWallExtra(unit, defaultEdgingForMaterial(unit.carcass.leftMaterialId));
-              onChange({ ...unit, extras: [...(unit.extras ?? []), extra] });
-            }}
-          >
-            + Add extra inner unit
-          </button>
+          )}
         </CollapsibleSection>
 
       {presets.length > 0 && (

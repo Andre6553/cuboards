@@ -19,6 +19,7 @@ import {
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit } from '../lib/frontLayout';
 import { extraDrawerCarcassSize } from '../lib/extraDrawerCarcass';
+import { edgingMaterialIdForPattern, NO_EDGING_MATERIAL_ID } from '../lib/edgingPatternSync';
 import { extraLayoutUnit } from '../lib/extrasRules';
 import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
 import { NumberInput } from './NumberInput';
@@ -29,21 +30,28 @@ function EdgingSelect({
   fallback,
   edgingMaterials,
   disabled,
+  pattern,
   onChange,
 }: {
   value: string;
   fallback: string;
   edgingMaterials: EdgingMaterial[];
   disabled?: boolean;
+  pattern?: EdgingPattern;
   onChange: (id: string) => void;
 }) {
+  const noEdging = pattern === 'none';
   return (
-    <select disabled={disabled} value={value || fallback} onChange={(e) => onChange(e.target.value)}>
-      {edgingMaterials.map((e) => (
-        <option key={e.id} value={e.id}>
-          {e.name} ({e.thickness} mm)
-        </option>
-      ))}
+    <select disabled={disabled || noEdging} value={noEdging ? NO_EDGING_MATERIAL_ID : value || fallback} onChange={(e) => onChange(e.target.value)}>
+      {noEdging ? (
+        <option value={NO_EDGING_MATERIAL_ID}>No edging</option>
+      ) : (
+        edgingMaterials.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.name} ({e.thickness} mm)
+          </option>
+        ))
+      )}
     </select>
   );
 }
@@ -133,8 +141,44 @@ export function ExtraInnerForm({
     onChange(next);
   };
 
+  const patternMaterialFields: Partial<Record<keyof BedroomWallExtra, keyof BedroomWallExtra>> = {
+    edgingPattern: 'edgingMaterialId',
+    topEdgingPattern: 'topEdgingMaterialId',
+    shelfEdgingPattern: 'shelfEdgingMaterialId',
+    divisionEdgingPattern: 'divisionEdgingMaterialId',
+    fillerEdgingPattern: 'fillerEdgingMaterialId',
+  };
+
+  const defaultEdgingForPatternField = (patternField: keyof BedroomWallExtra): string => {
+    switch (patternField) {
+      case 'topEdgingPattern':
+        return defaultEdgingForMaterial(extra.topMaterialId || extra.boxMaterialId);
+      case 'shelfEdgingPattern':
+        return defaultEdgingForMaterial(extra.shelfMaterialId || unit.carcass.shelfMaterialId);
+      case 'divisionEdgingPattern':
+        return defaultEdgingForMaterial(extra.divisionMaterialId);
+      case 'fillerEdgingPattern':
+        return defaultEdgingForMaterial(extra.fillerMaterialId);
+      default:
+        return defaultEdgingForMaterial(extra.boxMaterialId);
+    }
+  };
+
   const setField = <K extends keyof BedroomWallExtra>(field: K, value: BedroomWallExtra[K]) => {
-    const next = { ...extra, [field]: value };
+    let next = { ...extra, [field]: value };
+    const materialField = patternMaterialFields[field];
+    if (materialField && typeof value === 'string') {
+      const pattern = value as EdgingPattern;
+      const fallback = defaultEdgingForPatternField(field);
+      next = {
+        ...next,
+        [materialField]: edgingMaterialIdForPattern(
+          pattern,
+          next[materialField] as string | undefined,
+          fallback,
+        ),
+      } as BedroomWallExtra;
+    }
     patch(
       next,
       field === 'width' ||
@@ -243,6 +287,7 @@ export function ExtraInnerForm({
         <label>
           Box edging type
           <EdgingSelect
+            pattern={extra.edgingPattern}
             value={extra.edgingMaterialId}
             fallback={edgeFallback}
             edgingMaterials={edgingMaterials}
@@ -378,6 +423,7 @@ export function ExtraInnerForm({
           Top edging type
           <EdgingSelect
             disabled={!extra.includeTop}
+            pattern={extra.topEdgingPattern}
             value={extra.topEdgingMaterialId}
             fallback={edgeFallback}
             edgingMaterials={edgingMaterials}
@@ -522,6 +568,7 @@ export function ExtraInnerForm({
           Shelf edging type
           <EdgingSelect
             disabled={!extra.shelvesEnabled}
+            pattern={extra.shelfEdgingPattern}
             value={extra.shelfEdgingMaterialId}
             fallback={edgeFallback}
             edgingMaterials={edgingMaterials}
@@ -597,6 +644,7 @@ export function ExtraInnerForm({
           Division edging type
           <EdgingSelect
             disabled={!extra.divisionEnabled}
+            pattern={extra.divisionEdgingPattern}
             value={extra.divisionEdgingMaterialId}
             fallback={edgeFallback}
             edgingMaterials={edgingMaterials}

@@ -50,6 +50,8 @@ export const RUNNER_PRESETS = BRAND_RUNNER_PRESETS;
 export const EDGING_LABELS: Record<string, string> = {
   '1_long': '1 long edge',
   '2_long': '2 long edges',
+  '1_short': '1 short edge',
+  '2_short': '2 short edges',
   '1_long_1_short': '1 long + 1 short',
   '1_long_2_short': '1 long + 2 short',
   '2_long_1_short': '2 long + 1 short',

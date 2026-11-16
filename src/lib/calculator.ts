@@ -68,6 +68,7 @@ import {
   extrasForCutList,
   normalizeBedroomWallExtra,
 } from './extrasRules';
+import { customExtraBoardCuts, customExtrasForCutList } from './customExtrasRules';
 import {
   estimateSheetsFromArea,
   formatSheetCount,
@@ -256,6 +257,7 @@ function pushBoardPiece(
     category: CutPieceCategory;
     materialId: string;
     partName: string;
+    unitId: string;
     unitName: string;
     width: number;
     length: number;
@@ -298,6 +300,7 @@ function pushBoardPiece(
     materialId: opts.materialId,
     materialName: materialName(job.materials, opts.materialId),
     partName: opts.partName,
+    unitId: opts.unitId,
     unitName: opts.unitName,
     width: roundMm(sized.width),
     length: roundMm(sized.length),
@@ -345,6 +348,7 @@ function calcCarcass(
       category: 'carcass',
       materialId,
       partName,
+      unitId: unit.id,
       unitName: unit.name,
       width: w,
       length: l,
@@ -445,7 +449,8 @@ function calcCarcass(
         category: 'carcass',
         materialId: fillerMatId,
         partName: 'Side filler',
-        unitName: unit.name,
+        unitId: unit.id,
+      unitName: unit.name,
         width: fw,
         length: sideH,
         qty: totalQty,
@@ -479,7 +484,8 @@ function calcCarcass(
         category: 'carcass',
         materialId: fillerMatId,
         partName: 'Top filler',
-        unitName: unit.name,
+        unitId: unit.id,
+      unitName: unit.name,
         width: fw,
         length: topW,
         qty: totalQty,
@@ -525,6 +531,7 @@ function calcCarcass(
       materialId: MASONITE_ID,
       materialName: `${job.masonite.name} — ${job.masonite.colour}`,
       partName: 'Carcass back (masonite)',
+      unitId: unit.id,
       unitName: unit.name,
       width: Math.round(backW),
       length: Math.round(backH),
@@ -593,6 +600,7 @@ function calcSpiceCupboard(
       category: 'carcass',
       materialId,
       partName,
+      unitId: unit.id,
       unitName: unit.name,
       width: w,
       length: l,
@@ -679,7 +687,8 @@ function calcKitchenPlinth(
         category: 'carcass',
         materialId: plinth.kickplateMaterialId,
         partName: kp.partName,
-        unitName: unit.name,
+        unitId: unit.id,
+      unitName: unit.name,
         width: kp.width,
         length: kp.length,
         qty: mult,
@@ -763,6 +772,7 @@ function calcDoors(
       category: 'door',
       materialId: door.materialId,
       partName: 'Door',
+      unitId: unit.id,
       unitName: unit.name,
       width: w,
       length: h,
@@ -843,7 +853,8 @@ function calcDrawers(
         category: 'drawer',
         materialId: frontMaterialId,
         partName: pname('Drawer front'),
-        unitName: unit.name,
+        unitId: unit.id,
+      unitName: unit.name,
         width: facadeW,
         length: facadeH,
         qty: frontPieceQty,
@@ -884,7 +895,8 @@ function calcDrawers(
         category: 'drawer',
         materialId,
         partName,
-        unitName: unit.name,
+        unitId: unit.id,
+      unitName: unit.name,
         width: w,
         length: l,
         qty: pieceQty,
@@ -924,6 +936,7 @@ function calcDrawers(
       category: 'drawer',
       materialId: boxMaterialId,
       partName: pname('Drawer side'),
+      unitId: unit.id,
       unitName: unit.name,
       width: sideDepth,
       length: boxH,
@@ -969,7 +982,8 @@ function calcDrawers(
         materialId: MASONITE_ID,
         materialName: `${job.masonite.name} — ${job.masonite.colour}`,
         partName: pname('Drawer bottom (masonite)'),
-        unitName: unit.name,
+        unitId: unit.id,
+      unitName: unit.name,
         width: Math.round(bottomMasonite.width),
         length: Math.round(bottomMasonite.length),
         qty: drawerMult,
@@ -1023,6 +1037,55 @@ function extraCutMaterialId(
   return unit.carcass.leftMaterialId;
 }
 
+function calcCustomExtras(
+  unit: Unit,
+  job: Job,
+  pieces: CutPiece[],
+  edging: EdgingLine[],
+  mult: number,
+) {
+  const parts = customExtrasForCutList(unit);
+  if (parts.length === 0) return;
+  for (const cut of customExtraBoardCuts(parts)) {
+    const totalQty = cut.qty * mult;
+    if (totalQty <= 0) continue;
+    const materialId = cut.materialId || unit.carcass.leftMaterialId;
+    const grain =
+      cut.grainHint === 'vertical' && materialHasGrain(job.materials, materialId) ? 'vertical' : 'none';
+    const category = cut.kind === 'door' ? 'door' : 'carcass';
+    pushBoardPiece(job, pieces, {
+      category,
+      materialId,
+      partName: cut.partName,
+      unitId: unit.id,
+      unitName: unit.name,
+      width: cut.width,
+      length: cut.length,
+      qty: totalQty,
+      grain,
+      notes: joinNotes('Extras · user size', mult > 1 ? `${mult} cupboards` : undefined),
+      edgingPattern: cut.edgingPattern,
+      edgingMaterialId: cut.edgingMaterialId,
+      longAlong: cut.longAlong,
+    });
+    if (cut.edgingPattern !== 'none') {
+      addEdging(
+        edging,
+        job,
+        materialId,
+        cut.partName,
+        unit.name,
+        cut.edgingPattern,
+        cut.width,
+        cut.length,
+        totalQty,
+        cut.edgingMaterialId,
+        cut.longAlong,
+      );
+    }
+  }
+}
+
 function calcBedroomWallExtras(
   unit: Unit,
   job: Job,
@@ -1055,7 +1118,8 @@ function calcBedroomWallExtras(
         category: 'carcass',
         materialId,
         partName: cut.partName,
-        unitName: unit.name,
+        unitId: unit.id,
+      unitName: unit.name,
         width: cut.width,
         length: cut.length,
         qty: totalQty,
@@ -1507,6 +1571,7 @@ export function generateCutList(job: Job): CutListResult {
     calcDoors(layoutUnit, job, pieces, edging, hardware, mult);
     calcDrawers(layoutUnit, job, pieces, edging, hardware, mult);
     calcBedroomWallExtras(layoutUnit, job, pieces, edging, hardware, mult);
+    calcCustomExtras(layoutUnit, job, pieces, edging, mult);
   }
 
   const boardPieces = pieces.filter((p) => p.materialId !== MASONITE_ID);

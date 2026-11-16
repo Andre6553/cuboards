@@ -296,6 +296,7 @@ export function migrateJob(job: Job): Job {
         doors: (u.doors ?? []).map((d) => migrateDoor(d, job.materials ?? [], edgingMaterials)),
         drawers: (u.drawers ?? []).map((d) => migrateDrawer(d, u, job.materials ?? [], edgingMaterials)),
         extrasEnabled: u.extrasEnabled === true,
+        customExtras: u.customExtras ?? [],
         extras: (u.extras ?? []).map((e) =>
           migrateExtra(
             e,

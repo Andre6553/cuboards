@@ -24,6 +24,7 @@ import {
   filterSheetMapGroupsForOrderSupplier,
   listOrderSuppliersOnJob,
 } from '../lib/orderSupplier';
+import { buildPerUnitBreakdownSections } from '../lib/perUnitBreakdown';
 import type { CutListGroup, Job } from '../types';
 
 interface Props {
@@ -203,6 +204,10 @@ export function CutListView({ job }: Props) {
   const showPricingDetail = !factory;
   const showTechnical = mode === 'full';
   const result = generateCutList(job);
+  const perUnitSections = useMemo(
+    () => buildPerUnitBreakdownSections(job, result.pieces),
+    [job, result.pieces],
+  );
   const orderSuppliersOnJob = useMemo(
     () => listOrderSuppliersOnJob(job, result.pieces),
     [job, result.pieces],
@@ -735,36 +740,64 @@ export function CutListView({ job }: Props) {
           {showTechnical && (
           <details className="detail-breakdown">
             <summary>Per-unit breakdown</summary>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Section</th>
-                    <th>Material</th>
-                    <th>Unit</th>
-                    <th>Part</th>
-                    <th>L × H (mm)</th>
-                    <th>Qty</th>
-                    <th>Grain</th>
-                    <th>Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.pieces.map((p, i) => (
-                    <tr key={i}>
-                      <td>{p.category}</td>
-                      <td>{p.materialName}</td>
-                      <td>{p.unitName}</td>
-                      <td>{p.partName}</td>
-                      <td>{formatCutListDimensions(p.width, p.length, p.longAlong ?? 'length')}</td>
-                      <td>{p.qty}</td>
-                      <td>{grainLabel(p.grain)}</td>
-                      <td>{p.notes}{p.bottomType ? ` · ${p.bottomType}` : ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <p className="hint">
+              One block per cupboard line on the job — every part size listed for that unit only. The board cut list
+              above merges identical sizes across units by material; this view does not.
+            </p>
+            {perUnitSections.length === 0 ? (
+              <p className="hint">No parts — set cupboard quantity to 1 or more on your units.</p>
+            ) : (
+              perUnitSections.map((section) => (
+                <div key={section.unitId} className="per-unit-breakdown-block">
+                  <h4 className="per-unit-breakdown-title">
+                    {section.unitName}
+                    <span className="per-unit-breakdown-meta">
+                      {' · '}
+                      {section.unitTypeLabel}
+                      {' · '}
+                      Qty {section.unitQty}
+                      {' · '}
+                      {section.sizeLabel}
+                    </span>
+                  </h4>
+                  {section.pieces.length === 0 ? (
+                    <p className="hint">No cut parts for this unit.</p>
+                  ) : (
+                    <div className="table-wrap">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Section</th>
+                            <th>Material</th>
+                            <th>Part</th>
+                            <th>L × H (mm)</th>
+                            <th>Qty</th>
+                            <th>Grain</th>
+                            <th>Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {section.pieces.map((p, i) => (
+                            <tr key={`${p.partName}-${p.width}-${p.length}-${p.materialId}-${i}`}>
+                              <td>{p.category}</td>
+                              <td>{p.materialName}</td>
+                              <td>{p.partName}</td>
+                              <td>{formatCutListDimensions(p.width, p.length, p.longAlong ?? 'length')}</td>
+                              <td>{p.qty}</td>
+                              <td>{grainLabel(p.grain)}</td>
+                              <td>
+                                {p.notes}
+                                {p.bottomType ? ` · ${p.bottomType}` : ''}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </details>
           )}
         </>

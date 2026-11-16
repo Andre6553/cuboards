@@ -1885,6 +1885,22 @@ fieldset.sub-card:disabled {
   margin-bottom: 0.5rem;
 }
 
+.per-unit-breakdown-block {
+  margin-top: 1.25rem;
+}
+
+.per-unit-breakdown-title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.per-unit-breakdown-meta {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .collapsible-section {
   margin-top: 0;
 }

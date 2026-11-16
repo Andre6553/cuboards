@@ -14,6 +14,8 @@ export type SheetPurchaseUnit = 'full' | 'half' | 'third' | 'quarter';
 export type EdgingPattern =
   | '1_long'
   | '2_long'
+  | '1_short'
+  | '2_short'
   | '1_long_1_short'
   | '1_long_2_short'
   | '2_long_1_short'
@@ -422,8 +424,26 @@ export interface SpiceCupboardConfig {
   runnerSideClearanceMm?: number;
 }
 
+/** Kitchen base / wall unit — manual extra cuts (doors, panels, fillers). */
+export type CustomExtraPartKind = 'door' | 'panel' | 'filler';
+
+export interface CustomExtraPart {
+  id: string;
+  kind: CustomExtraPartKind;
+  /** Optional note on the cut list (e.g. “LH end”). */
+  label: string;
+  /** Cut-list length (mm). */
+  length: number;
+  /** Cut-list width (mm). */
+  width: number;
+  qty: number;
+  materialId: string;
+  edgingPattern: EdgingPattern;
+  edgingMaterialId: string;
+}
+
 /**
- * Inner box built inside a bedroom wall carcass (Extras section).
+ * Inner box built inside a bedroom cupboard (Extras section).
  * Shelf and division sizes are user-typed, not derived from the outer carcass.
  */
 export interface BedroomWallExtra {
@@ -507,8 +527,10 @@ export interface Unit {
   drawers: DrawerConfig[];
   /** Off = extras form disabled and cut-list logic skipped. */
   extrasEnabled?: boolean;
-  /** Bedroom wall mount only — inner boxes, shelves, division panels, drawer stacks. */
+  /** Bedroom — inner boxes, shelves, division, drawer stacks. */
   extras?: BedroomWallExtra[];
+  /** Kitchen base / wall — custom doors, panels, and fillers. */
+  customExtras?: CustomExtraPart[];
 }
 
 export interface UnitPreset {
@@ -557,6 +579,8 @@ export interface CutPiece {
   materialId: string;
   materialName: string;
   partName: string;
+  /** Job unit row id — used to group per-unit breakdown (not by unit type / material). */
+  unitId: string;
   unitName: string;
   width: number;
   length: number;

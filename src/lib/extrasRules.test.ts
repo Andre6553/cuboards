@@ -203,9 +203,16 @@ describe('extrasForCutList', () => {
       extrasEnabled: true,
       extras: [extraRow],
     } as Unit;
-    expect(extrasForCutList(kitchenOn)).toHaveLength(1);
+    expect(extrasForCutList(kitchenOn)).toEqual([]);
     expect(extrasForCutList(wallOff)).toEqual([]);
-    expect(extrasForCutList(wallOn)).toHaveLength(1);
+    expect(extrasForCutList(wallOn)).toEqual([]);
+    expect(
+      extrasForCutList({
+        type: 'bedroom',
+        extrasEnabled: true,
+        extras: [extraRow],
+      } as Unit),
+    ).toHaveLength(1);
   });
 });
 

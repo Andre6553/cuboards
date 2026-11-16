@@ -22,10 +22,16 @@ export function edgingPatternToFactoryTicks(pattern: EdgingPattern): FactoryEdgi
       return { l1: true, l2: false, b1: false, b2: false };
     case '2_long':
       return { l1: true, l2: true, b1: false, b2: false };
+    case '1_short':
+      return { l1: false, l2: false, b1: true, b2: false };
+    case '2_short':
+      return { l1: false, l2: false, b1: true, b2: true };
     case '1_long_1_short':
       return { l1: true, l2: false, b1: true, b2: false };
     case '1_long_2_short':
       return { l1: true, l2: false, b1: true, b2: true };
+    case '2_long_1_short':
+      return { l1: true, l2: true, b1: true, b2: false };
     case '2_long_2_short':
       return { l1: true, l2: true, b1: true, b2: true };
     default:

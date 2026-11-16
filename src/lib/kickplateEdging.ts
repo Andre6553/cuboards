@@ -30,6 +30,10 @@ export function kickplateEdgingFromLegacyPattern(pattern?: EdgingPattern): Kickp
       return { long: 2, short: 1 };
     case '2_long_2_short':
       return { long: 2, short: 2 };
+    case '1_short':
+      return { long: 0, short: 1 };
+    case '2_short':
+      return { long: 0, short: 2 };
     case '1_long':
     default:
       return { long: 1, short: 0 };
@@ -47,8 +51,8 @@ export function edgeCountsToPattern(long = 0, short = 0): EdgingPattern {
   if (l === 1 && s === 2) return '1_long_2_short';
   if (l === 1 && s === 1) return '1_long_1_short';
   if (l === 1) return '1_long';
-  if (s === 2) return '1_long_2_short';
-  if (s === 1) return '1_long_1_short';
+  if (s === 2) return '2_short';
+  if (s === 1) return '1_short';
   return 'none';
 }
 

@@ -276,6 +276,7 @@ export function extrasSectionEnabled(unit: Pick<Unit, 'extrasEnabled'>): boolean
 
 export function extrasForCutList(unit: Unit): BedroomWallExtra[] {
   if (!extrasSectionEnabled(unit)) return [];
+  if (unit.type !== 'bedroom') return [];
   return unit.extras ?? [];
 }
 
