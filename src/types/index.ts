@@ -4,7 +4,7 @@ export type UnitType = 'kitchen_base' | 'wall' | 'bedroom';
 export type BottomType = 'solid' | 'masonite';
 export type BackingType = 'none' | 'masonite' | 'melamine';
 export type CountertopType = 'granite' | 'wooden';
-export type MountType = 'floor' | 'wall';
+export type MountType = 'floor' | 'wall' | 'spice';
 export type KickplateType = 'wood' | 'plastic';
 export type KickplateCoverage = 'front' | 'front-one-side' | 'front-both-sides';
 export type KickplateSide = 'left' | 'right';
@@ -16,6 +16,7 @@ export type EdgingPattern =
   | '2_long'
   | '1_long_1_short'
   | '1_long_2_short'
+  | '2_long_1_short'
   | '2_long_2_short'
   | 'none';
 
@@ -326,6 +327,11 @@ export interface DoorConfig {
   hinge: DoorHinge;
   /** Factory cut list: drill hinge holes (default yes). */
   factoryHingeHoles?: boolean;
+  /**
+   * Hinge cups per door leaf. Unset = default from finished height
+   * (2 up to 1200 mm, 4 above). Also the hinge qty on the quote.
+   */
+  hingeHoleCount?: number;
 }
 
 export interface DrawerGaps {
@@ -378,6 +384,12 @@ export interface DrawerConfig {
   backClearance: number;
 }
 
+/** Spice mount (`carcass.mountType === 'spice'`) — pull-out interior panels. */
+export interface SpiceCupboardConfig {
+  frontHeightMm: number;
+  runnerSideClearanceMm?: number;
+}
+
 export interface Unit {
   id: string;
   name: string;
@@ -388,6 +400,8 @@ export interface Unit {
   unitQty: number;
   carcass: CarcassConfig;
   plinth?: KitchenPlinthConfig;
+  /** When mount is spice cupboard. */
+  spice?: SpiceCupboardConfig;
   doors: DoorConfig[];
   drawers: DrawerConfig[];
 }
@@ -453,6 +467,8 @@ export interface CutPiece {
   kickplateEdgingCounts?: { long: 0 | 1 | 2; short: 0 | 1 | 2 };
   /** Doors only — factory Holes column. */
   factoryHingeHoles?: boolean;
+  /** Hinge cups per door leaf when the factory drills them. */
+  factoryHingeHoleCount?: number;
 }
 
 export interface EdgingLine {

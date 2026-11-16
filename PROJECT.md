@@ -29,6 +29,8 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-11-16:** Door **hinge holes** dropdown (shown when Factory drill is on). Default **2** if finished door height ≤ 1200 mm, **4** if taller. That count is the hinge qty on the quote and the factory Holes column / BOOR hole count. Options 2–6 (`hingeHoleCount` on the door).
+- **2026-11-09:** **Spice cupboard** mount — standard carcass (no shelf), normal top fillers. Cut list: front/back (runner bay width × user height, default 600 max carcass H, 2L+1S), split, L/R shelves, bottom, 2× 100×bottom-width fillers (`spiceCupboardRules.ts`).
 - **2026-10-27:** **Full cut list cost estimate** — **Wood material** (boards, edging, masonite, SMEL/SHB/BOOR) vs **Hardware** subtotals, then install + grand total; same grouping on full PDF. Masonite sheet count uses **layout/area calc** by default (optional checkbox to match cut-house 1× HB PDF).
 - **2026-10-27:** **Cut-house quote lines** (Prices → Sheet settings): SMEL / SHB / BOOR + edging order % — separate from **Gelmar hardware** on the quote. Incl-VAT integer line math + R1 incl snap for whole-rand ex (optional 1× HB masonite).
 - **2026-10-27:** **Order from** cut house per board (+ masonite, job default) — Factory tab filter + PDF per supplier (`factory-cutlist-{ref}-{supplier}-{date}.pdf`); sheet maps filtered to match.

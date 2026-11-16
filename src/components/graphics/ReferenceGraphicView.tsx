@@ -10,6 +10,7 @@ interface Props extends GraphicProps {
 /** Displays the installer's reference PNG for the selected view and shelf variant. */
 export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Props) {
   const src = getReferenceImage(view, shelfVariant);
+  const spice = shelfVariant === 'spice';
   const kh = isKitchenBase(unit.type) && unit.plinth ? unit.plinth.kickplateHeight : 0;
   const internalW = unit.width - 2 * thickness;
   const internalD = unit.depth - 2 * thickness;
@@ -18,17 +19,26 @@ export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Pr
 
   return (
     <div className="reference-viewer">
-      <img
-        src={src}
-        alt={`${view} carcass reference — ${shelfVariant}`}
-        className="reference-image"
-      />
-      <div className="reference-dims">
-        <span className="ref-dim ref-dim-w">{unit.width} mm</span>
-        <span className="ref-dim ref-dim-h">{unit.height} mm</span>
-        <span className="ref-dim ref-dim-d">{unit.depth} mm</span>
-      </div>
+      {src ? (
+        <img
+          src={src}
+          alt={spice ? 'Spice cupboard 3D' : `${view} carcass reference — ${shelfVariant}`}
+          className="reference-image"
+        />
+      ) : (
+        <p className="ref-note spice-view-note">Spice cupboard drawing is on the 3D view.</p>
+      )}
+      {src && !spice && (
+        <div className="reference-dims">
+          <span className="ref-dim ref-dim-w">{unit.width} mm</span>
+          <span className="ref-dim ref-dim-h">{unit.height} mm</span>
+          <span className="ref-dim ref-dim-d">{unit.depth} mm</span>
+        </div>
+      )}
       <div className="reference-meta">
+        {spice && view === '3d' && (
+          <span>Spice mount — carcass without shelf; spice panels on cut list</span>
+        )}
         {previewHasShelf && (
           <span>
             {unit.carcass.shelfQty > 0
@@ -37,7 +47,7 @@ export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Pr
             {' · '}internal {internalW} × {internalD} mm
           </span>
         )}
-        {!previewHasShelf && configHasShelf && (
+        {!spice && !previewHasShelf && configHasShelf && (
           <span className="ref-note">Cut list has {unit.carcass.shelfQty} shelf{unit.carcass.shelfQty > 1 ? 's' : ''} — showing no-shelf graphic</span>
         )}
         {kh > 0 && <span>Kick {kh} mm</span>}

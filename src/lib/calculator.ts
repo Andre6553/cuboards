@@ -1,4 +1,5 @@
-import { defaultPlinth, EDGING_LABELS, isFloorUnit, isKitchenBase } from './constants';
+import { defaultPlinth, EDGING_LABELS, isFloorUnit, isKitchenBase, isSpiceCupboard } from './constants';
+import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig } from './spiceCupboardRules';
 import {
   getHingeByIdForJob,
   getRunnerByIdForJob,
@@ -19,7 +20,7 @@ import {
   resolveKickplateEdgingCounts,
   type KickplateEdgingCounts,
 } from './kickplateEdging';
-import { doorPanelHeight, doorPanelWidth, DEFAULT_DOOR_GAPS, hingesPerDoorLeaf } from './doorRules';
+import { doorPanelHeight, doorPanelWidth, DEFAULT_DOOR_GAPS, hingesPerDoorLeafForDoor } from './doorRules';
 import {
   drawerFrontHeight,
   drawerFrontWidth,
@@ -253,6 +254,7 @@ function pushBoardPiece(
     bottomType?: CutPiece['bottomType'];
     longAlong?: LongAlong;
     factoryHingeHoles?: boolean;
+    factoryHingeHoleCount?: number;
     kickplateEdgingCounts?: KickplateEdgingCounts;
   },
 ) {
@@ -297,6 +299,7 @@ function pushBoardPiece(
       ? { long: kickCounts.long as 0 | 1 | 2, short: kickCounts.short as 0 | 1 | 2 }
       : undefined,
     factoryHingeHoles: opts.factoryHingeHoles,
+    factoryHingeHoleCount: opts.factoryHingeHoleCount,
   });
 }
 
@@ -390,7 +393,8 @@ function calcCarcass(
     addEdgedPiece('Extra bottom (wall)', c.bottomMaterialId, D, internalW, 1, 'none', 'Wall unit — second bottom panel', '1_long', c.bottomEdgingMaterialId);
   }
 
-  for (let i = 0; i < c.shelfQty; i++) {
+  const shelfCount = isSpiceCupboard(unit) ? 0 : c.shelfQty;
+  for (let i = 0; i < shelfCount; i++) {
     addEdgedPiece(
       `Shelf ${i + 1}`,
       c.shelfMaterialId,
@@ -467,6 +471,103 @@ function calcCarcass(
       'length',
     );
   }
+}
+
+function calcSpiceCupboard(
+  unit: Unit,
+  job: Job,
+  pieces: CutPiece[],
+  edging: EdgingLine[],
+  mult: number,
+) {
+  if (!isSpiceCupboard(unit)) return;
+
+  const T = job.settings.thickness;
+  const { width: W, height: H, depth: D, carcass: c } = unit;
+  const spiceConfig = unit.spice ?? defaultSpiceCupboardConfig(H);
+  const sizes = calcSpiceCupboardSizes(W, H, D, T, spiceConfig);
+  const matId = c.shelfMaterialId;
+  const edgingMatId = c.shelfEdgingMaterialId;
+  const fillerMatId = resolveFillerMaterial(c, job.materials);
+  const fillerEdgingMatId = c.fillerEdgingMaterialId;
+  const fillerNote = fillersFollowSideMaterial(c, job.materials) ? 'Matches side material' : '';
+  const widthNote = `${sizes.frontWidth} = ${W} − 2×${T} − 2×${sizes.runnerSideClearance} runner`;
+
+  const addEdged = (
+    partName: string,
+    w: number,
+    l: number,
+    qty: number,
+    pattern: EdgingPattern,
+    notes: string,
+    longAlong: LongAlong = 'length',
+    materialId: string = matId,
+    edgingMaterialId: string = edgingMatId,
+  ) => {
+    const totalQty = qty * mult;
+    if (totalQty <= 0) return;
+    pushBoardPiece(job, pieces, {
+      category: 'carcass',
+      materialId,
+      partName,
+      unitName: unit.name,
+      width: w,
+      length: l,
+      qty: totalQty,
+      grain: 'none',
+      notes: mult > 1 ? joinNotes(notes, `${mult} cupboards`) : notes,
+      edgingPattern: pattern,
+      edgingMaterialId,
+      longAlong,
+    });
+    if (pattern !== 'none') {
+      addEdging(edging, job, materialId, partName, unit.name, pattern, w, l, totalQty, edgingMaterialId, longAlong);
+    }
+  };
+
+  addEdged('Spice front', sizes.frontWidth, sizes.frontHeight, 1, '2_long_1_short', widthNote);
+  addEdged('Spice back', sizes.frontWidth, sizes.frontHeight, 1, '2_long_1_short', 'Same as spice front');
+  addEdged(
+    'Spice split (middle)',
+    sizes.splitWidth,
+    sizes.splitHeight,
+    1,
+    '1_long',
+    `H ${sizes.splitHeight} = spice front − ${T} · depth ${sizes.splitWidth}`,
+    'width',
+  );
+  addEdged('Spice shelf (left)', sizes.shelfDepth, sizes.shelfWidth, 1, '1_long', 'Left of split');
+  addEdged('Spice shelf (right)', sizes.shelfDepth, sizes.shelfWidth, 1, '1_long', 'Right of split');
+  addEdged(
+    'Spice bottom',
+    sizes.bottomDepth,
+    sizes.bottomWidth,
+    1,
+    '1_long',
+    `Depth ${sizes.bottomDepth} = carcass ${D} − ${T}`,
+  );
+  addEdged(
+    'Spice filler (left)',
+    sizes.fillerHeight,
+    sizes.fillerWidth,
+    1,
+    '2_long',
+    joinNotes(fillerNote, '100 × spice bottom width · 2 long'),
+    'length',
+    fillerMatId,
+    fillerEdgingMatId,
+  );
+  addEdged(
+    'Spice filler (right)',
+    sizes.fillerHeight,
+    sizes.fillerWidth,
+    1,
+    '2_long',
+    joinNotes(fillerNote, '100 × spice bottom width · 2 long'),
+    'length',
+    fillerMatId,
+    fillerEdgingMatId,
+  );
 }
 
 function calcKitchenPlinth(
@@ -571,6 +672,10 @@ function calcDoors(
     const totalQty = door.qty * mult;
     if (totalQty <= 0 || w <= 0 || h <= 0) continue;
 
+    const finishedH = h;
+    const perLeaf = hingesPerDoorLeafForDoor(door);
+    const drillHoles = door.factoryHingeHoles !== false;
+
     pushBoardPiece(job, pieces, {
       category: 'door',
       materialId: door.materialId,
@@ -584,7 +689,8 @@ function calcDoors(
       edgingPattern: door.edgingPattern,
       edgingMaterialId: door.edgingMaterialId,
       longAlong: 'length',
-      factoryHingeHoles: door.factoryHingeHoles !== false,
+      factoryHingeHoles: drillHoles,
+      factoryHingeHoleCount: drillHoles ? perLeaf : undefined,
     });
     addEdging(edging, job, door.materialId, 'Door', unit.name, door.edgingPattern, w, h, totalQty, door.edgingMaterialId, 'length');
 
@@ -595,8 +701,6 @@ function calcDoors(
       door.hinge?.type === 'custom'
         ? door.hinge.customUnitPrice ?? job.hingePrices.custom ?? 0
         : resolveHingeUnitPrice(job, presetId);
-    const finishedH = doorPanelHeight(door);
-    const perLeaf = hingesPerDoorLeaf(finishedH);
     const hingeQty = door.qty * perLeaf * mult;
     const skuNote = catalogEntry?.sku ? ` · SKU ${catalogEntry.sku}` : '';
     hardware.push({
@@ -1209,6 +1313,7 @@ export function generateCutList(job: Job): CutListResult {
     if (mult <= 0) continue;
     const layoutUnit = resolveFrontLayout(unit);
     calcCarcass(layoutUnit, job, pieces, edging, mult);
+    calcSpiceCupboard(layoutUnit, job, pieces, edging, mult);
     calcKitchenPlinth(layoutUnit, job, pieces, edging, hardware, plasticKickplates, mult);
     calcDoors(layoutUnit, job, pieces, edging, hardware, mult);
     calcDrawers(layoutUnit, job, pieces, edging, hardware, mult);

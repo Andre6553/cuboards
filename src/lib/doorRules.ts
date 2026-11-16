@@ -44,24 +44,31 @@ export function doorPanelHeight(door: DoorConfig): number {
   return door.openingHeight - gaps.top - gaps.bottom;
 }
 
-/** Finished door height (mm) at which hinge count steps up. */
-export const HINGE_TIER_2_MAX_MM = 1200;
-export const HINGE_TIER_3_MAX_MM = 1500;
-export const HINGE_TIER_4_MAX_MM = 2000;
+/** Finished door height at or under this uses 2 hinge holes; taller doors default to 4. */
+export const HINGE_HOLE_HEIGHT_SPLIT_MM = 1200;
+
+/** Choices in the factory hinge-hole dropdown. */
+export const HINGE_HOLE_OPTIONS = [2, 3, 4, 5, 6] as const;
 
 /**
- * Hinges per door leaf from finished door height:
- * ≤1.2 m → 2 · >1.2–1.5 m → 3 · >1.5–2 m → 4 · >2 m → 5.
+ * Default hinge cups per door leaf from finished door height.
+ * Under or equal to 1200 mm → 2. Taller → 4.
  */
-export function hingesPerDoorLeaf(finishedDoorHeightMm: number): number {
-  if (finishedDoorHeightMm <= HINGE_TIER_2_MAX_MM) return 2;
-  if (finishedDoorHeightMm <= HINGE_TIER_3_MAX_MM) return 3;
-  if (finishedDoorHeightMm <= HINGE_TIER_4_MAX_MM) return 4;
-  return 5;
+export function defaultHingeHoles(finishedDoorHeightMm: number): number {
+  return finishedDoorHeightMm <= HINGE_HOLE_HEIGHT_SPLIT_MM ? 2 : 4;
+}
+
+/** Saved count, or the height default when the user has not picked one. */
+export function resolveHingeHoleCount(door: DoorConfig): number {
+  const saved = door.hingeHoleCount;
+  if (saved != null && Number.isFinite(saved) && saved >= 2 && saved <= 6) {
+    return Math.round(saved);
+  }
+  return defaultHingeHoles(doorPanelHeight(door));
 }
 
 export function hingesPerDoorLeafForDoor(door: DoorConfig): number {
-  return hingesPerDoorLeaf(doorPanelHeight(door));
+  return resolveHingeHoleCount(door);
 }
 
 export function doorCutListSize(
@@ -115,7 +122,7 @@ export function doorSizeSummary(
   const qty = Math.max(1, door.qty);
   const between = qty > 1 ? ` · ${gaps.between} mm between doors` : '';
   const cutPart = formatPanelCutSizeSummary(panel);
-  const hingeCount = hingesPerDoorLeaf(finishedHeight);
+  const hingeCount = resolveHingeHoleCount(door);
   return (
     `${qty} door(s) · Opening ${door.openingWidth} × ${door.openingHeight} mm · ` +
     `Gaps L${gaps.left} R${gaps.right} T${gaps.top} B${gaps.bottom}${between} · ` +

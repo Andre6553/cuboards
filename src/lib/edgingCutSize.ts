@@ -96,6 +96,8 @@ export function edgingRunMm(
       return longEdgeMm + shortEdgeMm;
     case '1_long_2_short':
       return longEdgeMm + shortEdgeMm * 2;
+    case '2_long_1_short':
+      return longEdgeMm * 2 + shortEdgeMm;
     case '2_long_2_short':
       return (longEdgeMm + shortEdgeMm) * 2;
     default:
@@ -232,6 +234,10 @@ export function deductEdgingFromDimensions(
     case '1_long_2_short':
       longDed = thickness;
       shortDed = thickness * 2;
+      break;
+    case '2_long_1_short':
+      longDed = thickness * 2;
+      shortDed = thickness;
       break;
     case '2_long_2_short':
       longDed = thickness * 2;

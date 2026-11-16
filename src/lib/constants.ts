@@ -51,6 +51,7 @@ export const EDGING_LABELS: Record<string, string> = {
   '2_long': '2 long edges',
   '1_long_1_short': '1 long + 1 short',
   '1_long_2_short': '1 long + 2 short',
+  '2_long_1_short': '2 long + 1 short',
   '2_long_2_short': '2 long + 2 short (all edges)',
   none: 'No edging',
 };
@@ -154,14 +155,36 @@ export function isKitchenBase(type: UnitType): boolean {
 export const MOUNT_TYPE_LABELS = {
   floor: 'Floor unit',
   wall: 'Wall unit',
+  spice: 'Spice cupboard',
 } as const;
 
+/** Mount choices shown per unit type (spice only on kitchen base). */
+export function mountTypesForUnitType(type: UnitType): MountType[] {
+  if (type === 'wall') return ['wall'];
+  if (type === 'kitchen_base') return ['floor', 'spice', 'wall'];
+  return ['floor', 'wall'];
+}
+
+export function isSpiceCupboard(unit: { type?: UnitType; carcass?: { mountType?: MountType } }): boolean {
+  return unit.type === 'kitchen_base' && unit.carcass?.mountType === 'spice';
+}
+
 export function isFloorUnit(unit: { carcass?: { mountType?: MountType } }): boolean {
-  return (unit.carcass?.mountType ?? 'floor') === 'floor';
+  const m = unit.carcass?.mountType ?? 'floor';
+  return m === 'floor' || m === 'spice';
 }
 
 export function isWallUnit(unit: { carcass?: { mountType?: MountType } }): boolean {
   return unit.carcass?.mountType === 'wall';
+}
+
+/** Old jobs: spice mount only valid on kitchen base. */
+export function normalizeMountType(type: UnitType, mountType: MountType | undefined): MountType {
+  const m = mountType ?? (type === 'wall' ? 'wall' : 'floor');
+  if (m === 'spice' && type !== 'kitchen_base') return 'floor';
+  if (type === 'wall') return 'wall';
+  if (!mountTypesForUnitType(type).includes(m)) return 'floor';
+  return m;
 }
 
 export function defaultPlinth(job: { settings: JobSettings; materials: Material[] }, visibleMatId?: string): KitchenPlinthConfig {

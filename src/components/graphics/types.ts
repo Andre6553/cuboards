@@ -15,15 +15,21 @@ export interface GraphicProps {
   thickness: number;
 }
 
-export type ShelfVariant = 'no-shelf' | 'with-shelf';
+export type ShelfVariant = 'no-shelf' | 'with-shelf' | 'spice';
 
 export const SHELF_VARIANTS: { id: ShelfVariant; label: string }[] = [
   { id: 'no-shelf', label: 'No shelf' },
   { id: 'with-shelf', label: 'With shelf' },
 ];
 
-/** Reference PNG for view + shelf variant. */
-export function getReferenceImage(view: GraphicView, variant: ShelfVariant): string {
+/** Shown on the 3D tab when the spice cupboard graphic is selected. */
+export const SPICE_CUPBOARD_3D = '/graphics/spice-cupboard-3d.png';
+
+/** Reference PNG for view + shelf variant. Spice cupboard only has a 3D drawing. */
+export function getReferenceImage(view: GraphicView, variant: ShelfVariant): string | null {
+  if (variant === 'spice') {
+    return view === '3d' ? SPICE_CUPBOARD_3D : null;
+  }
   const withShelf = variant === 'with-shelf';
   const map: Record<GraphicView, [string, string]> = {
     front: ['/graphics/front-carcass.png', '/graphics/front-carcass-with-shelf.png'],
@@ -40,3 +46,5 @@ export const VIEW_HINTS: Record<GraphicView, string> = {
   right: 'Your right reference graphic',
   '3d': 'Your 3D isometric reference graphic',
 };
+
+export const SPICE_VIEW_HINT = 'Spice cupboard mount — 3D reference. Cut sizes come next.';

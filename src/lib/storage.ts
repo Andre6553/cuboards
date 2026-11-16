@@ -11,7 +11,9 @@ import {
   DEFAULT_CUT_HOUSE_CHARGES,
   defaultPlinth,
   isKitchenBase,
+  normalizeMountType,
 } from './constants';
+import { defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from './spiceCupboardRules';
 import { kickplateEdgingFromLegacyPattern } from './kickplateEdging';
 import { getDefaultRunnerPrices, getRunnerClearances } from './runnerCatalog';
 import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
@@ -217,7 +219,7 @@ export function migrateJob(job: Job): Job {
           }
         : undefined;
       const carcass = u.carcass ?? {};
-      const mountType = carcass.mountType ?? (u.type === 'wall' ? 'wall' : 'floor');
+      const mountType = normalizeMountType(u.type, carcass.mountType);
       const leftMat = (job.materials ?? []).find((m) => m.id === carcass.leftMaterialId);
       const rightMat = (job.materials ?? []).find((m) => m.id === carcass.rightMaterialId);
       const bottomMat = (job.materials ?? []).find((m) => m.id === (carcass.bottomMaterialId ?? defaultMat));
@@ -228,16 +230,27 @@ export function migrateJob(job: Job): Job {
         leftMat?.edgingMaterialId ??
         fillerMat?.edgingMaterialId ??
         defaultEdgingId;
+      const unitHeight = u.height ?? 720;
+      const spice =
+        mountType === 'spice' && isKitchenBase(u.type)
+          ? {
+              ...defaultSpiceCupboardConfig(unitHeight),
+              ...u.spice,
+              frontHeightMm: resolveSpiceFrontHeightMm(u.spice ?? defaultSpiceCupboardConfig(unitHeight), unitHeight),
+            }
+          : u.spice;
       return syncFrontLayoutToUnit({
         ...u,
         unitQty,
         plinth,
+        spice,
         carcass: {
           ...carcass,
           backingType: carcass.backingType ?? 'none',
           backingMaterialId: carcass.backingMaterialId ?? carcass.bottomMaterialId ?? defaultMat,
           countertopType: carcass.countertopType ?? 'granite',
           mountType,
+          shelfQty: mountType === 'spice' ? 0 : (carcass.shelfQty ?? 0),
           leftEdgingMaterialId: carcass.leftEdgingMaterialId ?? leftMat?.edgingMaterialId ?? defaultEdgingId,
           rightEdgingMaterialId: carcass.rightEdgingMaterialId ?? rightMat?.edgingMaterialId ?? defaultEdgingId,
           bottomEdgingMaterialId: carcass.bottomEdgingMaterialId ?? bottomMat?.edgingMaterialId ?? defaultEdgingId,

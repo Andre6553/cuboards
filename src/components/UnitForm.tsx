@@ -1,6 +1,7 @@
 import { useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
-import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, UNIT_TYPE_LABELS } from '../lib/constants';
+import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, isSpiceCupboard, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, UNIT_TYPE_LABELS } from '../lib/constants';
+import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from '../lib/spiceCupboardRules';
 import {
   getHingeByIdForJob,
   getHingeGroupsForJob,
@@ -9,7 +10,7 @@ import {
   getRunnerGroupsForJob,
   usesGelmarCatalog,
 } from '../lib/hardwarePricing';
-import { doorSizeSummary, DEFAULT_DOOR_GAPS, hingesPerDoorLeafForDoor, resolveDoorGaps } from '../lib/doorRules';
+import { doorSizeSummary, DEFAULT_DOOR_GAPS, HINGE_HOLE_OPTIONS, hingesPerDoorLeafForDoor, resolveDoorGaps } from '../lib/doorRules';
 import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiveDrawer, activeDrawers, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveDrawerGaps, resolveFrontQty, resolveGapToDoor, syncDrawerOpeningFromFront } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
@@ -101,7 +102,14 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
 
   const set = <K extends keyof Unit>(field: K, value: Unit[K]) => {
     if (field === 'width' || field === 'height' || field === 'depth') {
-      applyUnit({ ...unit, [field]: value });
+      const next = { ...unit, [field]: value };
+      if (field === 'height' && isSpiceCupboard(next) && next.spice) {
+        next.spice = {
+          ...next.spice,
+          frontHeightMm: resolveSpiceFrontHeightMm(next.spice, next.height),
+        };
+      }
+      applyUnit(next);
       return;
     }
     onChange({ ...unit, [field]: value });
@@ -136,12 +144,12 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
   };
 
   const handleTypeChange = (type: Unit['type']) => {
-    const mountType = type === 'wall' ? 'wall' : unit.carcass.mountType ?? 'floor';
+    const mountType = normalizeMountType(type, unit.carcass.mountType);
     if (isKitchenBase(type)) {
       onChange({
         ...unit,
         type,
-        carcass: { ...unit.carcass, mountType: mountType === 'wall' ? 'floor' : mountType },
+        carcass: { ...unit.carcass, mountType },
         plinth: unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId),
       });
     } else {
@@ -149,18 +157,49 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       onChange({
         ...rest,
         type,
-        carcass: { ...unit.carcass, mountType: type === 'wall' ? 'wall' : mountType },
+        carcass: { ...unit.carcass, mountType },
       });
     }
   };
 
   const handleMountChange = (mountType: Unit['carcass']['mountType']) => {
-    const next = { ...unit, carcass: { ...unit.carcass, mountType } };
-    if (mountType === 'floor' && isKitchenBase(unit.type) && !next.plinth) {
+    const nextMount = normalizeMountType(unit.type, mountType);
+    const next = {
+      ...unit,
+      carcass: {
+        ...unit.carcass,
+        mountType: nextMount,
+        shelfQty: nextMount === 'spice' ? 0 : unit.carcass.shelfQty,
+      },
+      spice: nextMount === 'spice' ? (unit.spice ?? defaultSpiceCupboardConfig(unit.height)) : unit.spice,
+    };
+    if (isFloorUnit(next) && isKitchenBase(unit.type) && !next.plinth) {
       next.plinth = defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
     }
     onChange(next);
   };
+
+  const setSpice = (patch: Partial<NonNullable<Unit['spice']>>) => {
+    const base = unit.spice ?? defaultSpiceCupboardConfig(unit.height);
+    onChange({
+      ...unit,
+      spice: {
+        ...base,
+        ...patch,
+        frontHeightMm: resolveSpiceFrontHeightMm(
+          { ...base, ...patch },
+          unit.height,
+        ),
+      },
+    });
+  };
+
+  const mountOptions = mountTypesForUnitType(unit.type);
+  const spiceMount = isSpiceCupboard(unit);
+  const spiceSizes = spiceMount
+    ? calcSpiceCupboardSizes(unit.width, unit.height, unit.depth, settings.thickness, unit.spice)
+    : null;
+  const spiceConfig = unit.spice ?? defaultSpiceCupboardConfig(unit.height);
 
   const isFloor = isFloorUnit(unit);
 
@@ -309,9 +348,12 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           </label>
           <label>
             Mount
-            <select value={unit.carcass.mountType ?? 'floor'} onChange={(e) => handleMountChange(e.target.value as Unit['carcass']['mountType'])}>
-              {Object.entries(MOUNT_TYPE_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
+            <select
+              value={normalizeMountType(unit.type, unit.carcass.mountType)}
+              onChange={(e) => handleMountChange(e.target.value as Unit['carcass']['mountType'])}
+            >
+              {mountOptions.map((k) => (
+                <option key={k} value={k}>{MOUNT_TYPE_LABELS[k]}</option>
               ))}
             </select>
           </label>
@@ -330,6 +372,41 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         </div>
 
         <CupboardViewer unit={layoutUnit} thickness={settings.thickness} materials={materials} />
+
+      {spiceMount && (
+        <CollapsibleSection title="Spice cupboard — cut sizes" variant="nested">
+          <div className="form-grid form-grid-3">
+            <label>
+              Spice front height (mm)
+              <NumberInput
+                min={1}
+                max={unit.height}
+                value={resolveSpiceFrontHeightMm(spiceConfig, unit.height)}
+                onChange={(n) => setSpice({ frontHeightMm: n })}
+                title={`Max ${unit.height} mm (carcass height)`}
+              />
+            </label>
+            <label>
+              Runner side clearance (mm)
+              <NumberInput
+                min={0}
+                value={spiceConfig.runnerSideClearanceMm ?? 13}
+                onChange={(n) => setSpice({ runnerSideClearanceMm: n })}
+                title="Per side — spice front width = carcass internal − 2× clearance"
+              />
+            </label>
+          </div>
+          {spiceSizes && (
+            <p className="hint">
+              Front/back {spiceSizes.frontWidth} × {spiceSizes.frontHeight} mm (2 long + 1 short) · Split{' '}
+              {spiceSizes.splitWidth} × {spiceSizes.splitHeight} mm · Bottom {spiceSizes.bottomDepth} ×{' '}
+              {spiceSizes.bottomWidth} mm · Shelves L/R {spiceSizes.shelfDepth} × {spiceSizes.shelfWidth} mm · Fillers 2×{' '}
+              {spiceSizes.fillerHeight} × {spiceSizes.fillerWidth} mm. Uses <strong>shelf material</strong> on cut list; top
+              fillers same as no-shelf carcass.
+            </p>
+          )}
+        </CollapsibleSection>
+      )}
 
       {isKitchenBase(unit.type) && isFloor && unit.plinth && (() => {
         const plinth = unit.plinth;
@@ -768,10 +845,18 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       </CollapsibleSection>
 
       <CollapsibleSection title="Shelves" variant="nested">
+        {spiceMount && (
+          <p className="hint">Spice mount — no carcass shelf. Left/right spice shelves are on the cut list under spice parts.</p>
+        )}
         <div className="form-grid form-grid-3">
           <label>
             Shelf quantity
-            <NumberInput  min={0} value={unit.carcass.shelfQty} onChange={(n) => setCarcass('shelfQty', n)} />
+            <NumberInput
+              min={0}
+              value={unit.carcass.shelfQty}
+              onChange={(n) => setCarcass('shelfQty', n)}
+              disabled={spiceMount}
+            />
           </label>
           <label>
             Shelf material
@@ -838,8 +923,8 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                 type="text"
                 className="readonly"
                 readOnly
-                value={`${hingesPerDoorLeafForDoor(layoutDoor)} (auto from finished height)`}
-                title="≤1.2 m → 2 · >1.2–1.5 m → 3 · >1.5–2 m → 4"
+                value={`${hingesPerDoorLeafForDoor(layoutDoor)} on the quote`}
+                title="Same count as Hinge holes when factory drill is on. Default: 2 up to 1200 mm finished height, 4 above that."
               />
             </label>
             <label>
@@ -888,6 +973,23 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               />
               Factory: drill hinge holes
             </label>
+            {door.factoryHingeHoles !== false && (
+              <label>
+                Hinge holes
+                <select
+                  value={hingesPerDoorLeafForDoor(layoutDoor)}
+                  title="Default 2 if the finished door is 1200 mm or shorter, 4 if taller. This is also how many hinges are priced."
+                  onChange={(e) => updateDoor(door.id, { hingeHoleCount: Number(e.target.value) })}
+                >
+                  {HINGE_HOLE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                <span className="field-hint">
+                  Default 2 up to 1200 mm, 4 above. Priced as this many hinges per door.
+                </span>
+              </label>
+            )}
             <label className="runner-select-label">
               Hinge
               <select

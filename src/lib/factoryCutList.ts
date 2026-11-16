@@ -129,7 +129,12 @@ export function pieceToFactoryRow(job: Job, piece: CutPiece): FactoryCutListRow 
 
   let hingeHoles = '—';
   if (piece.category === 'door') {
-    hingeHoles = piece.factoryHingeHoles !== false ? 'Yes' : 'No';
+    hingeHoles =
+      piece.factoryHingeHoles === false
+        ? 'No'
+        : piece.factoryHingeHoleCount != null
+          ? String(piece.factoryHingeHoleCount)
+          : 'Yes';
   }
 
   return {

@@ -2077,6 +2077,12 @@
   font-weight: 600;
 }
 
+.spice-view-note {
+  margin: 4rem 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
 .viewer-header h3 {
   margin: 0;
   font-size: 0.85rem;
