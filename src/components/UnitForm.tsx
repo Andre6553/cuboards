@@ -14,7 +14,7 @@ import { doorSizeSummary, DEFAULT_DOOR_GAPS, HINGE_HOLE_OPTIONS, hingesPerDoorLe
 import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiveDrawer, activeDrawers, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveDrawerGaps, resolveFrontQty, resolveGapToDoor, syncDrawerOpeningFromFront } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
-import { fillersFollowSideMaterial, isBedroomWallUnit, resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
+import { fillersFollowSideMaterial, resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
 import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
 import { defaultBedroomWallExtra } from '../lib/extrasRules';
 import { ExtraInnerForm } from './ExtraInnerForm';
@@ -1617,8 +1617,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       <button type="button" className="btn btn-secondary btn-sm" onClick={addDrawer}>+ Add drawers</button>
       </CollapsibleSection>
 
-      {isBedroomWallUnit(unit) && (
-        <CollapsibleSection
+      <CollapsibleSection
           title="Extras"
           variant="nested"
           headerAction={
@@ -1670,7 +1669,6 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             + Add extra inner unit
           </button>
         </CollapsibleSection>
-      )}
 
       {presets.length > 0 && (
         <p className="hint" style={{ marginTop: '1rem' }}>

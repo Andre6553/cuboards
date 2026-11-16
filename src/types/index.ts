@@ -505,7 +505,7 @@ export interface Unit {
   spice?: SpiceCupboardConfig;
   doors: DoorConfig[];
   drawers: DrawerConfig[];
-  /** Bedroom wall mount only. Off = extras form and cut-list logic skipped. */
+  /** Off = extras form disabled and cut-list logic skipped. */
   extrasEnabled?: boolean;
   /** Bedroom wall mount only — inner boxes, shelves, division panels, drawer stacks. */
   extras?: BedroomWallExtra[];

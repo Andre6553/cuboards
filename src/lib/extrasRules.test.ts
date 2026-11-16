@@ -183,34 +183,29 @@ describe('extraBoardCuts', () => {
 });
 
 describe('extrasForCutList', () => {
-  it('ignores extras on kitchen and bedroom floor units', () => {
+  it('includes extras on any unit type when extrasEnabled is on', () => {
     const extraRow = extra();
-    const kitchen = {
+    const kitchenOn = {
       type: 'kitchen_base' as const,
       carcass: { mountType: 'floor' as const },
+      extrasEnabled: true,
       extras: [extraRow],
     } as Unit;
-    const bedroomFloor = {
-      type: 'bedroom' as const,
+    const wallOff = {
+      type: 'wall' as const,
       carcass: { mountType: 'floor' as const },
-      extras: [extraRow],
-    } as Unit;
-    const bedroomWallOff = {
-      type: 'bedroom' as const,
-      carcass: { mountType: 'wall' as const },
       extrasEnabled: false,
       extras: [extraRow],
     } as Unit;
-    const bedroomWallOn = {
-      type: 'bedroom' as const,
+    const wallOn = {
+      type: 'wall' as const,
       carcass: { mountType: 'wall' as const },
       extrasEnabled: true,
       extras: [extraRow],
     } as Unit;
-    expect(extrasForCutList(kitchen)).toEqual([]);
-    expect(extrasForCutList(bedroomFloor)).toEqual([]);
-    expect(extrasForCutList(bedroomWallOff)).toEqual([]);
-    expect(extrasForCutList(bedroomWallOn)).toHaveLength(1);
+    expect(extrasForCutList(kitchenOn)).toHaveLength(1);
+    expect(extrasForCutList(wallOff)).toEqual([]);
+    expect(extrasForCutList(wallOn)).toHaveLength(1);
   });
 });
 

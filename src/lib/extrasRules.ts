@@ -1,5 +1,5 @@
 import type { BedroomWallExtra, EdgingPattern, Job, Unit } from '../types';
-import { isBedroomWallUnit, resolveFillerMaterial } from './carcassRules';
+import { resolveFillerMaterial } from './carcassRules';
 import type { LongAlong } from './edgingCutSize';
 import { extraDrawerCarcassSize } from './extraDrawerCarcass';
 import { edgeCountsToPattern } from './kickplateEdging';
@@ -270,8 +270,8 @@ export function extraBoardCuts(
   return cuts;
 }
 
-export function extrasSectionEnabled(unit: Pick<Unit, 'type' | 'carcass' | 'extrasEnabled'>): boolean {
-  return isBedroomWallUnit(unit) && unit.extrasEnabled === true;
+export function extrasSectionEnabled(unit: Pick<Unit, 'extrasEnabled'>): boolean {
+  return unit.extrasEnabled === true;
 }
 
 export function extrasForCutList(unit: Unit): BedroomWallExtra[] {
