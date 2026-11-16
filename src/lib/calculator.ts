@@ -47,6 +47,7 @@ import {
   fillersFollowSideMaterial,
   masoniteBackingSize,
   masonitePanelSize,
+  carcassShelfSize,
   melamineBackingSize,
   resolveFillerMaterial,
   topFillerCount,
@@ -411,15 +412,18 @@ function calcCarcass(
   }
 
   const shelfCount = isSpiceCupboard(unit) ? 0 : c.shelfQty;
+  const backingType = c.backingType ?? 'none';
+  const { depth: shelfDepth, width: shelfWidth } = carcassShelfSize(D, internalW, T, backingType);
+  const shelfNote = backingType === 'melamine' ? `D−${T} · solid melamine back` : '';
   for (let i = 0; i < shelfCount; i++) {
     addEdgedPiece(
       `Shelf ${i + 1}`,
       c.shelfMaterialId,
-      D,
-      internalW,
+      shelfDepth,
+      shelfWidth,
       1,
       'none',
-      '',
+      shelfNote,
       '1_long',
       c.shelfEdgingMaterialId,
     );
@@ -511,7 +515,6 @@ function calcCarcass(
     }
   }
 
-  const backingType = c.backingType ?? 'none';
   if (backingType === 'melamine') {
     const backMatId = c.backingMaterialId || c.bottomMaterialId;
     const { width: backW, height: backH } = melamineBackingSize(W, H, T);

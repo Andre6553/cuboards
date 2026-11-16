@@ -96,6 +96,17 @@ export function melamineBackingSize(width: number, height: number, thickness: nu
   };
 }
 
+/** Shelf plan size — depth × width between sides. Solid melamine back shortens depth by T. */
+export function carcassShelfSize(
+  depth: number,
+  internalWidth: number,
+  thickness: number,
+  backingType: CarcassConfig['backingType'],
+): { depth: number; width: number } {
+  const shelfDepth = backingType === 'melamine' ? Math.max(0, depth - thickness) : depth;
+  return { depth: shelfDepth, width: internalWidth };
+}
+
 /** Masonite panel — 2 mm clearance on length and width. */
 export function masonitePanelSize(length: number, width: number) {
   return {

@@ -1199,7 +1199,13 @@ export function UnitForm({
             />
           </label>
         </div>
-        <p className="hint">Shelves: {unit.depth} × {unit.width - 2 * settings.thickness} mm · 1 long edge front ({EDGING_LABELS['1_long']}).</p>
+        <p className="hint">
+          Shelves:{' '}
+          {unit.carcass.backingType === 'melamine' ? unit.depth - settings.thickness : unit.depth} ×{' '}
+          {unit.width - 2 * settings.thickness} mm
+          {unit.carcass.backingType === 'melamine' ? ' (D−T with solid melamine back)' : ''}
+          {' '}· 1 long edge front ({EDGING_LABELS['1_long']}).
+        </p>
       </CollapsibleSection>
 
       <CollapsibleSection title="Doors" variant="nested">

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Unit } from '../types';
-import { bedroomWallFillerPieces, resolveBedroomWallSideFillerEdging, topFillerCount } from './carcassRules';
+import {
+  bedroomWallFillerPieces,
+  carcassShelfSize,
+  resolveBedroomWallSideFillerEdging,
+  topFillerCount,
+} from './carcassRules';
 
 function unit(type: Unit['type'], mount: Unit['carcass']['mountType'], top: Unit['carcass']['countertopType'] = 'granite'): Pick<Unit, 'type' | 'carcass'> {
   return { type, carcass: { mountType: mount, countertopType: top } as Unit['carcass'] };
@@ -61,5 +66,13 @@ describe('topFillerCount', () => {
         sideFillerEdgingShortCount: 0,
       }),
     ).toEqual({ long: 0, short: 0 });
+  });
+});
+
+describe('carcassShelfSize', () => {
+  it('uses full depth unless solid melamine backing', () => {
+    expect(carcassShelfSize(550, 568, 16, 'masonite')).toEqual({ depth: 550, width: 568 });
+    expect(carcassShelfSize(550, 568, 16, 'none')).toEqual({ depth: 550, width: 568 });
+    expect(carcassShelfSize(550, 568, 16, 'melamine')).toEqual({ depth: 534, width: 568 });
   });
 });

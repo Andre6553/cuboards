@@ -29,6 +29,7 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-11-16:** Carcass **shelves** with **solid melamine backing**: depth **D−T**, width **W−2T** (was full D with masonite/none). `carcassShelfSize` in `carcassRules.ts`.
 - **2026-11-16:** Drawer box side depth = carcass depth − back clearance − 2×board T (not front clearance). Solid melamine bottom depth = same as drawer side; width = front/back inner (FB width − 2×T). Masonite bottom still uses inner −2×T both ways (`drawerBoxRules.ts`).
 - **2026-11-16:** `record_device_login` 409 was FK on `user_devices` when `device_installs` had no row for this browser. RPC now upserts the install first (`0011_record_device_login_ensure_install.sql`). Client also coalesces duplicate login RPCs on page load.
 - **2026-11-16:** **Extras** (after Drawers): **Bedroom** = inner boxes (`ExtraInnerForm`, `extrasRules.ts`). **Kitchen base / wall** = custom doors, panels, fillers — qty, length×width, board, edging pattern + tape (`customExtras`, `ExtraCustomPartsForm.tsx`, `customExtrasRules.ts`). `extrasEnabled` gates both.
