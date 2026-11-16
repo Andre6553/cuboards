@@ -821,7 +821,6 @@ function calcDrawers(
     );
 
     const frontBackWidth = drawerBoxFrontBackWidth(W, T, sideClearance);
-    const frontClearance = drawer.frontClearance ?? 20;
     const backClearance = drawer.backClearance ?? 5;
     const sideDepth = drawerBoxSideDepth(D, backClearance, T);
     const boxH = Math.round(Math.max(1, drawer.boxHeight));
