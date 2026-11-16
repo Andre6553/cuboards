@@ -1,14 +1,12 @@
-import { isFloorUnit } from './constants';
-import { isWhiteMelamine } from './carcassRules';
+import { isWhiteMelamine, topFillerCount } from './carcassRules';
 import type { CarcassConfig, Job, Material, Unit } from '../types';
 
 /** Extra corner blocks when carcass uses solid melamine backing (inside carcass). */
 export const CORNER_BLOCKS_MELAMINE_BACKING = 4;
 
-/** Floor units: top filler strips under stone/laminate top (matches cut list). */
+/** Top filler strips that match the cut list (floor, and wall-mounted wall / kitchen base). */
 export function floorTopFillerCount(unit: Unit): number {
-  if (!isFloorUnit(unit)) return 0;
-  return unit.carcass.countertopType === 'wooden' ? 3 : 2;
+  return topFillerCount(unit);
 }
 
 /**

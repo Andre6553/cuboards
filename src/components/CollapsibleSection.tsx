@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 
 interface Props {
   title: string;
@@ -6,17 +6,31 @@ interface Props {
   defaultOpen?: boolean;
   /** card = standalone Materials page section; nested = inside a unit card */
   variant?: 'card' | 'nested';
+  /** Extra control on the summary row (e.g. enable checkbox). Clicks do not toggle open/close. */
+  headerAction?: ReactNode;
 }
 
-export function CollapsibleSection({ title, children, defaultOpen, variant = 'card' }: Props) {
-  // Uncontrolled `defaultOpen` only — do not bind `open` to props that change while typing
-  // (e.g. Client details used defaultOpen={!client.name}, which collapsed on the first letter).
+function stopSummaryToggle(e: MouseEvent | PointerEvent) {
+  e.stopPropagation();
+}
+
+export function CollapsibleSection({ title, children, defaultOpen, variant = 'card', headerAction }: Props) {
+  // Initial open only from `defaultOpen` — avoid binding `open` to props that change while typing.
+  const [open, setOpen] = useState(defaultOpen ?? false);
   const details = (
     <details
       className={`detail-breakdown collapsible-section${variant === 'nested' ? ' collapsible-subsection' : ''}`}
-      {...(defaultOpen ? { defaultOpen: true } : {})}
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
     >
-      <summary>{title}</summary>
+      <summary>
+        {title}
+        {headerAction != null && (
+          <span className="collapsible-header-action" onClick={stopSummaryToggle} onPointerDown={stopSummaryToggle}>
+            {headerAction}
+          </span>
+        )}
+      </summary>
       {children}
     </details>
   );

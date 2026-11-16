@@ -105,7 +105,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/@/, /^\/src\//, /^\/node_modules\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -117,8 +117,10 @@ export default defineConfig({
           },
         ],
       },
+      // Dev SW caches Vite modules and served stale calculator.ts (extraCutMaterialId crash).
+      // Production still generates a service worker via `vite build`.
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
     }),
   ],

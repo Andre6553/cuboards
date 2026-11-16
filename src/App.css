@@ -1626,6 +1626,15 @@
   margin-bottom: 0.75rem;
 }
 
+fieldset.sub-card {
+  min-inline-size: 0;
+  margin-inline: 0;
+}
+
+fieldset.sub-card:disabled {
+  opacity: 0.55;
+}
+
 .sub-card-header {
   display: flex;
   justify-content: space-between;
@@ -1907,6 +1916,23 @@
 
 .collapsible-section[open] summary {
   margin-bottom: 0.75rem;
+}
+
+.collapsible-header-action {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.75rem;
+  vertical-align: middle;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.collapsible-header-action .checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .unit-collapsible-block {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isKitchenBase, isSpiceCupboard } from '../lib/constants';
+import { isSpiceCupboard, plinthHasKickplate, showsKickplate } from '../lib/constants';
 import type { Material, Unit } from '../types';
 import { ReferenceGraphicView } from './graphics/ReferenceGraphicView';
 import { GRAPHIC_VIEWS, SHELF_VARIANTS, SPICE_VIEW_HINT, VIEW_HINTS, type GraphicView, type ShelfVariant } from './graphics/types';
@@ -18,7 +18,10 @@ export function CupboardViewer({ unit, thickness }: Props) {
   const [view, setView] = useState<GraphicView>('front');
   const [shelfVariant, setShelfVariant] = useState<ShelfVariant>(() => defaultShelfVariant(unit));
   const spiceMount = isSpiceCupboard(unit);
-  const kh = isKitchenBase(unit.type) && unit.plinth ? unit.plinth.kickplateHeight : 0;
+  const kh =
+    showsKickplate(unit) && unit.plinth && plinthHasKickplate(unit.plinth)
+      ? unit.plinth.kickplateHeight
+      : 0;
   const previewVariant: ShelfVariant = spiceMount ? 'spice' : shelfVariant;
   const showingSpice = spiceMount && view === '3d';
 

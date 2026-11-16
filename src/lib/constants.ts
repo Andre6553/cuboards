@@ -4,6 +4,7 @@ import type {
   EdgingMaterial,
   HingePrices,
   JobSettings,
+  KickplateType,
   KitchenPlinthConfig,
   MasoniteConfig,
   Material,
@@ -85,7 +86,15 @@ export const BACKING_LABELS = {
 export const KICKPLATE_TYPE_LABELS = {
   wood: 'Wood / melamine board',
   plastic: 'Plastic strip',
+  none: 'No kickplate',
 } as const;
+
+export function plinthHasKickplate(
+  plinth: { kickplateType?: KickplateType } | undefined,
+): boolean {
+  const t = plinth?.kickplateType ?? 'wood';
+  return t === 'wood' || t === 'plastic';
+}
 
 export const KICKPLATE_COVERAGE_LABELS = {
   front: 'Front only',
@@ -150,6 +159,12 @@ export const SHEET_SIZE_PRESETS: { label: string; width: number; height: number 
 
 export function isKitchenBase(type: UnitType): boolean {
   return type === 'kitchen_base';
+}
+
+/** Kickplate and feet: kitchen floor (including spice), and every bedroom cupboard. */
+export function showsKickplate(unit: { type: UnitType; carcass?: { mountType?: MountType } }): boolean {
+  if (unit.type === 'bedroom') return true;
+  return isKitchenBase(unit.type) && isFloorUnit(unit);
 }
 
 export const MOUNT_TYPE_LABELS = {

@@ -1,4 +1,4 @@
-import type { EdgingPattern, Job, KitchenPlinthConfig } from '../types';
+import type { CarcassConfig, EdgingPattern, Job, KitchenPlinthConfig } from '../types';
 import { getBoardEdgingThickness } from './edgingCutSize';
 
 export type KickplateEdgingLongCount = 0 | 1 | 2;
@@ -26,12 +26,30 @@ export function kickplateEdgingFromLegacyPattern(pattern?: EdgingPattern): Kickp
       return { long: 1, short: 1 };
     case '1_long_2_short':
       return { long: 1, short: 2 };
+    case '2_long_1_short':
+      return { long: 2, short: 1 };
     case '2_long_2_short':
       return { long: 2, short: 2 };
     case '1_long':
     default:
       return { long: 1, short: 0 };
   }
+}
+
+/** Long tape follows piece length; short tape follows piece width (factory L = long). */
+export function edgeCountsToPattern(long = 0, short = 0): EdgingPattern {
+  const l = Math.min(2, Math.max(0, Math.round(long)));
+  const s = Math.min(2, Math.max(0, Math.round(short)));
+  if (l === 0 && s === 0) return 'none';
+  if (l === 2 && s === 2) return '2_long_2_short';
+  if (l === 2 && s === 1) return '2_long_1_short';
+  if (l === 2) return '2_long';
+  if (l === 1 && s === 2) return '1_long_2_short';
+  if (l === 1 && s === 1) return '1_long_1_short';
+  if (l === 1) return '1_long';
+  if (s === 2) return '1_long_2_short';
+  if (s === 1) return '1_long_1_short';
+  return 'none';
 }
 
 export function resolveKickplateEdgingCounts(plinth: KitchenPlinthConfig): KickplateEdgingCounts {
@@ -42,6 +60,23 @@ export function resolveKickplateEdgingCounts(plinth: KitchenPlinthConfig): Kickp
     };
   }
   return kickplateEdgingFromLegacyPattern(plinth.kickplateEdgingPattern);
+}
+
+/** Bedroom wall side/top fillers — same long/short checkbox model as kickplate. */
+export function resolveFillerEdgeCounts(long?: number, short?: number): KickplateEdgingCounts {
+  if (long === undefined && short === undefined) return { long: 1, short: 0 };
+  return {
+    long: Math.min(2, Math.max(0, Math.round(long ?? 0))) as KickplateEdgingLongCount,
+    short: Math.min(2, Math.max(0, Math.round(short ?? 0))) as KickplateEdgingShortCount,
+  };
+}
+
+export function resolveBedroomWallSideFillerEdging(carcass: CarcassConfig): KickplateEdgingCounts {
+  return resolveFillerEdgeCounts(carcass.sideFillerEdgingLongCount, carcass.sideFillerEdgingShortCount);
+}
+
+export function resolveBedroomWallTopFillerEdging(carcass: CarcassConfig): KickplateEdgingCounts {
+  return resolveFillerEdgeCounts(carcass.topFillerEdgingLongCount, carcass.topFillerEdgingShortCount);
 }
 
 export function kickplateEdgingSummary(counts: KickplateEdgingCounts): string {
@@ -149,6 +184,14 @@ export function kickplateEdgingMergeKey(counts: KickplateEdgingCounts, edgingMat
 export function pieceHasKickplateEdging(counts?: KickplateEdgingCounts): boolean {
   if (!counts) return false;
   return counts.long > 0 || counts.short > 0;
+}
+
+/** `<select>` value for kickplate edging type “No edging”. */
+export const KICKPLATE_EDGING_NONE_VALUE = '__no_edging__';
+
+export function kickplateHasNoEdging(plinth: KitchenPlinthConfig): boolean {
+  const { long, short } = resolveKickplateEdgingCounts(plinth);
+  return long === 0 && short === 0;
 }
 
 export type KickplateEdgingToggle = 'none' | 'long1' | 'long2' | 'short1' | 'short2';

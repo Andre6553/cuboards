@@ -1,6 +1,6 @@
-import { useState, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
-import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, isSpiceCupboard, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, UNIT_TYPE_LABELS } from '../lib/constants';
+import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, isSpiceCupboard, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS } from '../lib/constants';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from '../lib/spiceCupboardRules';
 import {
   getHingeByIdForJob,
@@ -14,7 +14,10 @@ import { doorSizeSummary, DEFAULT_DOOR_GAPS, HINGE_HOLE_OPTIONS, hingesPerDoorLe
 import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiveDrawer, activeDrawers, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveDrawerGaps, resolveFrontQty, resolveGapToDoor, syncDrawerOpeningFromFront } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
-import { fillersFollowSideMaterial, resolveFillerMaterial } from '../lib/carcassRules';
+import { fillersFollowSideMaterial, isBedroomWallUnit, resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
+import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
+import { defaultBedroomWallExtra } from '../lib/extrasRules';
+import { ExtraInnerForm } from './ExtraInnerForm';
 import { unitAccentColor } from '../lib/unitAccentColor';
 import {
   cornerBlockUsageDetail,
@@ -27,11 +30,21 @@ import {
   resolveVisibleBackPanelEdging,
   resolveVisibleBackPanelMaterialId,
 } from '../lib/visibleBackPanel';
-import { kickplateRunLengthMm } from '../lib/kickplateRules';
+import {
+  boardSheetCrossMm,
+  maxKickplatePieceRunMm,
+  kickplateRunLengthMm,
+  maxKickplateFrontRunMm,
+  maxKickplateSideRunMm,
+  resolveKickplateFrontRunMm,
+  resolveKickplateSideRunMm,
+} from '../lib/kickplateRules';
 import {
   applyKickplateEdgingToggle,
   isKickplateEdgingChecked,
   kickplateEdgingSummary,
+  kickplateHasNoEdging,
+  KICKPLATE_EDGING_NONE_VALUE,
   resolveKickplateEdgingCounts,
   type KickplateEdgingToggle,
 } from '../lib/kickplateEdging';
@@ -54,13 +67,15 @@ function MaterialSelect({
   value,
   materials,
   onChange,
+  disabled,
 }: {
   value: string;
   materials: Material[];
   onChange: (id: string) => void;
+  disabled?: boolean;
 }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)}>
+    <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
       {materials.map((m) => (
         <option key={m.id} value={m.id}>{m.name}</option>
       ))}
@@ -100,14 +115,36 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
   const applyUnit = (next: Unit, opts?: { changedDrawerId?: string }) =>
     onChange(syncFrontLayoutToUnit(next, opts));
 
+  useEffect(() => {
+    if (unit.type !== 'bedroom' || unit.plinth) return;
+    onChange({
+      ...unit,
+      plinth: defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId),
+    });
+  }, [unit, onChange, settings, materials]);
+
   const set = <K extends keyof Unit>(field: K, value: Unit[K]) => {
     if (field === 'width' || field === 'height' || field === 'depth') {
-      const next = { ...unit, [field]: value };
+      let next = { ...unit, [field]: value };
       if (field === 'height' && isSpiceCupboard(next) && next.spice) {
         next.spice = {
           ...next.spice,
           frontHeightMm: resolveSpiceFrontHeightMm(next.spice, next.height),
         };
+      }
+      if (next.plinth) {
+        const w = next.width;
+        const d = next.depth;
+        const maxFront = maxKickplateFrontRunMm(w, settings);
+        const maxSide = maxKickplateSideRunMm(d, settings);
+        let plinth = next.plinth;
+        if (plinth.kickplateFrontRunMm != null && plinth.kickplateFrontRunMm > maxFront) {
+          plinth = { ...plinth, kickplateFrontRunMm: maxFront };
+        }
+        if (plinth.kickplateSideRunMm != null && plinth.kickplateSideRunMm > maxSide) {
+          plinth = { ...plinth, kickplateSideRunMm: maxSide };
+        }
+        if (plinth !== next.plinth) next = { ...next, plinth };
       }
       applyUnit(next);
       return;
@@ -145,7 +182,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
 
   const handleTypeChange = (type: Unit['type']) => {
     const mountType = normalizeMountType(type, unit.carcass.mountType);
-    if (isKitchenBase(type)) {
+    if (isKitchenBase(type) || type === 'bedroom') {
       onChange({
         ...unit,
         type,
@@ -173,7 +210,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       },
       spice: nextMount === 'spice' ? (unit.spice ?? defaultSpiceCupboardConfig(unit.height)) : unit.spice,
     };
-    if (isFloorUnit(next) && isKitchenBase(unit.type) && !next.plinth) {
+    if (((isFloorUnit(next) && isKitchenBase(unit.type)) || unit.type === 'bedroom') && !next.plinth) {
       next.plinth = defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
     }
     onChange(next);
@@ -202,6 +239,8 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
   const spiceConfig = unit.spice ?? defaultSpiceCupboardConfig(unit.height);
 
   const isFloor = isFloorUnit(unit);
+  const wallTopFillers = !isFloor && (unit.type === 'wall' || isKitchenBase(unit.type));
+  const showTopFillers = isFloor || wallTopFillers;
 
   const defaultMat = materials[0]?.id ?? '';
   const fillerFromSides = fillersFollowSideMaterial(unit.carcass, materials);
@@ -408,8 +447,10 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
         </CollapsibleSection>
       )}
 
-      {isKitchenBase(unit.type) && isFloor && unit.plinth && (() => {
-        const plinth = unit.plinth;
+      {showsKickplate(unit) && (() => {
+        const plinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
+        const kickplateActive = plinthHasKickplate(plinth);
+        const kickplateWood = plinth.kickplateType === 'wood';
         return (
         <CollapsibleSection title="Kitchen plinth — kickplate & feet" variant="nested">
           <div className="form-grid form-grid-4">
@@ -423,7 +464,11 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             </label>
             <label>
               Kickplate coverage
-              <select value={plinth.kickplateCoverage ?? 'front'} onChange={(e) => setPlinth('kickplateCoverage', e.target.value)}>
+              <select
+                disabled={!kickplateActive}
+                value={plinth.kickplateCoverage ?? 'front'}
+                onChange={(e) => setPlinth('kickplateCoverage', e.target.value)}
+              >
                 {Object.entries(KICKPLATE_COVERAGE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
@@ -432,17 +477,22 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             {plinth.kickplateCoverage === 'front-one-side' && (
               <label>
                 Side return
-                <select value={plinth.kickplateSide ?? 'left'} onChange={(e) => setPlinth('kickplateSide', e.target.value)}>
+                <select
+                  disabled={!kickplateActive}
+                  value={plinth.kickplateSide ?? 'left'}
+                  onChange={(e) => setPlinth('kickplateSide', e.target.value)}
+                >
                   <option value="left">Left side</option>
                   <option value="right">Right side</option>
                 </select>
               </label>
             )}
-            {plinth.kickplateType === 'wood' && (
+            {kickplateWood && (
               <>
                 <label>
                   Kickplate board material
                   <MaterialSelect
+                    disabled={!kickplateActive}
                     value={plinth.kickplateMaterialId}
                     materials={materials}
                     onChange={(v) => {
@@ -460,19 +510,120 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                 </label>
                 <label>
                   Edging type
-                  <EdgingTypeSelect
-                    value={plinth.kickplateEdgingMaterialId}
-                    fallbackMaterialId={plinth.kickplateMaterialId}
-                    materials={materials}
-                    edgingMaterials={edgingMaterials}
-                    onChange={(v) => setPlinth('kickplateEdgingMaterialId', v)}
-                  />
+                  <select
+                    disabled={!kickplateActive}
+                    value={
+                      kickplateHasNoEdging(plinth)
+                        ? KICKPLATE_EDGING_NONE_VALUE
+                        : (plinth.kickplateEdgingMaterialId ??
+                            defaultEdgingForMaterial(plinth.kickplateMaterialId))
+                    }
+                    onChange={(e) => {
+                      const currentPlinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
+                      const v = e.target.value;
+                      if (v === KICKPLATE_EDGING_NONE_VALUE) {
+                        onChange({
+                          ...unit,
+                          plinth: {
+                            ...currentPlinth,
+                            kickplateEdgingLongCount: 0,
+                            kickplateEdgingShortCount: 0,
+                          },
+                        });
+                        return;
+                      }
+                      const counts = resolveKickplateEdgingCounts(currentPlinth);
+                      onChange({
+                        ...unit,
+                        plinth: {
+                          ...currentPlinth,
+                          kickplateEdgingMaterialId: v,
+                          ...(counts.long === 0 && counts.short === 0
+                            ? { kickplateEdgingLongCount: 1 as const, kickplateEdgingShortCount: 0 as const }
+                            : {}),
+                        },
+                      });
+                    }}
+                  >
+                    <option value={KICKPLATE_EDGING_NONE_VALUE}>No edging</option>
+                    {edgingMaterials.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name} ({e.thickness} mm)
+                      </option>
+                    ))}
+                  </select>
                 </label>
+              </>
+            )}
+            {kickplateWood && (
+              <>
+                <label>
+                  Front long edge (mm)
+                  <NumberInput
+                    disabled={!kickplateActive}
+                    min={1}
+                    max={maxKickplateFrontRunMm(unit.width, settings)}
+                    integer
+                    value={plinth.kickplateFrontRunMm ?? unit.width}
+                    title={`Total front kick run — each board piece max ${maxKickplatePieceRunMm(settings)} mm (sheet short side); longer runs split for on-site join`}
+                    onChange={(n) => {
+                      const currentPlinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
+                      const max = maxKickplateFrontRunMm(unit.width, settings);
+                      const clamped = Math.min(Math.max(1, Math.round(n)), max);
+                      onChange({
+                        ...unit,
+                        plinth: {
+                          ...currentPlinth,
+                          kickplateFrontRunMm: clamped,
+                        },
+                      });
+                    }}
+                  />
+                  <span className="field-hint">
+                    Total run {resolveKickplateFrontRunMm(unit.width, plinth, settings)} mm · cut list {plinth.kickplateHeight} × run (grain
+                    vertical) · max {maxKickplatePieceRunMm(settings)} mm per piece ({boardSheetCrossMm(settings)} mm sheet width)
+                  </span>
+                </label>
+                {(plinth.kickplateCoverage === 'front-one-side' || plinth.kickplateCoverage === 'front-both-sides') && (
+                  <label>
+                    Side return long edge (mm)
+                    <NumberInput
+                      disabled={!kickplateActive}
+                      min={1}
+                      max={maxKickplateSideRunMm(unit.depth, settings)}
+                      integer
+                      value={plinth.kickplateSideRunMm ?? unit.depth}
+                      title={`Total side return run — max ${maxKickplatePieceRunMm(settings)} mm per board piece`}
+                      onChange={(n) => {
+                        const currentPlinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
+                        const max = maxKickplateSideRunMm(unit.depth, settings);
+                        const clamped = Math.min(Math.max(1, Math.round(n)), max);
+                        onChange({
+                          ...unit,
+                          plinth: {
+                            ...currentPlinth,
+                            kickplateSideRunMm: clamped,
+                          },
+                        });
+                      }}
+                    />
+                    <span className="field-hint">
+                      Total run {resolveKickplateSideRunMm(unit.depth, plinth, settings)} mm each return · {plinth.kickplateHeight} × run · max{' '}
+                      {maxKickplatePieceRunMm(settings)} mm per piece
+                    </span>
+                  </label>
+                )}
               </>
             )}
             <label>
               Kickplate height (mm)
-              <NumberInput  min={80} max={200} value={plinth.kickplateHeight} onChange={(n) => setPlinth('kickplateHeight', n)} />
+              <NumberInput
+                disabled={!kickplateActive}
+                min={80}
+                max={200}
+                value={plinth.kickplateHeight}
+                onChange={(n) => setPlinth('kickplateHeight', n)}
+              />
             </label>
             <label className="checkbox-label">
               <input type="checkbox" checked={plinth.feetRequired !== false} onChange={(e) => setPlinth('feetRequired', e.target.checked)} />
@@ -485,7 +636,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
               </label>
             )}
           </div>
-          {plinth.kickplateType === 'wood' && (() => {
+          {kickplateWood && kickplateActive && (() => {
             const edgingCounts = resolveKickplateEdgingCounts(plinth);
             return (
             <div className="kickplate-edging-patterns">
@@ -506,7 +657,9 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             );
           })()}
           <p className="hint">
-            {plinth.kickplateType === 'wood' ? (
+            {!kickplateActive ? (
+              <>No kickplate on this unit — nothing added to the cut list for kickplate. Plastic feet below still apply when ticked.</>
+            ) : kickplateWood ? (
               <>
                 Wood kickplate: grain along kick height on grain boards ·{' '}
                 {kickplateEdgingSummary(resolveKickplateEdgingCounts(plinth))}
@@ -530,8 +683,8 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
                 .
               </>
             ) : (
-              <>Plastic kickplate: {kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front')} mm run per cupboard
-                {unit.unitQty > 1 ? ` × ${unit.unitQty} = ${(kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front') * unit.unitQty / 1000).toFixed(2)} m total` : ''}.
+              <>Plastic kickplate: {kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front', plinth, settings)} mm run per cupboard
+                {unit.unitQty > 1 ? ` × ${unit.unitQty} = ${(kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front', plinth, settings) * unit.unitQty / 1000).toFixed(2)} m total` : ''}.
                 Set strip size &amp; price under Materials.</>
             )}
           </p>
@@ -541,7 +694,22 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
 
       <CollapsibleSection title="Carcass" variant="nested">
       {!isFloor && (
-        <p className="hint">Wall unit: 2 top fillers (front + back) and an extra bottom panel ({unit.depth} × {unit.width - 2 * settings.thickness} mm). No kickplate or feet.</p>
+        <p className="hint">
+          {wallTopFillers ? (
+            <>
+              Wall unit:{' '}
+              {unit.carcass.countertopType === 'wooden'
+                ? '3 top fillers (front, back, centre)'
+                : '2 top fillers (front + back)'}
+              , same as a floor unit, and an extra bottom panel ({unit.depth} × {unit.width - 2 * settings.thickness} mm). No kickplate or feet.
+            </>
+          ) : (
+            <>
+              Wall mount: extra bottom panel ({unit.depth} × {unit.width - 2 * settings.thickness} mm), same carcass as a wall unit.
+              Tick side fillers and top fillers below if you want them. No kickplate or feet.
+            </>
+          )}
+        </p>
       )}
       <div className="carcass-sides">
         <div className="side-column">
@@ -647,7 +815,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             onChange={(v) => setCarcass('bottomEdgingMaterialId', v)}
           />
         </label>
-        {isFloor && (
+        {showTopFillers && (
           <label>
             Countertop type
             <select value={unit.carcass.countertopType ?? 'granite'} onChange={(e) => setCarcass('countertopType', e.target.value as Unit['carcass']['countertopType'])}>
@@ -818,17 +986,142 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
             onChange={(v) => setCarcass('fillerEdgingMaterialId', v)}
           />
           <span className="hint-inline">
-            {unit.carcass.countertopType === 'wooden'
-              ? '3 top fillers (front, back, centre) — same width × internal W as granite'
-              : 'Front & back top fillers (granite / stone top)'}
+            {unit.type === 'bedroom' && !isFloor
+              ? 'Used when side or top fillers are ticked'
+              : unit.carcass.countertopType === 'wooden'
+                ? '3 top fillers (front, back, centre) — same width × internal W as granite'
+                : 'Front & back top fillers (granite / stone top)'}
           </span>
         </label>
         <label>
           Filler width (mm)
           <NumberInput  value={unit.carcass.fillerWidth} onChange={(n) => setCarcass('fillerWidth', n)} />
         </label>
+        {unit.type === 'bedroom' && !isFloor && (
+          <>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={unit.carcass.sideFillers === true}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  const side = resolveBedroomWallSideFiller(unit);
+                  onChange({
+                    ...unit,
+                    carcass: {
+                      ...unit.carcass,
+                      sideFillers: on,
+                      sideFillerWidth: unit.carcass.sideFillerWidth ?? side.width,
+                      sideFillerHeight: unit.carcass.sideFillerHeight ?? side.length,
+                      sideFillerQty: unit.carcass.sideFillerQty ?? side.qty,
+                    },
+                  });
+                }}
+              />
+              Side fillers
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={unit.carcass.topFillers === true}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  const top = resolveBedroomWallTopFiller(unit);
+                  onChange({
+                    ...unit,
+                    carcass: {
+                      ...unit.carcass,
+                      topFillers: on,
+                      topFillerWidth: unit.carcass.topFillerWidth ?? top.width,
+                      topFillerHeight: unit.carcass.topFillerHeight ?? top.length,
+                      topFillerQty: unit.carcass.topFillerQty ?? top.qty,
+                    },
+                  });
+                }}
+              />
+              Top fillers
+            </label>
+          </>
+        )}
       </div>
-      {isFloor && (unit.carcass.backingType === 'melamine' || unit.carcass.countertopType === 'wooden') && (
+      {unit.type === 'bedroom' && !isFloor && unit.carcass.sideFillers && (() => {
+        const side = resolveBedroomWallSideFiller(unit);
+        const sideEdging = resolveBedroomWallSideFillerEdging(unit.carcass);
+        return (
+          <>
+            <div className="form-grid form-grid-4">
+              <label>
+                Side filler qty
+                <NumberInput min={1} integer value={side.qty} onChange={(n) => setCarcass('sideFillerQty', Math.max(1, n))} />
+              </label>
+              <label>
+                Side filler width (mm)
+                <NumberInput min={1} integer value={side.width} onChange={(n) => setCarcass('sideFillerWidth', Math.max(1, n))} />
+              </label>
+              <label>
+                Side filler length (mm)
+                <NumberInput min={1} integer value={side.length} onChange={(n) => setCarcass('sideFillerHeight', Math.max(1, n))} />
+              </label>
+            </div>
+            <FillerEdgingCheckboxes
+              counts={sideEdging}
+              onChange={(next) =>
+                onChange({
+                  ...unit,
+                  carcass: {
+                    ...unit.carcass,
+                    sideFillerEdgingLongCount: next.long,
+                    sideFillerEdgingShortCount: next.short,
+                  },
+                })
+              }
+            />
+          </>
+        );
+      })()}
+      {unit.type === 'bedroom' && !isFloor && unit.carcass.topFillers && (() => {
+        const top = resolveBedroomWallTopFiller(unit);
+        const topEdging = resolveBedroomWallTopFillerEdging(unit.carcass);
+        return (
+          <>
+            <div className="form-grid form-grid-4">
+              <label>
+                Top filler qty
+                <NumberInput min={1} integer value={top.qty} onChange={(n) => setCarcass('topFillerQty', Math.max(1, n))} />
+              </label>
+              <label>
+                Top filler width (mm)
+                <NumberInput min={1} integer value={top.width} onChange={(n) => setCarcass('topFillerWidth', Math.max(1, n))} />
+              </label>
+              <label>
+                Top filler length (mm)
+                <NumberInput min={1} integer value={top.length} onChange={(n) => setCarcass('topFillerHeight', Math.max(1, n))} />
+              </label>
+            </div>
+            <FillerEdgingCheckboxes
+              counts={topEdging}
+              onChange={(next) =>
+                onChange({
+                  ...unit,
+                  carcass: {
+                    ...unit.carcass,
+                    topFillerEdgingLongCount: next.long,
+                    topFillerEdgingShortCount: next.short,
+                  },
+                })
+              }
+            />
+          </>
+        );
+      })()}
+      {unit.type === 'bedroom' && !isFloor && (
+        <p className="hint">
+          {unit.carcass.sideFillers || unit.carcass.topFillers
+            ? 'Type qty, width and height yourself. Tick No edging or 1 Long / 2 Long / 1 short / 2 short. Cut only while the filler tick boxes are on.'
+            : 'Tick side fillers and/or top fillers to add them. You set qty, both sizes, and edging.'}
+        </p>
+      )}
+      {showTopFillers && (unit.carcass.backingType === 'melamine' || unit.carcass.countertopType === 'wooden') && (
         <p className="hint">
           {unit.carcass.backingType === 'melamine' && (
             <>Melamine back: {unit.width - 2 * settings.thickness} × {unit.height - settings.thickness} mm (inside carcass).</>
@@ -1166,7 +1459,7 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
           </p>
           <p className="hint">
             Box sides ({EDGING_LABELS[DRAWER_BOX_SIDE_EDGING]}):{' '}
-            {drawerBoxSideDepthNote(unit.depth, drawer.frontClearance ?? 20, drawer.backClearance ?? 5)} × box height
+            {drawerBoxSideDepthNote(unit.depth, drawer.backClearance ?? 5, settings.thickness)} × box height
           </p>
           <div className="form-grid form-grid-4">
             <label>
@@ -1323,6 +1616,61 @@ export function UnitForm({ job, unit, materials, edgingMaterials, settings, onCh
       })}
       <button type="button" className="btn btn-secondary btn-sm" onClick={addDrawer}>+ Add drawers</button>
       </CollapsibleSection>
+
+      {isBedroomWallUnit(unit) && (
+        <CollapsibleSection
+          title="Extras"
+          variant="nested"
+          headerAction={
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={unit.extrasEnabled === true}
+                onChange={(e) => onChange({ ...unit, extrasEnabled: e.target.checked })}
+              />
+              Include extras
+            </label>
+          }
+        >
+          <p className="hint">
+            {unit.extrasEnabled
+              ? 'Inner carcass (sides/bottom/top) plus optional drawers that sit in their own typed carcass — floor-unit drawer calc with runner clearance. Pick board per part. No kickplate or feet.'
+              : 'Extras are off for this unit — nothing from this section is added to the cut list. Tick Include extras to enable.'}
+          </p>
+          {(unit.extras ?? []).map((extra, i) => (
+            <ExtraInnerForm
+              key={extra.id}
+              index={i}
+              job={job}
+              unit={unit}
+              extra={extra}
+              materials={materials}
+              edgingMaterials={edgingMaterials}
+              settings={settings}
+              disabled={unit.extrasEnabled !== true}
+              onChange={(next) => {
+                const extras = [...(unit.extras ?? [])];
+                extras[i] = next;
+                onChange({ ...unit, extras });
+              }}
+              onRemove={() => {
+                onChange({ ...unit, extras: (unit.extras ?? []).filter((e) => e.id !== extra.id) });
+              }}
+            />
+          ))}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={unit.extrasEnabled !== true}
+            onClick={() => {
+              const extra = defaultBedroomWallExtra(unit, defaultEdgingForMaterial(unit.carcass.leftMaterialId));
+              onChange({ ...unit, extras: [...(unit.extras ?? []), extra] });
+            }}
+          >
+            + Add extra inner unit
+          </button>
+        </CollapsibleSection>
+      )}
 
       {presets.length > 0 && (
         <p className="hint" style={{ marginTop: '1rem' }}>

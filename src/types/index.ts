@@ -5,7 +5,7 @@ export type BottomType = 'solid' | 'masonite';
 export type BackingType = 'none' | 'masonite' | 'melamine';
 export type CountertopType = 'granite' | 'wooden';
 export type MountType = 'floor' | 'wall' | 'spice';
-export type KickplateType = 'wood' | 'plastic';
+export type KickplateType = 'wood' | 'plastic' | 'none';
 export type KickplateCoverage = 'front' | 'front-one-side' | 'front-both-sides';
 export type KickplateSide = 'left' | 'right';
 /** Smallest board size you can buy from the supplier for that melamine. */
@@ -258,6 +258,10 @@ export interface KitchenPlinthConfig {
   kickplateEdgingPattern?: EdgingPattern;
   kickplateEdgingMaterialId?: string;
   kickplateHeight: number;
+  /** Wood kickplate — long-edge run for the front strip (mm). Empty = cupboard width. */
+  kickplateFrontRunMm?: number;
+  /** Wood kickplate — long-edge run for each side return (mm). Empty = cupboard depth. */
+  kickplateSideRunMm?: number;
   feetPerUnit: number;
   feetRequired: boolean;
 }
@@ -290,6 +294,34 @@ export interface CarcassConfig {
   leftVisible?: boolean;
   /** External finished face — affects corner block count (defaults from materials). */
   rightVisible?: boolean;
+  /**
+   * Bedroom wall mount only. Two strips (left and right), filler width × carcass height.
+   */
+  sideFillers?: boolean;
+  /** Bedroom wall side filler strip width (mm). Empty = `fillerWidth`. */
+  sideFillerWidth?: number;
+  /** Bedroom wall side filler strip height (mm). Empty = carcass height. */
+  sideFillerHeight?: number;
+  /** Bedroom wall side filler quantity. Empty = 2. */
+  sideFillerQty?: number;
+  /** Side filler long edges (along height). Empty = 1. */
+  sideFillerEdgingLongCount?: 0 | 1 | 2;
+  /** Side filler short edges (along width). Empty = 0. */
+  sideFillerEdgingShortCount?: 0 | 1 | 2;
+  /**
+   * Bedroom wall mount only. Two strips (front and back), filler width × carcass width.
+   */
+  topFillers?: boolean;
+  /** Bedroom wall top filler strip width (mm). Empty = `fillerWidth`. */
+  topFillerWidth?: number;
+  /** Bedroom wall top filler strip length (mm). Empty = carcass width. */
+  topFillerHeight?: number;
+  /** Bedroom wall top filler quantity. Empty = 2. */
+  topFillerQty?: number;
+  /** Top filler long edges (along carcass width). Empty = 1. */
+  topFillerEdgingLongCount?: 0 | 1 | 2;
+  /** Top filler short edges (along filler width). Empty = 0. */
+  topFillerEdgingShortCount?: 0 | 1 | 2;
   backingType: BackingType;
   backingMaterialId: string;
   /** External visible back when `backingType` is `none` (not inside carcass). */
@@ -390,6 +422,75 @@ export interface SpiceCupboardConfig {
   runnerSideClearanceMm?: number;
 }
 
+/**
+ * Inner box built inside a bedroom wall carcass (Extras section).
+ * Shelf and division sizes are user-typed, not derived from the outer carcass.
+ */
+export interface BedroomWallExtra {
+  id: string;
+  width: number;
+  height: number;
+  depth: number;
+  includeTop: boolean;
+  topQty: number;
+  /** Front run (cut-list length; edging long edge along length unless pattern says otherwise). */
+  topLength: number;
+  /** Front to back (cut-list width). */
+  topDepth: number;
+  topMaterialId: string;
+  topEdgingPattern: EdgingPattern;
+  topEdgingMaterialId: string;
+  sideFillers: boolean;
+  sideFillerWidth: number;
+  /** Long side of the strip (cut-list length; 1 Long edging). */
+  sideFillerHeight: number;
+  sideFillerQty: number;
+  sideFillerEdgingLongCount: 0 | 1 | 2;
+  sideFillerEdgingShortCount: 0 | 1 | 2;
+  topFillers: boolean;
+  topFillerWidth: number;
+  /** Long side of the strip (cut-list length; 1 Long edging). */
+  topFillerHeight: number;
+  topFillerQty: number;
+  topFillerEdgingLongCount: 0 | 1 | 2;
+  topFillerEdgingShortCount: 0 | 1 | 2;
+  shelvesEnabled: boolean;
+  shelfQty: number;
+  /** Front run (cut-list length; 1 Long edging). */
+  shelfWidth: number;
+  /** Front to back (cut-list width). */
+  shelfHeight: number;
+  shelfEdgingPattern: EdgingPattern;
+  shelfEdgingMaterialId: string;
+  divisionEnabled: boolean;
+  divisionQty: number;
+  divisionWidth: number;
+  divisionHeight: number;
+  divisionEdgingPattern: EdgingPattern;
+  divisionEdgingMaterialId: string;
+  drawersEnabled: boolean;
+  drawers: DrawerConfig[];
+  /** Drawer stack carcass (floor-unit logic). Drawers sit inside this box; extra W×H×D is the outer inner carcass. */
+  drawerCarcassWidth: number;
+  drawerCarcassHeight: number;
+  drawerCarcassDepth: number;
+  /** Identical drawer carcass boxes in this extra (multiplies drawer box cuts, runners, hardware). */
+  drawerCarcassQty: number;
+  /** Board for inner sides and bottom. */
+  boxMaterialId: string;
+  /** Board for shelves (when enabled). */
+  shelfMaterialId: string;
+  /** Board for division panel(s) (when enabled). */
+  divisionMaterialId: string;
+  /** Board for side/top filler strips (when enabled). */
+  fillerMaterialId: string;
+  /** Edging on inner sides / top / bottom. */
+  edgingPattern: EdgingPattern;
+  edgingMaterialId: string;
+  fillerEdgingPattern: EdgingPattern;
+  fillerEdgingMaterialId: string;
+}
+
 export interface Unit {
   id: string;
   name: string;
@@ -404,6 +505,10 @@ export interface Unit {
   spice?: SpiceCupboardConfig;
   doors: DoorConfig[];
   drawers: DrawerConfig[];
+  /** Bedroom wall mount only. Off = extras form and cut-list logic skipped. */
+  extrasEnabled?: boolean;
+  /** Bedroom wall mount only — inner boxes, shelves, division panels, drawer stacks. */
+  extras?: BedroomWallExtra[];
 }
 
 export interface UnitPreset {

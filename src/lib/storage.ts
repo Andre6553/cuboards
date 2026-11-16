@@ -21,6 +21,7 @@ import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
 import { getDefaultScrewPrices } from './screwCatalog';
 import { normalizeMaterialSuppliers } from './materialSupplierPrices';
 import type {
+  BedroomWallExtra,
   Client,
   CutHouseChargeSettings,
   DoorConfig,
@@ -31,6 +32,7 @@ import type {
   Material,
   Unit,
 } from '../types';
+import { defaultBedroomWallExtra, extraLayoutUnit } from './extrasRules';
 import { DEFAULT_DOOR_GAPS } from './doorRules';
 import { DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
 import { syncFrontLayoutToUnit } from './frontLayout';
@@ -103,6 +105,38 @@ function migrateDrawer(
     unit.height,
     unit.drawers,
   );
+}
+
+function migrateExtra(
+  extra: BedroomWallExtra,
+  unit: Unit,
+  materials: Material[],
+  edgingMaterials: EdgingMaterial[],
+  boardThickness = 16,
+): BedroomWallExtra {
+  const fallback = edgingMaterials[0]?.id ?? '';
+  const base = defaultBedroomWallExtra(unit, fallback);
+  const T = Math.max(0, boardThickness);
+  const innerTopLength = Math.max(1, Math.round(extra.width || unit.width) - 2 * T);
+  const topDepthDefault = Math.max(1, Math.round(extra.depth || unit.depth));
+  const merged: BedroomWallExtra = {
+    ...base,
+    ...extra,
+    id: extra.id || base.id,
+    drawers: extra.drawers ?? [],
+    drawerCarcassQty: Math.max(0, Math.floor(extra.drawerCarcassQty ?? base.drawerCarcassQty)),
+    topQty: Math.max(1, Math.floor(extra.topQty ?? base.topQty)),
+    topLength: Math.max(1, Math.round(extra.topLength || innerTopLength)),
+    topDepth: Math.max(1, Math.round(extra.topDepth || topDepthDefault)),
+    topMaterialId: extra.topMaterialId || base.topMaterialId,
+    topEdgingPattern: extra.topEdgingPattern ?? base.topEdgingPattern,
+    topEdgingMaterialId: extra.topEdgingMaterialId || base.topEdgingMaterialId,
+  };
+  const extraUnit = extraLayoutUnit({ ...unit, doors: [] }, merged);
+  return {
+    ...merged,
+    drawers: merged.drawers.map((d) => migrateDrawer(d, extraUnit, materials, edgingMaterials)),
+  };
 }
 
 const emptyClient = (): Client => ({
@@ -199,7 +233,7 @@ export function migrateJob(job: Job): Job {
     units: (job.units ?? []).map((u) => {
       const unitQty = u.unitQty ?? 1;
       const defaultMat = job.materials?.[0]?.id ?? 'mat-white';
-      const plinth = isKitchenBase(u.type)
+      const plinth = isKitchenBase(u.type) || u.type === 'bedroom'
         ? {
             ...(u.plinth ?? defaultPlinth({ settings: { ...DEFAULT_SETTINGS, ...job.settings }, materials: job.materials ?? [] }, u.carcass?.leftMaterialId)),
             kickplateType: u.plinth?.kickplateType ?? 'wood',
@@ -216,6 +250,8 @@ export function migrateJob(job: Job): Job {
               (job.materials ?? []).find((m) => m.id === (u.plinth?.kickplateMaterialId ?? defaultMat))?.edgingMaterialId ??
               defaultEdgingId,
             feetRequired: u.plinth?.feetRequired ?? true,
+            kickplateFrontRunMm: u.plinth?.kickplateFrontRunMm,
+            kickplateSideRunMm: u.plinth?.kickplateSideRunMm,
           }
         : undefined;
       const carcass = u.carcass ?? {};
@@ -259,6 +295,16 @@ export function migrateJob(job: Job): Job {
         },
         doors: (u.doors ?? []).map((d) => migrateDoor(d, job.materials ?? [], edgingMaterials)),
         drawers: (u.drawers ?? []).map((d) => migrateDrawer(d, u, job.materials ?? [], edgingMaterials)),
+        extrasEnabled: u.extrasEnabled === true,
+        extras: (u.extras ?? []).map((e) =>
+          migrateExtra(
+            e,
+            { ...u, carcass: u.carcass, doors: u.doors ?? [], drawers: u.drawers ?? [] } as Unit,
+            job.materials ?? [],
+            edgingMaterials,
+            job.settings?.thickness ?? 16,
+          ),
+        ),
       });
     }),
   };

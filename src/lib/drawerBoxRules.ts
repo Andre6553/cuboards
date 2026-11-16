@@ -12,10 +12,10 @@ export function carcassInternalWidth(carcassWidth: number, boardThickness: numbe
 }
 
 /**
- * Drawer box front/back panel width (mm) — full width in the runner bay (sides mount inside).
+ * Drawer box front & back **width** (mm).
  *
- * = carcass width − 2×carcass T − 2×runner side clearance
- * e.g. 500 − 32 − 26 = 442 mm (16 mm board, 13 mm runner clearance)
+ * Inner carcass width (W − 2×T) minus runner bay each side:
+ * = (W − 2×T) − 2×runner side clearance.
  */
 export function drawerBoxFrontBackWidth(
   carcassWidth: number,
@@ -27,20 +27,20 @@ export function drawerBoxFrontBackWidth(
 }
 
 /**
- * Drawer box side panel depth (mm) — 1 long edge on top.
+ * Drawer box side panel **depth** (mm) — height on cut list is user `boxHeight`.
  *
- * = cupboard depth − front clearance − back clearance
- * (front/back clearances default 20 + 5 = 25 mm, matching typical runner depth deduction)
+ * = carcass depth − back clearance − 2×board thickness
+ * (front clearance is for runners / facade gap, not side panel depth)
  */
 export function drawerBoxSideDepth(
   cupboardDepth: number,
-  frontClearance: number,
   backClearance: number,
+  boardThickness: number,
 ): number {
-  return cupboardDepth - frontClearance - backClearance;
+  return cupboardDepth - backClearance - 2 * boardThickness;
 }
 
-/** Inside the box, for a drop-in bottom (no groove). Sides sit inside the front/back width. */
+/** Masonite drop-in — cavity inside front/back + sides (−2T each way). */
 export function drawerBoxInnerSize(
   frontBackWidth: number,
   sideDepth: number,
@@ -49,6 +49,21 @@ export function drawerBoxInnerSize(
   return {
     width: frontBackWidth - 2 * boardThickness,
     depth: sideDepth - 2 * boardThickness,
+  };
+}
+
+/**
+ * Solid melamine bottom — same **depth** as drawer side panel; width = inner between front/back.
+ * Cut list: sideDepth × (frontBackWidth − 2×T), e.g. 411 × 336.
+ */
+export function drawerBoxSolidBottomSize(
+  frontBackWidth: number,
+  sideDepth: number,
+  boardThickness: number,
+): { width: number; depth: number } {
+  return {
+    width: Math.max(0, frontBackWidth - 2 * boardThickness),
+    depth: Math.max(0, sideDepth),
   };
 }
 
@@ -67,12 +82,12 @@ export function drawerBoxFrontBackWidthNote(
 
 export function drawerBoxSideDepthNote(
   cupboardDepth: number,
-  frontClearance: number,
   backClearance: number,
+  boardThickness: number,
 ): string {
-  const depth = drawerBoxSideDepth(cupboardDepth, frontClearance, backClearance);
+  const depth = drawerBoxSideDepth(cupboardDepth, backClearance, boardThickness);
   return (
-    `${depth} mm = ${cupboardDepth} mm depth − ${frontClearance} mm front clearance − ${backClearance} mm back clearance`
+    `${depth} mm = ${cupboardDepth} mm carcass depth − ${backClearance} mm back clearance − 2×${boardThickness} mm board`
   );
 }
 

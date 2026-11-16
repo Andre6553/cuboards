@@ -38,6 +38,36 @@ async function fetchAccess(): Promise<MyAccess> {
   return parseMyAccess(data);
 }
 
+/** getSession + SIGNED_IN + React Strict Mode all fire on one load — one in-flight RPC. */
+let deviceLoginInFlight: Promise<void> | null = null;
+let deviceLoginAt = 0;
+const DEVICE_LOGIN_COOLDOWN_MS = 60_000;
+
+async function recordDeviceLogin(installId: string): Promise<void> {
+  const now = Date.now();
+  if (deviceLoginInFlight) {
+    await deviceLoginInFlight;
+    return;
+  }
+  if (now - deviceLoginAt < DEVICE_LOGIN_COOLDOWN_MS) return;
+
+  const supabase = getSupabase();
+  deviceLoginInFlight = (async () => {
+    const { error } = await supabase.rpc('record_device_login', { p_install_id: installId });
+    if (error) {
+      const status = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+      // 23503/409 was the missing device_installs row — ignore leftover conflicts.
+      if (status !== '23503' && status !== '23505' && !/409|conflict/i.test(error.message ?? '')) {
+        console.warn('record_device_login', error.message);
+      }
+    }
+  })().finally(() => {
+    deviceLoginInFlight = null;
+    deviceLoginAt = Date.now();
+  });
+  await deviceLoginInFlight;
+}
+
 async function ensureAccessForSession(): Promise<MyAccess> {
   const supabase = getSupabase();
   const installId = getDeviceInstallId();
@@ -49,8 +79,7 @@ async function ensureAccessForSession(): Promise<MyAccess> {
     });
     if (!error) access = parseMyAccess(data);
   } else {
-    await supabase.rpc('record_device_login', { p_install_id: installId });
-    access = await fetchAccess();
+    await recordDeviceLogin(installId);
   }
 
   return access;

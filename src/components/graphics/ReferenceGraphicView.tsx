@@ -1,4 +1,4 @@
-import { isKitchenBase } from '../../lib/constants';
+import { plinthHasKickplate, showsKickplate } from '../../lib/constants';
 import type { GraphicProps, GraphicView, ShelfVariant } from './types';
 import { getReferenceImage } from './types';
 
@@ -11,7 +11,10 @@ interface Props extends GraphicProps {
 export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Props) {
   const src = getReferenceImage(view, shelfVariant);
   const spice = shelfVariant === 'spice';
-  const kh = isKitchenBase(unit.type) && unit.plinth ? unit.plinth.kickplateHeight : 0;
+  const kh =
+    showsKickplate(unit) && unit.plinth && plinthHasKickplate(unit.plinth)
+      ? unit.plinth.kickplateHeight
+      : 0;
   const internalW = unit.width - 2 * thickness;
   const internalD = unit.depth - 2 * thickness;
   const configHasShelf = unit.carcass.shelfQty > 0;

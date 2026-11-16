@@ -1,4 +1,4 @@
-import { defaultPlinth, EDGING_LABELS, isFloorUnit, isKitchenBase, isSpiceCupboard } from './constants';
+import { defaultPlinth, EDGING_LABELS, isSpiceCupboard, plinthHasKickplate, showsKickplate } from './constants';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig } from './spiceCupboardRules';
 import {
   getHingeByIdForJob,
@@ -11,6 +11,7 @@ import { DEFAULT_HINGE_PRESET_ID } from './hingeCatalog';
 import { applyCutSizeMode, edgingRunMm, type LongAlong } from './edgingCutSize';
 import {
   applyKickplateCutSizeMode,
+  edgeCountsToPattern,
   edgingTapeKeyFromMaterial,
   formatKickplateEdgingLabel,
   kickplateEdgingMergeKey,
@@ -35,6 +36,7 @@ import {
   drawerBoxFrontBackWidth,
   drawerBoxFrontBackWidthNote,
   drawerBoxInnerSize,
+  drawerBoxSolidBottomSize,
   drawerBoxSideDepth,
   drawerBoxSideDepthNote,
   stockRunnerLengthMm,
@@ -47,7 +49,10 @@ import {
   masonitePanelSize,
   melamineBackingSize,
   resolveFillerMaterial,
+  topFillerCount,
+  bedroomWallFillerPieces,
 } from './carcassRules';
+import { resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFillerEdging } from './kickplateEdging';
 import {
   normalizeVisibleBackPanel,
   resolveVisibleBackPanelEdging,
@@ -55,6 +60,14 @@ import {
 } from './visibleBackPanel';
 import { resolveFrontLayout } from './frontLayout';
 import { coverageLabel, kickplateRunLengthMm, woodKickplatePieces } from './kickplateRules';
+import {
+  extraBoardCuts,
+  extraLayoutUnit,
+  extraPartMaterialId,
+  extraPartPrefix,
+  extrasForCutList,
+  normalizeBedroomWallExtra,
+} from './extrasRules';
 import {
   estimateSheetsFromArea,
   formatSheetCount,
@@ -413,12 +426,82 @@ function calcCarcass(
     ? 'Matches side material'
     : '';
 
-  if (!isWall) {
-    const woodenTop = c.countertopType === 'wooden';
+  const fillerCount = topFillerCount(unit);
+  if (fillerCount >= 2) {
     addEdgedPiece('Top filler (front)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
     addEdgedPiece('Top filler (back)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
-    if (woodenTop) {
-      addEdgedPiece('Top filler (centre)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+  }
+  if (fillerCount >= 3) {
+    addEdgedPiece('Top filler (centre)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+  }
+
+  const bedroomFillers = bedroomWallFillerPieces(unit);
+  if (bedroomFillers.side) {
+    const { width: fw, length: sideH, qty: sideQty } = bedroomFillers.side;
+    const sideCounts = resolveBedroomWallSideFillerEdging(c);
+    const totalQty = sideQty * mult;
+    if (totalQty > 0) {
+      pushBoardPiece(job, pieces, {
+        category: 'carcass',
+        materialId: fillerMatId,
+        partName: 'Side filler',
+        unitName: unit.name,
+        width: fw,
+        length: sideH,
+        qty: totalQty,
+        grain: 'none',
+        notes: joinNotes('Bedroom wall · user size', fillerNote, mult > 1 ? `${mult} cupboards` : undefined),
+        edgingPattern: edgeCountsToPattern(sideCounts.long, sideCounts.short),
+        edgingMaterialId: c.fillerEdgingMaterialId,
+        longAlong: 'length',
+      });
+      addEdging(
+        edging,
+        job,
+        fillerMatId,
+        'Side filler',
+        unit.name,
+        edgeCountsToPattern(sideCounts.long, sideCounts.short),
+        fw,
+        sideH,
+        totalQty,
+        c.fillerEdgingMaterialId,
+        'length',
+      );
+    }
+  }
+  if (bedroomFillers.top) {
+    const { width: fw, length: topW, qty: topQty } = bedroomFillers.top;
+    const topCounts = resolveBedroomWallTopFillerEdging(c);
+    const totalQty = topQty * mult;
+    if (totalQty > 0) {
+      pushBoardPiece(job, pieces, {
+        category: 'carcass',
+        materialId: fillerMatId,
+        partName: 'Top filler',
+        unitName: unit.name,
+        width: fw,
+        length: topW,
+        qty: totalQty,
+        grain: 'none',
+        notes: joinNotes('Bedroom wall · user size', fillerNote, mult > 1 ? `${mult} cupboards` : undefined),
+        edgingPattern: edgeCountsToPattern(topCounts.long, topCounts.short),
+        edgingMaterialId: c.fillerEdgingMaterialId,
+        longAlong: 'length',
+      });
+      addEdging(
+        edging,
+        job,
+        fillerMatId,
+        'Top filler',
+        unit.name,
+        edgeCountsToPattern(topCounts.long, topCounts.short),
+        fw,
+        topW,
+        totalQty,
+        c.fillerEdgingMaterialId,
+        'length',
+      );
     }
   }
 
@@ -579,7 +662,7 @@ function calcKitchenPlinth(
   plasticLines: PlasticKickplateLine[],
   mult: number,
 ) {
-  if (!isKitchenBase(unit.type) || !unit.plinth || !isFloorUnit(unit)) return;
+  if (!showsKickplate(unit) || !unit.plinth) return;
 
   const { width: W, depth: D } = unit;
   const plinth = unit.plinth;
@@ -587,11 +670,11 @@ function calcKitchenPlinth(
   const kickType = plinth.kickplateType ?? 'wood';
   const coverage = plinth.kickplateCoverage ?? 'front';
 
-  if (kickType === 'wood') {
+  if (plinthHasKickplate(plinth) && kickType === 'wood') {
     const kickCounts = resolveKickplateEdgingCounts(plinth);
     const kickEdgingMatId = plinth.kickplateEdgingMaterialId;
     const hasGrain = materialHasGrain(job.materials, plinth.kickplateMaterialId);
-    for (const kp of woodKickplatePieces(W, D, kh, plinth)) {
+    for (const kp of woodKickplatePieces(W, D, kh, plinth, job.settings)) {
       pushBoardPiece(job, pieces, {
         category: 'carcass',
         materialId: plinth.kickplateMaterialId,
@@ -619,8 +702,8 @@ function calcKitchenPlinth(
         kickEdgingMatId,
       );
     }
-  } else {
-    const runMm = kickplateRunLengthMm(W, D, coverage);
+  } else if (plinthHasKickplate(plinth) && kickType === 'plastic') {
+    const runMm = kickplateRunLengthMm(W, D, coverage, plinth, job.settings);
     const totalMetres = (runMm * mult) / 1000;
     const pk = job.plasticKickplate;
     plasticLines.push({
@@ -721,9 +804,11 @@ function calcDrawers(
   edging: EdgingLine[],
   hardware: HardwareItem[],
   mult: number,
+  partPrefix = '',
 ) {
   const T = job.settings.thickness;
   const { width: W, depth: D, drawers } = unit;
+  const pname = (name: string) => (partPrefix ? `${partPrefix} · ${name}` : name);
 
   for (const drawer of drawers) {
     if (drawer.qty <= 0) continue;
@@ -738,7 +823,7 @@ function calcDrawers(
     const frontBackWidth = drawerBoxFrontBackWidth(W, T, sideClearance);
     const frontClearance = drawer.frontClearance ?? 20;
     const backClearance = drawer.backClearance ?? 5;
-    const sideDepth = drawerBoxSideDepth(D, frontClearance, backClearance);
+    const sideDepth = drawerBoxSideDepth(D, backClearance, T);
     const boxH = Math.round(Math.max(1, drawer.boxHeight));
     const drawerMult = drawer.qty * mult;
     const frontPieceQty = drawerMult * resolveFrontQty(drawer);
@@ -746,6 +831,7 @@ function calcDrawers(
     const facadeH = drawerFrontHeight(drawer, unit.height, drawers);
     const boxWidthNote = drawerBoxFrontBackWidthNote(W, T, sideClearance);
     const inner = drawerBoxInnerSize(frontBackWidth, sideDepth, T);
+    const solidBottom = drawerBoxSolidBottomSize(frontBackWidth, sideDepth, T);
 
     const boxMaterialId = resolveDrawerBoxMaterialId(drawer);
     const frontMaterialId = resolveDrawerFrontMaterialId(drawer);
@@ -757,7 +843,7 @@ function calcDrawers(
       pushBoardPiece(job, pieces, {
         category: 'drawer',
         materialId: frontMaterialId,
-        partName: 'Drawer front',
+        partName: pname('Drawer front'),
         unitName: unit.name,
         width: facadeW,
         length: facadeH,
@@ -772,7 +858,7 @@ function calcDrawers(
         edging,
         job,
         frontMaterialId,
-        'Drawer front',
+        pname('Drawer front'),
         unit.name,
         drawer.frontEdgingPattern,
         facadeW,
@@ -813,7 +899,7 @@ function calcDrawers(
     };
 
     addDrawerPiece(
-      'Drawer box front',
+      pname('Drawer box front'),
       boxMaterialId,
       frontBackWidth,
       boxH,
@@ -824,7 +910,7 @@ function calcDrawers(
       'width',
     );
     addDrawerPiece(
-      'Drawer box back',
+      pname('Drawer box back'),
       boxMaterialId,
       frontBackWidth,
       boxH,
@@ -834,11 +920,11 @@ function calcDrawers(
       boxWidthNote,
       'width',
     );
-    const sideDepthNote = drawerBoxSideDepthNote(D, frontClearance, backClearance);
+    const sideDepthNote = drawerBoxSideDepthNote(D, backClearance, T);
     pushBoardPiece(job, pieces, {
       category: 'drawer',
       materialId: boxMaterialId,
-      partName: 'Drawer side',
+      partName: pname('Drawer side'),
       unitName: unit.name,
       width: sideDepth,
       length: boxH,
@@ -853,7 +939,7 @@ function calcDrawers(
       edging,
       job,
       boxMaterialId,
-      'Drawer side',
+      pname('Drawer side'),
       unit.name,
       boxSideEdgingPattern,
       sideDepth,
@@ -864,17 +950,17 @@ function calcDrawers(
     );
 
     if (drawer.bottomType === 'solid') {
-      if (inner.width > 0 && inner.depth > 0) {
+      if (solidBottom.width > 0 && solidBottom.depth > 0) {
         addDrawerPiece(
-          'Drawer bottom (solid)',
+          pname('Drawer bottom (solid)'),
           boxMaterialId,
-          inner.width,
-          inner.depth,
+          solidBottom.depth,
+          solidBottom.width,
           drawerMult,
           'none',
           undefined,
-          'Drop-in solid melamine (no groove)',
-          'length',
+          'Drop-in solid melamine — same depth as drawer side',
+          'width',
         );
       }
     } else {
@@ -883,7 +969,7 @@ function calcDrawers(
         category: 'drawer',
         materialId: MASONITE_ID,
         materialName: `${job.masonite.name} — ${job.masonite.colour}`,
-        partName: 'Drawer bottom (masonite)',
+        partName: pname('Drawer bottom (masonite)'),
         unitName: unit.name,
         width: Math.round(bottomMasonite.width),
         length: Math.round(bottomMasonite.length),
@@ -913,6 +999,110 @@ function calcDrawers(
       subtotal: pricePerPair * drawerMult,
     });
   }
+}
+
+/** Stale HMR used extraCutMaterialId(unit, job, cut). Current code passes (extra, unit, job, role). */
+function extraCutMaterialId(
+  extraOrUnit: Parameters<typeof extraPartMaterialId>[0] | Unit,
+  unitOrJob: Parameters<typeof extraPartMaterialId>[1] | Job,
+  jobOrCut: Parameters<typeof extraPartMaterialId>[2] | { role: Parameters<typeof extraPartMaterialId>[3] },
+  role?: Parameters<typeof extraPartMaterialId>[3],
+): string {
+  if (role) {
+    return extraPartMaterialId(
+      extraOrUnit as Parameters<typeof extraPartMaterialId>[0],
+      unitOrJob as Parameters<typeof extraPartMaterialId>[1],
+      jobOrCut as Parameters<typeof extraPartMaterialId>[2],
+      role,
+    );
+  }
+  const unit = extraOrUnit as Unit;
+  const job = unitOrJob as Job;
+  const cut = jobOrCut as { role: Parameters<typeof extraPartMaterialId>[3] };
+  const extra = extrasForCutList(unit)[0];
+  if (extra) return extraPartMaterialId(extra, unit, job, cut.role);
+  return unit.carcass.leftMaterialId;
+}
+
+function calcBedroomWallExtras(
+  unit: Unit,
+  job: Job,
+  pieces: CutPiece[],
+  edging: EdgingLine[],
+  hardware: HardwareItem[],
+  mult: number,
+) {
+  const extras = extrasForCutList(unit);
+  if (extras.length === 0) return;
+  const T = job.settings.thickness;
+  const fillerWidth = unit.carcass.fillerWidth ?? 0;
+
+  extras.forEach((rawExtra, i) => {
+    const extra = normalizeBedroomWallExtra(rawExtra, T);
+    for (const cut of extraBoardCuts(extra, i, T, fillerWidth)) {
+      const materialId = extraCutMaterialId(extra, unit, job, cut.role);
+      const grain =
+        cut.grainHint === 'vertical' && materialHasGrain(job.materials, materialId) ? 'vertical' : 'none';
+      const totalQty = cut.qty * mult;
+      if (totalQty <= 0) continue;
+      const fillerCounts =
+        cut.edgingLong != null || cut.edgingShort != null
+          ? {
+              long: (cut.edgingLong ?? 0) as 0 | 1 | 2,
+              short: (cut.edgingShort ?? 0) as 0 | 1 | 2,
+            }
+          : undefined;
+      pushBoardPiece(job, pieces, {
+        category: 'carcass',
+        materialId,
+        partName: cut.partName,
+        unitName: unit.name,
+        width: cut.width,
+        length: cut.length,
+        qty: totalQty,
+        grain,
+        notes: joinNotes(cut.notes, grain === 'vertical' ? 'Grain vertical' : undefined, mult > 1 ? `${mult} cupboards` : undefined),
+        edgingPattern: fillerCounts ? 'none' : cut.edgingPattern,
+        edgingMaterialId: cut.edgingMaterialId,
+        longAlong: cut.longAlong,
+        kickplateEdgingCounts: fillerCounts,
+      });
+      if (fillerCounts) {
+        addKickplateEdging(
+          edging,
+          job,
+          materialId,
+          cut.partName,
+          unit.name,
+          fillerCounts,
+          cut.width,
+          cut.length,
+          totalQty,
+          cut.edgingMaterialId,
+        );
+      } else if (cut.edgingPattern !== 'none') {
+        addEdging(
+          edging,
+          job,
+          materialId,
+          cut.partName,
+          unit.name,
+          cut.edgingPattern,
+          cut.width,
+          cut.length,
+          totalQty,
+          cut.edgingMaterialId,
+          cut.longAlong,
+        );
+      }
+    }
+
+    const drawerCarcassQty = Math.max(0, Math.floor(extra.drawerCarcassQty ?? 1));
+    if (extra.drawersEnabled && drawerCarcassQty > 0 && extra.drawers.some((d) => d.qty > 0)) {
+      const inner = resolveFrontLayout(extraLayoutUnit(unit, extra));
+      calcDrawers(inner, job, pieces, edging, hardware, mult * drawerCarcassQty, extraPartPrefix(i));
+    }
+  });
 }
 
 /** Combine part labels when the same cut size + edging merges across names (e.g. left/right sides). */
@@ -1317,6 +1507,7 @@ export function generateCutList(job: Job): CutListResult {
     calcKitchenPlinth(layoutUnit, job, pieces, edging, hardware, plasticKickplates, mult);
     calcDoors(layoutUnit, job, pieces, edging, hardware, mult);
     calcDrawers(layoutUnit, job, pieces, edging, hardware, mult);
+    calcBedroomWallExtras(layoutUnit, job, pieces, edging, hardware, mult);
   }
 
   const boardPieces = pieces.filter((p) => p.materialId !== MASONITE_ID);
