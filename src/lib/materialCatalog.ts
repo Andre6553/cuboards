@@ -65,6 +65,16 @@ export function saveMaterialCatalog(materials: Material[], edgingMaterials: Edgi
   return catalog;
 }
 
+/** Keep primary list and order; append secondary rows whose id is not already on primary. */
+export function mergeMaterialsAddOnly(primary: Material[], addition: Material[]): Material[] {
+  return mergeMaterialLists(primary, addition);
+}
+
+/** Keep primary edging list; append new ids from addition only. */
+export function mergeEdgingAddOnly(primary: EdgingMaterial[], addition: EdgingMaterial[]): EdgingMaterial[] {
+  return mergeEdgingLists(primary, addition);
+}
+
 function mergeMaterialLists(primary: Material[], secondary: Material[]): Material[] {
   const byId = new Map<string, Material>();
   for (const m of primary) byId.set(m.id, { ...m });
@@ -139,5 +149,77 @@ export function mergeIntoMaterialCatalog(materials: Material[], edgingMaterials:
 export function applyCatalogToAllJobs(jobs: Job[], catalog: BoardCatalog): Job[] {
   const materials = catalog.materials.map((m) => ({ ...m }));
   const edgingMaterials = catalog.edgingMaterials.map((e) => ({ ...e }));
-  return jobs.map((j) => ({ ...j, materials, edgingMaterials }));
+  return jobs.map((j) => ({
+    ...j,
+    materials: mergeMaterialsAddOnly(j.materials ?? [], materials),
+    edgingMaterials: mergeEdgingAddOnly(j.edgingMaterials ?? [], edgingMaterials),
+  }));
+}
+
+/** Merge source boards/edging into each job without removing that job's existing types. */
+export function applyBoardAdditionsToJobs(
+  jobs: Job[],
+  additionMaterials: Material[],
+  additionEdging: EdgingMaterial[],
+): { jobs: Job[]; updatedCount: number } {
+  const sourceMaterials = additionMaterials.map((m) => ({ ...m }));
+  const sourceEdging = additionEdging.map((e) => ({ ...e }));
+  const now = new Date().toISOString();
+  let updatedCount = 0;
+  const next = jobs.map((j) => {
+    const materials = mergeMaterialsAddOnly(j.materials ?? [], sourceMaterials);
+    const edgingMaterials = mergeEdgingAddOnly(j.edgingMaterials ?? [], sourceEdging);
+    if (
+      catalogFingerprint(j.materials, j.edgingMaterials) ===
+      catalogFingerprint(materials, edgingMaterials)
+    ) {
+      return j;
+    }
+    updatedCount += 1;
+    return { ...j, materials, edgingMaterials, updatedAt: now };
+  });
+  return { jobs: next, updatedCount };
+}
+
+/** Add this job's board/edging types to the shared catalog and to every other job (never removes types). */
+export function pushBoardCatalogToAllJobs(
+  jobs: Job[],
+  materials: Material[],
+  edgingMaterials: EdgingMaterial[],
+): { jobs: Job[]; updatedCount: number } {
+  mergeIntoMaterialCatalog(materials, edgingMaterials);
+  return applyBoardAdditionsToJobs(jobs, materials, edgingMaterials);
+}
+
+/** Merge edging into the device catalog without changing board rows. */
+export function mergeEdgingIntoCatalog(edgingMaterials: EdgingMaterial[]): void {
+  const current = loadMaterialCatalog() ?? ensureMaterialCatalog([]);
+  saveMaterialCatalog(current.materials, mergeEdgingLists(current.edgingMaterials, edgingMaterials));
+}
+
+/** Add edging types from this job onto every job; existing edging on each job is kept. */
+export function applyEdgingAdditionsToJobs(
+  jobs: Job[],
+  additionEdging: EdgingMaterial[],
+): { jobs: Job[]; updatedCount: number } {
+  const sourceEdging = additionEdging.map((e) => ({ ...e }));
+  const now = new Date().toISOString();
+  let updatedCount = 0;
+  const next = jobs.map((j) => {
+    const edgingMaterials = mergeEdgingAddOnly(j.edgingMaterials ?? [], sourceEdging);
+    const before = catalogFingerprint(j.materials ?? [], j.edgingMaterials ?? []);
+    const after = catalogFingerprint(j.materials ?? [], edgingMaterials);
+    if (before === after) return j;
+    updatedCount += 1;
+    return { ...j, edgingMaterials, updatedAt: now };
+  });
+  return { jobs: next, updatedCount };
+}
+
+export function pushEdgingToAllJobs(
+  jobs: Job[],
+  edgingMaterials: EdgingMaterial[],
+): { jobs: Job[]; updatedCount: number } {
+  mergeEdgingIntoCatalog(edgingMaterials);
+  return applyEdgingAdditionsToJobs(jobs, edgingMaterials);
 }

@@ -33,7 +33,7 @@ import type {
   Unit,
 } from '../types';
 import { defaultBedroomWallExtra, extraLayoutUnit } from './extrasRules';
-import { DEFAULT_DOOR_GAPS } from './doorRules';
+import { DEFAULT_DOOR_GAPS, upgradeLegacyDoorGaps } from './doorRules';
 import { DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, syncDrawerOpeningFromFront } from './drawerRules';
 import { syncFrontLayoutToUnit } from './frontLayout';
 import { recordJobsBackup } from './backupReminder';
@@ -52,13 +52,15 @@ import { requireUserDataScope, userStorageKeys } from './userDataScope';
 function migrateDoor(d: DoorConfig & { gap?: number }, materials: Material[], edgingMaterials: EdgingMaterial[]): DoorConfig {
   const boardMat = materials.find((m) => m.id === d.materialId);
   const legacyGap = d.gap;
-  const gaps: DoorGaps = d.gaps ?? {
-    left: DEFAULT_DOOR_GAPS.left,
-    right: DEFAULT_DOOR_GAPS.right,
-    top: DEFAULT_DOOR_GAPS.top,
-    bottom: DEFAULT_DOOR_GAPS.bottom,
-    between: legacyGap ?? DEFAULT_DOOR_GAPS.between,
-  };
+  const gaps: DoorGaps = upgradeLegacyDoorGaps(
+    d.gaps ?? {
+      left: DEFAULT_DOOR_GAPS.left,
+      right: DEFAULT_DOOR_GAPS.right,
+      top: DEFAULT_DOOR_GAPS.top,
+      bottom: DEFAULT_DOOR_GAPS.bottom,
+      between: legacyGap ?? DEFAULT_DOOR_GAPS.between,
+    },
+  );
   return {
     ...d,
     gaps,
@@ -204,6 +206,11 @@ function migrateMaterial(m: Material, defaultEdgingId: string): Material {
     ...m,
     edgingMaterialId: m.edgingMaterialId ?? defaultEdgingId,
   });
+}
+
+/** Normalize every job after merge / cloud pull so door gaps and layout stay current. */
+export function migrateJobs(jobs: Job[]): Job[] {
+  return jobs.map((j) => migrateJob(j));
 }
 
 export function migrateJob(job: Job): Job {

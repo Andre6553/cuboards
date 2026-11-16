@@ -14,7 +14,11 @@ import {
   catalogFingerprint,
   catalogJobSyncFingerprint,
   loadMaterialCatalog,
-  saveMaterialCatalog,
+  mergeEdgingAddOnly,
+  mergeIntoMaterialCatalog,
+  mergeMaterialsAddOnly,
+  pushBoardCatalogToAllJobs,
+  pushEdgingToAllJobs,
 } from './lib/materialCatalog';
 import {
   fetchPendingCommunityMaterials,
@@ -101,7 +105,7 @@ function CuboardsApp() {
       if (!manualCloudSyncRef.current) setCloudSyncState(status);
     });
     setCloudRemoteNewerListener((remoteJob) => {
-      const merged = mergeJobLists(jobsRef.current, [remoteJob]);
+      const merged = mergeJobLists(jobsRef.current, [migrateJob(remoteJob)]);
       saveJobs(merged);
       setJobs(merged);
     });
@@ -226,6 +230,30 @@ function CuboardsApp() {
     [userId],
   );
 
+  const handleSyncBoardMaterialsToAllJobs = useCallback((): { updatedCount: number; totalJobs: number } => {
+    const source = activeJobId ? jobsRef.current.find((j) => j.id === activeJobId) : undefined;
+    const totalJobs = jobsRef.current.length;
+    if (!source) return { updatedCount: 0, totalJobs };
+    const { jobs: synced, updatedCount } = pushBoardCatalogToAllJobs(
+      jobsRef.current,
+      source.materials,
+      source.edgingMaterials,
+    );
+    schedulePushUserPrefs();
+    persist(synced.map((j) => migrateJob(j)));
+    return { updatedCount, totalJobs };
+  }, [activeJobId, persist]);
+
+  const handleSyncEdgingToAllJobs = useCallback((): { updatedCount: number; totalJobs: number } => {
+    const source = activeJobId ? jobsRef.current.find((j) => j.id === activeJobId) : undefined;
+    const totalJobs = jobsRef.current.length;
+    if (!source) return { updatedCount: 0, totalJobs };
+    const { jobs: synced, updatedCount } = pushEdgingToAllJobs(jobsRef.current, source.edgingMaterials);
+    schedulePushUserPrefs();
+    persist(synced.map((j) => migrateJob(j)));
+    return { updatedCount, totalJobs };
+  }, [activeJobId, persist]);
+
   const handleJobChange = (job: Job) => {
     const prev = jobs.find((j) => j.id === job.id);
     const catalogFullChanged =
@@ -238,15 +266,23 @@ function CuboardsApp() {
         catalogJobSyncFingerprint(job.materials, job.edgingMaterials);
 
     if (catalogStructureChanged) {
-      const catalog = saveMaterialCatalog(job.materials, job.edgingMaterials);
+      mergeIntoMaterialCatalog(job.materials, job.edgingMaterials);
       schedulePushUserPrefs();
+      const additionMaterials = job.materials.map((m) => ({ ...m }));
+      const additionEdging = job.edgingMaterials.map((e) => ({ ...e }));
       const withUpdated = upsertJob(jobs, job);
       persist(
         withUpdated.map((j) =>
           migrateJob({
             ...j,
-            materials: catalog.materials.map((m) => ({ ...m })),
-            edgingMaterials: catalog.edgingMaterials.map((e) => ({ ...e })),
+            materials:
+              j.id === job.id
+                ? j.materials
+                : mergeMaterialsAddOnly(j.materials ?? [], additionMaterials),
+            edgingMaterials:
+              j.id === job.id
+                ? j.edgingMaterials
+                : mergeEdgingAddOnly(j.edgingMaterials ?? [], additionEdging),
           }),
         ),
       );
@@ -254,7 +290,7 @@ function CuboardsApp() {
     }
 
     if (catalogFullChanged) {
-      saveMaterialCatalog(job.materials, job.edgingMaterials);
+      mergeIntoMaterialCatalog(job.materials, job.edgingMaterials);
       schedulePushUserPrefs();
     }
 
@@ -283,6 +319,9 @@ function CuboardsApp() {
             onChange={handleJobChange}
             onBack={() => setActiveJobId(null)}
             onPrefsSaved={() => schedulePushUserPrefs()}
+            totalJobCount={jobs.length}
+            onSyncBoardMaterialsToAllJobs={handleSyncBoardMaterialsToAllJobs}
+            onSyncEdgingToAllJobs={handleSyncEdgingToAllJobs}
           />
         ) : (
           <Dashboard

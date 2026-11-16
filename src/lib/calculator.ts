@@ -1686,7 +1686,7 @@ export function createDefaultUnit(job: Job, index: number): Unit {
       shelfEdgingMaterialId: job.materials.find((m) => m.id === defaultMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
       fillerMaterialId: defaultMat,
       fillerEdgingMaterialId: job.materials.find((m) => m.id === defaultMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
-      shelfQty: 1,
+      shelfQty: 0,
       fillerWidth: job.settings.defaultFillerWidth,
       backingType: 'none',
       backingMaterialId: defaultMat,

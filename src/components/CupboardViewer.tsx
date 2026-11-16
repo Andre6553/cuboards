@@ -8,26 +8,20 @@ interface Props {
   unit: Unit;
   thickness: number;
   materials: Material[];
+  /** Keeps carcass graphic in sync with Shelves section / cut list. */
+  onShelfQtyChange: (qty: number) => void;
 }
 
-function defaultShelfVariant(unit: Unit): ShelfVariant {
-  return unit.carcass.shelfQty > 0 ? 'with-shelf' : 'no-shelf';
-}
-
-export function CupboardViewer({ unit, thickness }: Props) {
+export function CupboardViewer({ unit, thickness, onShelfQtyChange }: Props) {
   const [view, setView] = useState<GraphicView>('front');
-  const [shelfVariant, setShelfVariant] = useState<ShelfVariant>(() => defaultShelfVariant(unit));
   const spiceMount = isSpiceCupboard(unit);
+  const shelfVariant: ShelfVariant = (unit.carcass.shelfQty ?? 0) > 0 ? 'with-shelf' : 'no-shelf';
   const kh =
     showsKickplate(unit) && unit.plinth && plinthHasKickplate(unit.plinth)
       ? unit.plinth.kickplateHeight
       : 0;
   const previewVariant: ShelfVariant = spiceMount ? 'spice' : shelfVariant;
   const showingSpice = spiceMount && view === '3d';
-
-  useEffect(() => {
-    setShelfVariant(defaultShelfVariant(unit));
-  }, [unit.id, unit.carcass.shelfQty]);
 
   useEffect(() => {
     if (spiceMount) setView('3d');
@@ -61,7 +55,14 @@ export function CupboardViewer({ unit, thickness }: Props) {
                 key={v.id}
                 type="button"
                 className={`view-tab ${shelfVariant === v.id ? 'active' : ''}`}
-                onClick={() => setShelfVariant(v.id)}
+                onClick={() => {
+                  if (v.id === 'no-shelf') {
+                    onShelfQtyChange(0);
+                  } else {
+                    const current = unit.carcass.shelfQty ?? 0;
+                    onShelfQtyChange(current > 0 ? current : 1);
+                  }
+                }}
               >
                 {v.label}
               </button>

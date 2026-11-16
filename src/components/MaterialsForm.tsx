@@ -129,6 +129,12 @@ interface Props {
 
   onHardwarePricingChange: (pricing: HardwarePricing) => void;
 
+  totalJobCount?: number;
+
+  onSyncBoardMaterialsToAllJobs?: () => { updatedCount: number; totalJobs: number };
+
+  onSyncEdgingToAllJobs?: () => { updatedCount: number; totalJobs: number };
+
 }
 
 
@@ -183,7 +189,15 @@ export function MaterialsForm({
 
   onHardwarePricingChange,
 
+  totalJobCount,
+
+  onSyncBoardMaterialsToAllJobs,
+
+  onSyncEdgingToAllJobs,
+
 }: Props) {
+  const [boardSyncNote, setBoardSyncNote] = useState<string | null>(null);
+  const [edgingSyncNote, setEdgingSyncNote] = useState<string | null>(null);
 
   type CustomCat = keyof HardwarePricing['customCatalog'];
 
@@ -843,26 +857,59 @@ export function MaterialsForm({
           the <strong>Factory</strong> cut list PDF. Link each board to its edging tape below.
         </p>
 
-        <label className="checkbox-label community-materials-opt-in">
-          <input
-            type="checkbox"
-            checked={acceptCommunityBoards}
-            onChange={(e) => {
-              const acceptUpdates = e.target.checked;
-              setAcceptCommunityBoards(acceptUpdates);
-              saveCommunityMaterialsPrefs({ acceptUpdates });
-              schedulePushUserPrefs();
-              if (acceptUpdates) {
-                try {
-                  window.dispatchEvent(new CustomEvent('cuboards-refresh-community-queue'));
-                } catch {
-                  /* ignore */
+        <div className="board-catalog-toolbar">
+          <label className="checkbox-label community-materials-opt-in">
+            <input
+              type="checkbox"
+              checked={acceptCommunityBoards}
+              onChange={(e) => {
+                const acceptUpdates = e.target.checked;
+                setAcceptCommunityBoards(acceptUpdates);
+                saveCommunityMaterialsPrefs({ acceptUpdates });
+                schedulePushUserPrefs();
+                if (acceptUpdates) {
+                  try {
+                    window.dispatchEvent(new CustomEvent('cuboards-refresh-community-queue'));
+                  } catch {
+                    /* ignore */
+                  }
                 }
-              }
-            }}
-          />
-          Prompt me when other Cuboards users add new board types — I can add them with my own price and options
-        </label>
+              }}
+            />
+            Prompt me when other Cuboards users add new board types — I can add them with my own price and options
+          </label>
+          {onSyncBoardMaterialsToAllJobs && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              title="Add any board or edging types from this job that other jobs are missing. Existing types on other jobs stay as they are."
+              onClick={() => {
+                const total = totalJobCount ?? 1;
+                const others = Math.max(0, total - 1);
+                if (
+                  others > 0 &&
+                  !confirm(
+                    `Add any board or edging types from this job (${materials.length} boards shown) to the other ${others} job(s)? Other jobs keep their existing types — nothing is removed.`,
+                  )
+                ) {
+                  return;
+                }
+                const { updatedCount, totalJobs } = onSyncBoardMaterialsToAllJobs();
+                const note =
+                  updatedCount === 0
+                    ? totalJobs <= 1
+                      ? 'Shared board catalog updated.'
+                      : 'Every job already had these board and edging types.'
+                    : `Added missing board/edging types on ${updatedCount} job${updatedCount === 1 ? '' : 's'}.`;
+                setBoardSyncNote(note);
+                window.setTimeout(() => setBoardSyncNote(null), 5000);
+              }}
+            >
+              Add boards to all jobs
+            </button>
+          )}
+        </div>
+        {boardSyncNote && <p className="hint board-sync-note">{boardSyncNote}</p>}
 
         <div className="table-wrap">
 
@@ -1103,7 +1150,40 @@ export function MaterialsForm({
 
       <CollapsibleSection title="Edging tape — price per metre">
 
-        <p className="hint">Thickness is used on the cut list (e.g. 1mm PVC, 2mm ABS).</p>
+        <div className="board-catalog-toolbar">
+          <p className="hint edging-section-hint">Thickness is used on the cut list (e.g. 1mm PVC, 2mm ABS).</p>
+          {onSyncEdgingToAllJobs && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              title="Add any edging types from this job that other jobs are missing. Existing edging on other jobs stays."
+              onClick={() => {
+                const total = totalJobCount ?? 1;
+                const others = Math.max(0, total - 1);
+                if (
+                  others > 0 &&
+                  !confirm(
+                    `Add any edging types from this job (${edgingMaterials.length} listed) to the other ${others} job(s)? Other jobs keep their existing edging — nothing is removed.`,
+                  )
+                ) {
+                  return;
+                }
+                const { updatedCount, totalJobs } = onSyncEdgingToAllJobs();
+                const note =
+                  updatedCount === 0
+                    ? totalJobs <= 1
+                      ? 'Shared edging catalog updated.'
+                      : 'Every job already had these edging types.'
+                    : `Added missing edging types on ${updatedCount} job${updatedCount === 1 ? '' : 's'}.`;
+                setEdgingSyncNote(note);
+                window.setTimeout(() => setEdgingSyncNote(null), 5000);
+              }}
+            >
+              Add edging to all jobs
+            </button>
+          )}
+        </div>
+        {edgingSyncNote && <p className="hint board-sync-note">{edgingSyncNote}</p>}
 
         <div className="table-wrap">
 

@@ -31,7 +31,7 @@ import {
   getCloudJobQueueSnapshot,
 } from './cloudJobQueue';
 import { fetchCloudJobs } from './cloudJobOperations';
-import { loadJobs } from './storage';
+import { loadJobs, migrateJob, migrateJobs } from './storage';
 import { getSupabase } from './supabaseClient';
 import { adoptLegacyDeviceStorageIfEmpty, requireUserDataScope, userStorageKeys } from './userDataScope';
 
@@ -95,7 +95,7 @@ export async function syncJobsWithCloud(userId: string): Promise<Job[]> {
   for (const op of pending) {
     if (op.kind === 'upsert' && op.jobJson) {
       try {
-        pendingUpserts.set(op.jobId, JSON.parse(op.jobJson) as Job);
+        pendingUpserts.set(op.jobId, migrateJob(JSON.parse(op.jobJson) as Job));
       } catch {
         /* ignore corrupt queue payload */
       }
@@ -110,8 +110,8 @@ export async function syncJobsWithCloud(userId: string): Promise<Job[]> {
     }
   }
 
-  const merged = mergeJobLists(localWithQueued, remoteWithoutDeletes).filter(
-    (j) => !pendingDeletes.has(j.id),
+  const merged = migrateJobs(
+    mergeJobLists(localWithQueued, remoteWithoutDeletes).filter((j) => !pendingDeletes.has(j.id)),
   );
 
   // Push via durable queue (not a one-shot network call) so failures still retry.

@@ -432,7 +432,12 @@ export function UnitForm({
           </label>
         </div>
 
-        <CupboardViewer unit={layoutUnit} thickness={settings.thickness} materials={materials} />
+        <CupboardViewer
+          unit={layoutUnit}
+          thickness={settings.thickness}
+          materials={materials}
+          onShelfQtyChange={(qty) => setCarcass('shelfQty', qty)}
+        />
 
       {spiceMount && (
         <CollapsibleSection title="Spice cupboard — cut sizes" variant="nested">
@@ -1163,49 +1168,71 @@ export function UnitForm({
         {spiceMount && (
           <p className="hint">Spice mount — no carcass shelf. Left/right spice shelves are on the cut list under spice parts.</p>
         )}
-        <div className="form-grid form-grid-3">
-          <label>
-            Shelf quantity
-            <NumberInput
-              min={0}
-              value={unit.carcass.shelfQty}
-              onChange={(n) => setCarcass('shelfQty', n)}
-              disabled={spiceMount}
-            />
-          </label>
-          <label>
-            Shelf material
-            <MaterialSelect
-              value={unit.carcass.shelfMaterialId}
-              materials={materials}
-              onChange={(v) => onChange({
-                ...unit,
-                carcass: {
-                  ...unit.carcass,
-                  shelfMaterialId: v,
-                  shelfEdgingMaterialId: defaultEdgingForMaterial(v),
-                },
-              })}
-            />
-          </label>
-          <label>
-            Shelf edging type
-            <EdgingTypeSelect
-              value={unit.carcass.shelfEdgingMaterialId}
-              fallbackMaterialId={unit.carcass.shelfMaterialId}
-              materials={materials}
-              edgingMaterials={edgingMaterials}
-              onChange={(v) => setCarcass('shelfEdgingMaterialId', v)}
-            />
-          </label>
-        </div>
-        <p className="hint">
-          Shelves:{' '}
-          {unit.carcass.backingType === 'melamine' ? unit.depth - settings.thickness : unit.depth} ×{' '}
-          {unit.width - 2 * settings.thickness} mm
-          {unit.carcass.backingType === 'melamine' ? ' (D−T with solid melamine back)' : ''}
-          {' '}· 1 long edge front ({EDGING_LABELS['1_long']}).
-        </p>
+        {!spiceMount && (unit.carcass.shelfQty ?? 0) <= 0 && (
+          <p className="hint">No shelves on this unit.</p>
+        )}
+        {!spiceMount && (unit.carcass.shelfQty ?? 0) > 0 && (
+          <>
+            <div className="form-grid form-grid-3">
+              <label>
+                Shelf quantity
+                <NumberInput
+                  min={1}
+                  value={unit.carcass.shelfQty}
+                  onChange={(n) => setCarcass('shelfQty', Math.max(1, n))}
+                />
+              </label>
+              <label>
+                Shelf material
+                <MaterialSelect
+                  value={unit.carcass.shelfMaterialId}
+                  materials={materials}
+                  onChange={(v) => onChange({
+                    ...unit,
+                    carcass: {
+                      ...unit.carcass,
+                      shelfMaterialId: v,
+                      shelfEdgingMaterialId: defaultEdgingForMaterial(v),
+                    },
+                  })}
+                />
+              </label>
+              <label>
+                Shelf edging type
+                <EdgingTypeSelect
+                  value={unit.carcass.shelfEdgingMaterialId}
+                  fallbackMaterialId={unit.carcass.shelfMaterialId}
+                  materials={materials}
+                  edgingMaterials={edgingMaterials}
+                  onChange={(v) => setCarcass('shelfEdgingMaterialId', v)}
+                />
+              </label>
+            </div>
+            <p className="hint">
+              Shelves:{' '}
+              {unit.carcass.backingType === 'melamine' ? unit.depth - settings.thickness : unit.depth} ×{' '}
+              {unit.width - 2 * settings.thickness} mm
+              {unit.carcass.backingType === 'melamine' ? ' (D−T with solid melamine back)' : ''}
+              {' '}· 1 long edge front ({EDGING_LABELS['1_long']}).
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm danger"
+              onClick={() => setCarcass('shelfQty', 0)}
+            >
+              Remove shelves
+            </button>
+          </>
+        )}
+        {!spiceMount && (unit.carcass.shelfQty ?? 0) <= 0 && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setCarcass('shelfQty', 1)}
+          >
+            + Add shelf
+          </button>
+        )}
       </CollapsibleSection>
 
       <CollapsibleSection title="Doors" variant="nested">

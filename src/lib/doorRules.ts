@@ -4,16 +4,29 @@ import { formatPanelCutSizeSummary, panelCutSizes } from './edgingCutSize';
 export const DEFAULT_DOOR_GAPS: DoorGaps = {
   left: 2,
   right: 2,
-  top: 2,
-  bottom: 2,
+  top: 10,
+  bottom: 0,
   between: 2,
 };
+
+/** Pre-2026-11-16 default top/bottom on saved jobs — upgraded on load to {@link DEFAULT_DOOR_GAPS}. */
+const LEGACY_DOOR_TOP_BOTTOM_MM = 2;
+
+/** Apply new default top/bottom when a door still has the old 2 / 2 mm top & bottom. */
+export function upgradeLegacyDoorGaps(gaps: DoorGaps): DoorGaps {
+  const top = Number(gaps.top);
+  const bottom = Number(gaps.bottom);
+  if (top === LEGACY_DOOR_TOP_BOTTOM_MM && bottom === LEGACY_DOOR_TOP_BOTTOM_MM) {
+    return { ...gaps, top: DEFAULT_DOOR_GAPS.top, bottom: DEFAULT_DOOR_GAPS.bottom };
+  }
+  return gaps;
+}
 
 /** @deprecated use DEFAULT_DOOR_GAPS — kept for existing imports */
 export const DOOR_SIDE_GAP_MM = DEFAULT_DOOR_GAPS.left;
 
 export function resolveDoorGaps(door: DoorConfig & { gap?: number }): DoorGaps {
-  if (door.gaps) return door.gaps;
+  if (door.gaps) return upgradeLegacyDoorGaps(door.gaps);
   const legacy = door.gap ?? DEFAULT_DOOR_GAPS.between;
   return {
     left: DEFAULT_DOOR_GAPS.left,

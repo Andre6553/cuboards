@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { DoorConfig } from '../types';
-import { DEFAULT_DOOR_GAPS, defaultHingeHoles, resolveHingeHoleCount } from './doorRules';
+import {
+  DEFAULT_DOOR_GAPS,
+  defaultHingeHoles,
+  resolveHingeHoleCount,
+  upgradeLegacyDoorGaps,
+} from './doorRules';
 
 function door(openingHeight: number, hingeHoleCount?: number): DoorConfig {
   return {
@@ -16,6 +21,25 @@ function door(openingHeight: number, hingeHoleCount?: number): DoorConfig {
     hingeHoleCount,
   };
 }
+
+describe('upgradeLegacyDoorGaps', () => {
+  it('bumps old 2/2 top-bottom to 10/0', () => {
+    expect(upgradeLegacyDoorGaps({ left: 2, right: 2, top: 2, bottom: 2, between: 2 })).toEqual({
+      left: 2,
+      right: 2,
+      top: 10,
+      bottom: 0,
+      between: 2,
+    });
+    expect(upgradeLegacyDoorGaps({ left: 2, right: 2, top: 5, bottom: 2, between: 2 })).toEqual({
+      left: 2,
+      right: 2,
+      top: 5,
+      bottom: 2,
+      between: 2,
+    });
+  });
+});
 
 describe('hinge hole count', () => {
   it('defaults to 2 up to 1200 mm and 4 above that', () => {

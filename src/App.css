@@ -2922,6 +2922,30 @@ fieldset.sub-card:disabled {
   gap: 0.5rem;
 }
 
+.board-catalog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.board-catalog-toolbar .community-materials-opt-in {
+  margin: 0;
+  flex: 1 1 20rem;
+  max-width: 42rem;
+  line-height: 1.4;
+}
+
+.board-sync-note {
+  margin: 0 0 1rem;
+}
+
+.edging-section-hint {
+  margin: 0;
+  flex: 1 1 16rem;
+}
+
 .community-materials-opt-in {
   margin: 0.75rem 0 1rem;
   max-width: 42rem;

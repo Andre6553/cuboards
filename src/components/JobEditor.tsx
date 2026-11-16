@@ -15,11 +15,22 @@ interface Props {
   onChange: (job: Job) => void;
   onBack: () => void;
   onPrefsSaved?: () => void;
+  totalJobCount?: number;
+  onSyncBoardMaterialsToAllJobs?: () => { updatedCount: number; totalJobs: number };
+  onSyncEdgingToAllJobs?: () => { updatedCount: number; totalJobs: number };
 }
 
 type Tab = 'units' | 'prices' | 'cutlist';
 
-export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
+export function JobEditor({
+  job,
+  onChange,
+  onBack,
+  onPrefsSaved,
+  totalJobCount,
+  onSyncBoardMaterialsToAllJobs,
+  onSyncEdgingToAllJobs,
+}: Props) {
   const [tab, setTab] = useState<Tab>('units');
   const [unitsCollapseGeneration, setUnitsCollapseGeneration] = useState(0);
   const activeUnitCount = job.units.filter((u) => (u.unitQty ?? 0) > 0).length;
@@ -151,6 +162,9 @@ export function JobEditor({ job, onChange, onBack, onPrefsSaved }: Props) {
             quoteTerms={{ ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms }}
             onQuoteTermsChange={(quoteTerms) => onChange({ ...job, quoteTerms })}
             onHardwarePricingChange={(hardwarePricing) => onChange({ ...job, hardwarePricing })}
+            totalJobCount={totalJobCount}
+            onSyncBoardMaterialsToAllJobs={onSyncBoardMaterialsToAllJobs}
+            onSyncEdgingToAllJobs={onSyncEdgingToAllJobs}
           />
         </>
       )}

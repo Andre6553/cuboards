@@ -17,7 +17,7 @@ export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Pr
       : 0;
   const internalW = unit.width - 2 * thickness;
   const internalD = unit.depth - 2 * thickness;
-  const configHasShelf = unit.carcass.shelfQty > 0;
+  const shelfQty = Math.max(0, unit.carcass.shelfQty ?? 0);
   const previewHasShelf = shelfVariant === 'with-shelf';
 
   return (
@@ -42,16 +42,11 @@ export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Pr
         {spice && view === '3d' && (
           <span>Spice mount — carcass without shelf; spice panels on cut list</span>
         )}
-        {previewHasShelf && (
+        {previewHasShelf && shelfQty > 0 && (
           <span>
-            {unit.carcass.shelfQty > 0
-              ? `${unit.carcass.shelfQty} shelf${unit.carcass.shelfQty > 1 ? 's' : ''} in cut list`
-              : 'Preview only — no shelves in cut list'}
+            {shelfQty} shelf{shelfQty > 1 ? 's' : ''} on cut list
             {' · '}internal {internalW} × {internalD} mm
           </span>
-        )}
-        {!spice && !previewHasShelf && configHasShelf && (
-          <span className="ref-note">Cut list has {unit.carcass.shelfQty} shelf{unit.carcass.shelfQty > 1 ? 's' : ''} — showing no-shelf graphic</span>
         )}
         {kh > 0 && <span>Kick {kh} mm</span>}
       </div>
