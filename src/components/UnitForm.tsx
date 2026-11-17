@@ -49,7 +49,7 @@ import {
   usesCustomDrawerSizes,
 } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
-import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
+import { defaultDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
 import { fillersFollowSideMaterial, resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
 import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
 import { defaultBedroomWallExtra } from '../lib/extrasRules';
@@ -441,10 +441,6 @@ export function UnitForm({
   const updateDrawer = (id: string, patch: Partial<DrawerConfig>, opts?: { changedDrawerId?: string }) => {
     const drawers = unit.drawers.map((d) => (d.id === id ? { ...d, ...patch } : d));
     applyUnit({ ...unit, drawers }, opts?.changedDrawerId ? { changedDrawerId: opts.changedDrawerId } : undefined);
-  };
-
-  const setDrawerOpeningHeight = (id: string, value: number) => {
-    updateDrawer(id, { openingHeight: Math.max(1, value) }, { changedDrawerId: id });
   };
 
   const isOnCutList = (unit.unitQty ?? 0) > 0;
@@ -1861,7 +1857,7 @@ export function UnitForm({
                       ? 'Auto from carcass height, qty, 4 mm gaps between fronts, and top/bottom gaps'
                       : 'Inactive — set qty to 0; does not affect door'
                 }
-                onChange={(n) => setDrawerOpeningHeight(drawer.id, n)}
+                onChange={() => {}}
               />
             </label>
             <label>
