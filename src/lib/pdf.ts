@@ -256,7 +256,7 @@ export async function exportCutListPdf(
     ? filterPiecesForOrderSupplier(job, result.pieces, factorySupplier)
     : result.pieces;
   const factorySheetMaps = factorySupplier
-    ? filterSheetMapGroupsForOrderSupplier(job, result.sheetMaps, factorySupplier)
+    ? filterSheetMapGroupsForOrderSupplier(job, result.sheetMaps, factorySupplier, result.pieces)
     : result.sheetMaps;
   const fmt = (n: number) => formatMoney(n, job.settings);
   const curSym = resolveQuoteCurrency(job.settings).symbol;

@@ -1,6 +1,6 @@
 import type { DoorConfig, DrawerConfig, Unit } from '../types';
 import { isFloorCorner, isWallCorner } from './constants';
-import { minDoorOpeningHeight } from './doorRules';
+import { minDoorOpeningHeight, syncDoorOpeningFromHeight } from './doorRules';
 import {
   activeDrawers,
   isActiveDrawer,
@@ -206,7 +206,8 @@ export function resolveFrontLayout(unit: Unit, opts?: FrontLayoutOptions): Unit 
 
   const { width, height, doors, drawers } = unit;
   const hasDoor = doors.length > 0;
-  const customSizes = unit.customDrawerSizes === true;
+  const customDrawerSizes = unit.customDrawerSizes === true;
+  const customDoorSizes = unit.customDoorSizes === true;
 
   let syncedDrawers: DrawerConfig[] = drawers.map((d) => ({
     ...d,
@@ -225,12 +226,26 @@ export function resolveFrontLayout(unit: Unit, opts?: FrontLayoutOptions): Unit 
     return { ...unit, doors: syncedDoors, drawers: syncedDrawers };
   }
 
-  // Custom mode: user types front height only; opening height is derived (display) from front + gaps.
-  // Do not rebalance / split carcass across rows.
-  if (customSizes) {
+  if (customDoorSizes) {
+    syncedDoors = syncedDoors.map(syncDoorOpeningFromHeight);
+  }
+
+  // Custom drawers: typed front heights → openings; keep custom door openings as-is.
+  if (customDrawerSizes) {
     syncedDrawers = syncedDrawers.map((d) =>
       syncDrawerOpeningFromFront(d, hasDoor, height, syncedDrawers, true),
     );
+    return { ...unit, doors: syncedDoors, drawers: syncedDrawers };
+  }
+
+  // Custom doors + auto drawers: drawers share remaining carcass after fixed door openings.
+  if (customDoorSizes) {
+    const doorTotal = syncedDoors.reduce((sum, d) => sum + d.openingHeight, 0);
+    const remaining = Math.max(0, round1(height - doorTotal));
+    if (active().length > 0) {
+      // Fit drawer openings into leftover height only — do not re-expand with gap-to-door after.
+      syncedDrawers = rebalanceDrawerOnlyStack(syncedDrawers, remaining, opts?.changedDrawerId);
+    }
     return { ...unit, doors: syncedDoors, drawers: syncedDrawers };
   }
 

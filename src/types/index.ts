@@ -56,14 +56,36 @@ export interface EdgingMaterial {
 
 export interface MasoniteConfig {
   name: string;
+  /** Small sheet colour (also fallback when large colour unset). */
   colour: string;
+  /** Small sheet thickness mm (also fallback when large thickness unset). */
   thickness: number;
+  /** Small sheet price (default 2440×1220). */
   pricePerSheet: number;
+  /** Small sheet width (mm). */
   sheetWidth: number;
+  /** Small sheet height (mm). */
   sheetHeight: number;
-  /** Smallest sheet size supplier sells; defaults to quarter if omitted (old jobs). */
+  /**
+   * Large sheet price (default 2750×1830 @ R475).
+   * Quote auto-picks large when area or panel height needs it.
+   */
+  largePricePerSheet?: number;
+  /** Large sheet width (mm). */
+  largeSheetWidth?: number;
+  /** Large sheet height (mm). */
+  largeSheetHeight?: number;
+  /** Large sheet colour; falls back to `colour` when omitted. */
+  largeColour?: string;
+  /** Large sheet thickness mm; falls back to `thickness` when omitted. */
+  largeThickness?: number;
+  /** Large sheet buy-as; falls back to `sheetPurchaseUnit` when omitted. */
+  largeSheetPurchaseUnit?: SheetPurchaseUnit;
+  /** Large sheet cut house; falls back to `orderFromSupplier` when omitted. */
+  largeOrderFromSupplier?: string;
+  /** Smallest sheet size supplier sells (small sheet); defaults to quarter if omitted (old jobs). */
   sheetPurchaseUnit?: SheetPurchaseUnit;
-  /** Cut house for masonite backs / drawer bottoms (optional). */
+  /** Cut house for small masonite backs / drawer bottoms (optional). */
   orderFromSupplier?: string;
 }
 
@@ -368,6 +390,11 @@ export interface DoorConfig {
   edgingMaterialId: string;
   openingWidth: number;
   openingHeight: number;
+  /**
+   * Finished door panel height (mm) when `Unit.customDoorSizes` is on.
+   * Width still comes from opening − L/R gaps. Grain runs top → bottom.
+   */
+  doorHeightMm?: number;
   gaps: DoorGaps;
   hinge: DoorHinge;
   /** Factory cut list: drill hinge holes (default yes). */
@@ -546,6 +573,11 @@ export interface Unit {
    * No auto carcass split. Warn if drawer openings + door openings exceed carcass height.
    */
   customDrawerSizes?: boolean;
+  /**
+   * When on: door panel height is manual; opening height = height + top/bottom gaps.
+   * Width still from cupboard − L/R. Layout keeps these openings when drawers are added.
+   */
+  customDoorSizes?: boolean;
   /** Off = extras form disabled and cut-list logic skipped. */
   extrasEnabled?: boolean;
   /** Bedroom — inner boxes, shelves, division, drawer stacks. */

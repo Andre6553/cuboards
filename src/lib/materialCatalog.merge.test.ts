@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EdgingMaterial, Job, Material } from '../types';
 import {
   applyBoardAdditionsToJobs,
   applyEdgingAdditionsToJobs,
+  loadMaterialCatalog,
   mergeEdgingAddOnly,
   mergeMaterialsAddOnly,
+  unionMaterialsFromJobs,
+  upsertMaterialCatalogFromJob,
+  upsertMaterialsById,
 } from './materialCatalog';
+import { setUserDataScope } from './userDataScope';
 
 const board = (id: string, name: string): Material => ({
   id,
@@ -27,6 +32,57 @@ const edge = (id: string, name: string): EdgingMaterial => ({
 function stubJob(id: string, materials: Material[], edgingMaterials: EdgingMaterial[]): Job {
   return { id, updatedAt: '2026-01-01', materials, edgingMaterials } as Job;
 }
+
+beforeEach(() => {
+  setUserDataScope('vitest-catalog');
+  const store = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+    clear: () => store.clear(),
+  });
+});
+
+describe('upsertMaterialsById', () => {
+  it('updates matching ids and keeps extras from base', () => {
+    const base = [board('a', 'A'), board('b', 'Keep me')];
+    const updates = [board('a', 'A new price')];
+    updates[0].pricePerSheet = 999;
+    const out = upsertMaterialsById(base, updates);
+    expect(out.map((m) => m.id)).toEqual(['a', 'b']);
+    expect(out.find((m) => m.id === 'a')?.pricePerSheet).toBe(999);
+    expect(out.find((m) => m.id === 'b')?.name).toBe('Keep me');
+  });
+});
+
+describe('upsertMaterialCatalogFromJob', () => {
+  it('never drops boards that only exist on other jobs', () => {
+    const thin = stubJob('thin', [board('shared', 'Shared')], [edge('e1', 'E1')]);
+    thin.materials[0].pricePerSheet = 500;
+    const rich = stubJob(
+      'rich',
+      [board('shared', 'Shared'), board('only-rich', 'Only rich')],
+      [edge('e1', 'E1'), edge('e2', 'Extra edge')],
+    );
+    const catalog = upsertMaterialCatalogFromJob(thin.materials, thin.edgingMaterials, [thin, rich]);
+    expect(catalog.materials.map((m) => m.id).sort()).toEqual(['only-rich', 'shared'].sort());
+    expect(catalog.materials.find((m) => m.id === 'shared')?.pricePerSheet).toBe(500);
+    expect(catalog.edgingMaterials.map((e) => e.id).sort()).toEqual(['e1', 'e2'].sort());
+    expect(loadMaterialCatalog()?.materials.map((m) => m.id).sort()).toEqual(['only-rich', 'shared'].sort());
+  });
+});
+
+describe('unionMaterialsFromJobs', () => {
+  it('unions catalog and all jobs without dropping types', () => {
+    upsertMaterialCatalogFromJob([board('cat-only', 'Cat')], [edge('e-cat', 'Cat edge')], []);
+    const a = stubJob('a', [board('a-only', 'A')], [edge('e-a', 'A')]);
+    const b = stubJob('b', [board('b-only', 'B')], [edge('e-b', 'B')]);
+    const { materials, edgingMaterials } = unionMaterialsFromJobs([a, b]);
+    expect(materials.map((m) => m.id).sort()).toEqual(['a-only', 'b-only', 'cat-only'].sort());
+    expect(edgingMaterials.map((e) => e.id).sort()).toEqual(['e-a', 'e-b', 'e-cat'].sort());
+  });
+});
 
 describe('mergeMaterialsAddOnly', () => {
   it('keeps job boards and only appends new ids from source', () => {

@@ -399,9 +399,15 @@ export function MaterialsForm({
       materials.map((m) => m.orderFromSupplier),
       settings.defaultOrderSupplier ? [settings.defaultOrderSupplier] : [],
       masonite.orderFromSupplier ? [masonite.orderFromSupplier] : [],
+      masonite.largeOrderFromSupplier ? [masonite.largeOrderFromSupplier] : [],
     );
     return merged.filter(isCompleteSupplierName);
-  }, [materials, settings.defaultOrderSupplier, masonite.orderFromSupplier]);
+  }, [
+    materials,
+    settings.defaultOrderSupplier,
+    masonite.orderFromSupplier,
+    masonite.largeOrderFromSupplier,
+  ]);
 
 
 
@@ -1245,18 +1251,20 @@ export function MaterialsForm({
 
       <CollapsibleSection title="Masonite backing">
 
-        <p className="hint">Used for drawer bottoms and carcass backs when masonite is selected.</p>
+        <p className="hint">
+          Used for drawer bottoms and carcass backs. Quote <strong>auto-picks</strong> small or large sheet: large when
+          total masonite area exceeds the small sheet, or a panel/cupboard is taller than the small sheet long side.
+          Each size has its own colour, thickness, buy-as, and cut house.
+        </p>
 
         <div className="form-grid form-grid-4">
-
           <label>Name<input value={masonite.name} onChange={(e) => onMasoniteChange({ ...masonite, name: e.target.value })} /></label>
+        </div>
 
+        <h4 className="subsection-title">Small sheet</h4>
+        <div className="form-grid form-grid-4">
           <label>Colour<input value={masonite.colour} onChange={(e) => onMasoniteChange({ ...masonite, colour: e.target.value })} placeholder="e.g. Brown, White" /></label>
-
           <label>Thickness (mm)<NumberInput  value={masonite.thickness} onChange={(n) => onMasoniteChange({ ...masonite, thickness: n })} /></label>
-
-          <label>{priceInputLabel(settings, 'Price / sheet')}<NumberInput  value={masonite.pricePerSheet} onChange={(n) => onMasoniteChange({ ...masonite, pricePerSheet: n })} /></label>
-
           <label>
             Buy as
             <select
@@ -1274,7 +1282,6 @@ export function MaterialsForm({
               <option value="full">Full sheet only</option>
             </select>
           </label>
-
           <label>
             Order from (cut house)
             <select
@@ -1289,40 +1296,115 @@ export function MaterialsForm({
             >
               <option value="">— Default / most common board cut house —</option>
               {knownSupplierNames.map((n) => (
-                <option key={n} value={n}>
+                <option key={`small-${n}`} value={n}>
                   {n}
                 </option>
               ))}
             </select>
           </label>
-
+          <label>{priceInputLabel(settings, 'Price / small sheet')}<NumberInput  value={masonite.pricePerSheet} onChange={(n) => onMasoniteChange({ ...masonite, pricePerSheet: n })} /></label>
         </div>
-
         <label className="sheet-size-field">
-          Masonite sheet size (mm)
+          Small sheet size (mm)
           <div className="sheet-size-pair">
             <NumberInput
-              
               min={100}
               value={masonite.sheetWidth ?? 2440}
-              title="Sheet length"
+              title="Small sheet length"
               onChange={(n) => onMasoniteChange({ ...masonite, sheetWidth: Math.max(100, n || 2440) })}
             />
             <span className="sheet-size-sep">×</span>
             <NumberInput
-              
               min={100}
               value={masonite.sheetHeight ?? 1220}
-              title="Sheet width"
+              title="Small sheet width"
               onChange={(n) => onMasoniteChange({ ...masonite, sheetHeight: Math.max(100, n || 1220) })}
             />
           </div>
         </label>
+        <p className="hint">Default 2440 × 1220 mm.</p>
 
-        <p className="hint">
-          Sheet size and <strong>Buy as</strong> set masonite costing on the cut list (same rules as melamine boards).
-          Default 2440 × 1220 mm — change to match your supplier.
-        </p>
+        <h4 className="subsection-title">Large sheet</h4>
+        <div className="form-grid form-grid-4">
+          <label>
+            Colour
+            <input
+              value={masonite.largeColour ?? masonite.colour}
+              onChange={(e) => onMasoniteChange({ ...masonite, largeColour: e.target.value })}
+              placeholder="e.g. Brown, White"
+            />
+          </label>
+          <label>
+            Thickness (mm)
+            <NumberInput
+              value={masonite.largeThickness ?? masonite.thickness}
+              onChange={(n) => onMasoniteChange({ ...masonite, largeThickness: n })}
+            />
+          </label>
+          <label>
+            Buy as
+            <select
+              value={masonite.largeSheetPurchaseUnit ?? masonite.sheetPurchaseUnit ?? 'quarter'}
+              onChange={(e) =>
+                onMasoniteChange({
+                  ...masonite,
+                  largeSheetPurchaseUnit: e.target.value as MasoniteConfig['sheetPurchaseUnit'],
+                })
+              }
+            >
+              <option value="third">⅓ sheet</option>
+              <option value="quarter">¼ sheet</option>
+              <option value="half">½ sheet</option>
+              <option value="full">Full sheet only</option>
+            </select>
+          </label>
+          <label>
+            Order from (cut house)
+            <select
+              className="table-input table-select"
+              value={masonite.largeOrderFromSupplier ?? ''}
+              onChange={(e) =>
+                onMasoniteChange({
+                  ...masonite,
+                  largeOrderFromSupplier: e.target.value.trim() || undefined,
+                })
+              }
+            >
+              <option value="">— Same as small / default cut house —</option>
+              {knownSupplierNames.map((n) => (
+                <option key={`large-${n}`} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {priceInputLabel(settings, 'Price / large sheet')}
+            <NumberInput
+              value={masonite.largePricePerSheet ?? 475}
+              onChange={(n) => onMasoniteChange({ ...masonite, largePricePerSheet: n })}
+            />
+          </label>
+        </div>
+        <label className="sheet-size-field">
+          Large sheet size (mm)
+          <div className="sheet-size-pair">
+            <NumberInput
+              min={100}
+              value={masonite.largeSheetWidth ?? 2750}
+              title="Large sheet length"
+              onChange={(n) => onMasoniteChange({ ...masonite, largeSheetWidth: Math.max(100, n || 2750) })}
+            />
+            <span className="sheet-size-sep">×</span>
+            <NumberInput
+              min={100}
+              value={masonite.largeSheetHeight ?? 1830}
+              title="Large sheet width"
+              onChange={(n) => onMasoniteChange({ ...masonite, largeSheetHeight: Math.max(100, n || 1830) })}
+            />
+          </div>
+        </label>
+        <p className="hint">Default 2750 × 1830 mm @ R475. Used automatically when area or height needs it.</p>
 
       </CollapsibleSection>
 

@@ -52,9 +52,43 @@ export function doorPanelWidth(door: DoorConfig): number {
 }
 
 /** Finished door panel height before cut-list edging adjustment. */
-export function doorPanelHeight(door: DoorConfig): number {
+export function doorPanelHeight(door: DoorConfig, customSizes = false): number {
+  if (customSizes && door.doorHeightMm != null && door.doorHeightMm > 0) {
+    return Math.round(door.doorHeightMm);
+  }
   const gaps = resolveDoorGaps(door);
-  return door.openingHeight - gaps.top - gaps.bottom;
+  return Math.max(0, door.openingHeight - gaps.top - gaps.bottom);
+}
+
+/** Opening height from typed finished door height + top/bottom gaps. */
+export function targetDoorOpeningHeight(door: DoorConfig, finishedHeightMm: number): number {
+  const gaps = resolveDoorGaps(door);
+  return Math.round((gaps.top + Math.max(1, finishedHeightMm) + gaps.bottom) * 10) / 10;
+}
+
+export function usesCustomDoorSizes(unit: { customDoorSizes?: boolean }): boolean {
+  return unit.customDoorSizes === true;
+}
+
+/** Seed finished door heights from current openings when turning custom on. */
+export function seedCustomDoorHeights(doors: DoorConfig[]): DoorConfig[] {
+  return doors.map((d) => {
+    const auto = doorPanelHeight(d, false);
+    return {
+      ...d,
+      doorHeightMm: d.doorHeightMm != null && d.doorHeightMm > 0 ? Math.round(d.doorHeightMm) : Math.max(1, Math.round(auto)),
+      openingHeight: targetDoorOpeningHeight(d, d.doorHeightMm != null && d.doorHeightMm > 0 ? d.doorHeightMm : auto),
+    };
+  });
+}
+
+/** Sync opening height from typed doorHeightMm (custom mode). */
+export function syncDoorOpeningFromHeight(door: DoorConfig): DoorConfig {
+  if (door.doorHeightMm == null || door.doorHeightMm <= 0) return door;
+  return {
+    ...door,
+    openingHeight: targetDoorOpeningHeight(door, door.doorHeightMm),
+  };
 }
 
 /** Finished door height at or under this uses 2 hinge holes; taller doors default to 4. */
@@ -72,21 +106,22 @@ export function defaultHingeHoles(finishedDoorHeightMm: number): number {
 }
 
 /** Saved count, or the height default when the user has not picked one. */
-export function resolveHingeHoleCount(door: DoorConfig): number {
+export function resolveHingeHoleCount(door: DoorConfig, customSizes = false): number {
   const saved = door.hingeHoleCount;
   if (saved != null && Number.isFinite(saved) && saved >= 2 && saved <= 6) {
     return Math.round(saved);
   }
-  return defaultHingeHoles(doorPanelHeight(door));
+  return defaultHingeHoles(doorPanelHeight(door, customSizes));
 }
 
-export function hingesPerDoorLeafForDoor(door: DoorConfig): number {
-  return resolveHingeHoleCount(door);
+export function hingesPerDoorLeafForDoor(door: DoorConfig, customSizes = false): number {
+  return resolveHingeHoleCount(door, customSizes);
 }
 
 export function doorCutListSize(
   door: DoorConfig,
   ctx: Pick<Job, 'settings' | 'edgingMaterials' | 'materials'>,
+  customSizes = false,
 ): {
   width: number;
   length: number;
@@ -97,7 +132,7 @@ export function doorCutListSize(
   edgingThickness: number;
 } {
   const finishedWidth = doorPanelWidth(door);
-  const finishedHeight = doorPanelHeight(door);
+  const finishedHeight = doorPanelHeight(door, customSizes);
   const panel = panelCutSizes(
     ctx as Job,
     door.materialId,
@@ -120,10 +155,11 @@ export function doorCutListSize(
 export function doorSizeSummary(
   door: DoorConfig,
   ctx: Pick<Job, 'settings' | 'edgingMaterials' | 'materials'>,
+  customSizes = false,
 ): string {
   const gaps = resolveDoorGaps(door);
   const finishedWidth = doorPanelWidth(door);
-  const finishedHeight = doorPanelHeight(door);
+  const finishedHeight = doorPanelHeight(door, customSizes);
   const panel = panelCutSizes(
     ctx as Job,
     door.materialId,
@@ -136,9 +172,10 @@ export function doorSizeSummary(
   const between = qty > 1 ? ` · ${gaps.between} mm between doors` : '';
   const cutPart = formatPanelCutSizeSummary(panel);
   const hingeCount = resolveHingeHoleCount(door);
+  const heightNote = customSizes ? `manual door H ${finishedHeight} mm` : `finished H ${finishedHeight} mm`;
   return (
     `${qty} door(s) · Opening ${door.openingWidth} × ${door.openingHeight} mm · ` +
     `Gaps L${gaps.left} R${gaps.right} T${gaps.top} B${gaps.bottom}${between} · ` +
-    `${hingeCount} hinges/door (finished H ${finishedHeight} mm) · ${cutPart}`
+    `${hingeCount} hinges/door (${heightNote}) · ${cutPart}`
   );
 }

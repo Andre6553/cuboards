@@ -50,6 +50,7 @@ import {
 } from './lib/jobCloudSync';
 import { setUserDataScope } from './lib/userDataScope';
 import { getLastCloudSyncIso, recordCloudSync } from './lib/backupReminder';
+import { saveDefaultsAcrossJobs } from './lib/priceList';
 import { migrateJob, saveJobs, upsertJob } from './lib/storage';
 import './App.css';
 
@@ -254,6 +255,16 @@ function CuboardsApp() {
     return { updatedCount, totalJobs };
   }, [activeJobId, persist]);
 
+  const handleSaveDefaultsAcrossJobs = useCallback(
+    (sourceJob: Job): Job[] => {
+      const { jobs: next } = saveDefaultsAcrossJobs(jobsRef.current, sourceJob);
+      const migrated = next.map((j) => migrateJob(j));
+      persist(migrated);
+      return migrated;
+    },
+    [persist],
+  );
+
   const handleJobChange = (job: Job) => {
     const prev = jobs.find((j) => j.id === job.id);
     const catalogFullChanged =
@@ -319,6 +330,7 @@ function CuboardsApp() {
             onChange={handleJobChange}
             onBack={() => setActiveJobId(null)}
             onPrefsSaved={() => schedulePushUserPrefs()}
+            onSaveDefaultsAcrossJobs={handleSaveDefaultsAcrossJobs}
             totalJobCount={jobs.length}
             onSyncBoardMaterialsToAllJobs={handleSyncBoardMaterialsToAllJobs}
             onSyncEdgingToAllJobs={handleSyncEdgingToAllJobs}
@@ -332,6 +344,7 @@ function CuboardsApp() {
             onOpen={setActiveJobId}
             onJobsChange={persist}
             onSyncNow={() => void runCloudSync()}
+            userId={userId}
           />
         )}
       </div>

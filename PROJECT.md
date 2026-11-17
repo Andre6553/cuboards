@@ -30,7 +30,8 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 
 ## Notes
 - **2026-11-17:** **Floor corner** (kitchen base) + **Wall corner** (wall unit). Floor: 884² panels, H×550 sides, fillers 2×748×100, masonite 2×H×900, doors 341/325. Wall: 584² panels (bottom+2 shelves+top), H×300 sides, filler1 2×(H−2T)×typed width (default 70), filler2 2×514×70, filler3 2×498×70, masonite 2×H×600, doors 291/275. T/B gaps only on doors (`floorCornerRules.ts`, `wallCornerRules.ts`).
-- **2026-11-17:** **My default prices** — Save uploads `cuboards_user_prefs.price_list` immediately; Load pulls that row from Supabase (account wins) then applies to the job so devices match when signed in.
+- **2026-11-17:** **My default prices** — Save upserts catalog (never deletes boards), enriches the thin job with missing types, applies settings/prices to **all jobs**, uploads prefs + jobs to Supabase; new job fetches account `price_list` first when signed in. Load still applies to this job only.
+- **2026-11-17:** **My default prices** (earlier) — Save uploads `cuboards_user_prefs.price_list` immediately; Load pulls that row from Supabase (account wins) then applies to the job so devices match when signed in.
 - **2026-11-17:** Sheet-map lightbox zoom: always position via `translate(pan)` (center pan at fit). Old CSS flex-center + top-left pan math made the sheet jump left when zooming in.
 - **2026-11-17:** Guillotine nest (`sheetLayout.ts`): when a rotatable part ties on shelf/sheet rank, prefer **lower cross-grain height** so a non-grain tall panel (e.g. 780×1810 Esperanza back) does not lock a full-height rip strip and open an extra sheet for a thin filler.
 - **2026-11-16:** Carcass **shelves** with **solid melamine backing**: depth **D−T**, width **W−2T** (was full D with masonite/none). `carcassShelfSize` in `carcassRules.ts`.
@@ -38,6 +39,9 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 - **2026-11-16:** `record_device_login` 409 was FK on `user_devices` when `device_installs` had no row for this browser. RPC now upserts the install first (`0011_record_device_login_ensure_install.sql`). Client also coalesces duplicate login RPCs on page load.
 - **2026-11-16:** **Extras** (after Drawers): **Bedroom** = inner boxes (`ExtraInnerForm`, `extrasRules.ts`). **Kitchen base / wall** = custom doors, panels, fillers — qty, length×width, board, edging pattern + tape (`customExtras`, `ExtraCustomPartsForm.tsx`, `customExtrasRules.ts`). `extrasEnabled` gates both.
 - **2026-11-16:** Bedroom cupboards show **Kitchen plinth — kickplate & feet**. The same kickplate and feet math is included on the cut list.
+- **2026-11-17:** Masonite dual sheets — small 2440×1220 + large 2750×1830 @ R475; quote auto-picks large when total area &gt; small sheet or a panel/cupboard height won’t fit on the small long side (`masoniteSheetRules.ts`). Each size has its own colour, thickness, buy-as, and cut house.
+
+- **2026-11-17:** **Customize door sizes** (Doors header tick): manual door height; width from L/R gaps; opening = height + T/B gaps. Drawers warn if a door exists and custom doors is off; with custom on, drawers use remaining height after door openings.
 - **2026-11-17:** Kitchen base mount **Tall Floor unit** (`tall_floor`): same carcass as wall (Bottom + Top + 2 fillers, no countertop) plus **Kitchen plinth — kickplate & feet**.
 - **2026-11-17:** **Customize drawer / front sizes** (unit tick): manual **front height** (+ box height); opening height is display-only (front + gaps); front width from L/R gaps; grain top→bottom; warn-only if drawers+doors &gt; carcass H.
 - **2026-11-17:** Wall mount no longer adds **Extra bottom (wall)** — one Bottom + Top on pure wall units, plus **2 top fillers** (front/back).

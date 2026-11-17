@@ -1,4 +1,5 @@
 import type { CutPiece, Job, SheetMapGroup, SheetMapSheet } from '../types';
+import { resolveMasoniteSheetForJob } from './masoniteSheetRules';
 import { masonitePurchaseFraction, sheetPurchaseFraction } from './sheetCost';
 import { cutPiecesToLayout } from './sheetLayoutPieces';
 import { layoutSheets, resolveSawKerfMm } from './sheetLayout';
@@ -69,17 +70,19 @@ export function calcSheetMaps(job: Job, pieces: CutPiece[]): SheetMapGroup[] {
 
   const masonitePieces = pieces.filter((p) => p.materialId === MASONITE_ID);
   if (masonitePieces.length > 0) {
+    const picked = resolveMasoniteSheetForJob(job.masonite, masonitePieces, job.units);
     const sheets = layoutToSheets(
       masonitePieces,
-      job.masonite.sheetWidth ?? 2440,
-      job.masonite.sheetHeight ?? 1220,
-      masonitePurchaseFraction(job.masonite),
+      picked.width,
+      picked.height,
+      masonitePurchaseFraction(job.masonite, picked.label),
       sawKerfMm,
     );
     if (sheets.length > 0) {
+      const sizeTag = picked.label === 'large' ? 'large' : 'small';
       groups.push({
         materialId: MASONITE_ID,
-        materialName: `${job.masonite.name} (${job.masonite.colour})`,
+        materialName: `${job.masonite.name} (${picked.colour}) · ${sizeTag} ${picked.width}×${picked.height}`,
         sheets,
       });
     }

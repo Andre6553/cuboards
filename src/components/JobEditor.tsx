@@ -15,6 +15,8 @@ interface Props {
   onChange: (job: Job) => void;
   onBack: () => void;
   onPrefsSaved?: () => void;
+  /** Persist account defaults onto every job; returns the updated list. */
+  onSaveDefaultsAcrossJobs: (sourceJob: Job) => Job[];
   totalJobCount?: number;
   onSyncBoardMaterialsToAllJobs?: () => { updatedCount: number; totalJobs: number };
   onSyncEdgingToAllJobs?: () => { updatedCount: number; totalJobs: number };
@@ -27,6 +29,7 @@ export function JobEditor({
   onChange,
   onBack,
   onPrefsSaved,
+  onSaveDefaultsAcrossJobs,
   totalJobCount,
   onSyncBoardMaterialsToAllJobs,
   onSyncEdgingToAllJobs,
@@ -136,7 +139,12 @@ export function JobEditor({
 
       {tab === 'prices' && (
         <>
-          <PriceListBar job={job} onChange={onChange} onPrefsSaved={onPrefsSaved} />
+          <PriceListBar
+            job={job}
+            onChange={onChange}
+            onSaveDefaultsAcrossJobs={onSaveDefaultsAcrossJobs}
+            onPrefsSaved={onPrefsSaved}
+          />
           <MaterialsForm
             materials={job.materials}
             edgingMaterials={job.edgingMaterials}

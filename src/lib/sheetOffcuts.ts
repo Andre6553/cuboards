@@ -1,4 +1,5 @@
 import type { BoardOffcut, CutPiece, Job } from '../types';
+import { resolveMasoniteSheetForJob } from './masoniteSheetRules';
 import { cutPiecesToLayout } from './sheetLayoutPieces';
 import { layoutSheets, resolveSawKerfMm } from './sheetLayout';
 import { masonitePurchaseFraction, sheetPurchaseFraction } from './sheetCost';
@@ -45,15 +46,17 @@ export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
 
   const masonitePieces = pieces.filter((p) => p.materialId === MASONITE_ID);
   if (masonitePieces.length > 0) {
-    const purchaseFrac = masonitePurchaseFraction(job.masonite);
+    const picked = resolveMasoniteSheetForJob(job.masonite, masonitePieces, job.units);
+    const purchaseFrac = masonitePurchaseFraction(job.masonite, picked.label);
     const layout = layoutSheets(
       cutPiecesToLayout(masonitePieces),
-      job.masonite.sheetWidth ?? 2440,
-      job.masonite.sheetHeight ?? 1220,
+      picked.width,
+      picked.height,
       sawKerfMm,
       purchaseFrac,
     );
-    const label = `${job.masonite.name} (${job.masonite.colour})`;
+    const sizeTag = picked.label === 'large' ? 'large' : 'small';
+    const label = `${job.masonite.name} (${picked.colour}) · ${sizeTag} ${picked.width}×${picked.height}`;
     for (const o of layout.offcuts) {
       offcuts.push({
         materialId: MASONITE_ID,

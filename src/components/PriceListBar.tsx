@@ -2,15 +2,17 @@ import { useState } from 'react';
 import type { Job } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { fetchAccountPriceList, pushAccountPrefsNow } from '../lib/jobCloudSync';
-import { applyPriceListToJob, loadPriceList, savePriceListFromJob } from '../lib/priceList';
+import { applyPriceListToJob, loadPriceList } from '../lib/priceList';
 
 interface Props {
   job: Job;
   onChange: (job: Job) => void;
+  /** Save defaults across every job + catalog; returns the updated jobs list. */
+  onSaveDefaultsAcrossJobs: (sourceJob: Job) => Job[];
   onPrefsSaved?: () => void;
 }
 
-export function PriceListBar({ job, onChange, onPrefsSaved }: Props) {
+export function PriceListBar({ job, onChange, onSaveDefaultsAcrossJobs, onPrefsSaved }: Props) {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const [savedAt, setSavedAt] = useState(() => loadPriceList()?.savedAt ?? null);
@@ -18,20 +20,24 @@ export function PriceListBar({ job, onChange, onPrefsSaved }: Props) {
   const [busy, setBusy] = useState<'save' | 'load' | null>(null);
 
   const handleSave = async () => {
-    if (savedAt && !confirm('Replace your saved default prices with the prices in this job?')) return;
+    const confirmMsg = savedAt
+      ? 'Save as account defaults and apply to ALL jobs? Boards are never removed — missing types are added. Client and units stay. Replace your previously saved defaults?'
+      : 'Save as account defaults and apply to ALL jobs? Boards are never removed — missing types are added. Client and units stay.';
+    if (!confirm(confirmMsg)) return;
     setBusy('save');
     setNote(null);
     try {
-      const list = savePriceListFromJob(job);
-      setSavedAt(list.savedAt);
+      onSaveDefaultsAcrossJobs(job);
+      const list = loadPriceList();
+      if (list) setSavedAt(list.savedAt);
       if (userId) {
         await pushAccountPrefsNow(userId);
         setNote(
-          'Saved to your account (Supabase): job settings, boards, edging, masonite, PVC kickplate, install rates, quote terms, and hardware overrides. Other devices get these when you Load or Sync.',
+          'Saved to your account (Supabase) and applied to all jobs: settings, boards (add-only), edging, masonite, PVC kickplate, install rates, quote terms, and hardware. Other devices get these on Sync / new job.',
         );
       } else {
         setNote(
-          'Saved on this device only. Sign in so defaults sync to your account and other devices.',
+          'Saved on this device and applied to all jobs. Sign in so defaults sync to your account and other devices.',
         );
       }
       onPrefsSaved?.();
@@ -95,8 +101,8 @@ export function PriceListBar({ job, onChange, onPrefsSaved }: Props) {
         <h2>My default prices</h2>
         <p className="hint">
           {savedAt
-            ? `Account defaults last saved ${new Date(savedAt).toLocaleString()}. New jobs use these; Load pulls the latest from your account when signed in.`
-            : 'Set your prices and job settings below, then save as defaults. When signed in, Save uploads them to your account so other devices match.'}
+            ? `Account defaults last saved ${new Date(savedAt).toLocaleString()}. Save applies to all jobs and uploads to your account; new jobs use these when signed in.`
+            : 'Set your prices and job settings below, then save as defaults. Save applies to all jobs; when signed in, uploads to your account so other devices match.'}
         </p>
         {note && (
           <p className={`gelmar-refresh-status ${note.includes('failed') || note.includes('Could not') ? 'err' : 'ok'}`}>

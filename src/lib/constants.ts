@@ -263,6 +263,12 @@ export const DEFAULT_MASONITE: MasoniteConfig = {
   pricePerSheet: 120,
   sheetWidth: 2440,
   sheetHeight: 1220,
+  largePricePerSheet: 475,
+  largeSheetWidth: 2750,
+  largeSheetHeight: 1830,
+  largeColour: 'Brown',
+  largeThickness: 3,
+  largeSheetPurchaseUnit: 'quarter',
   sheetPurchaseUnit: 'quarter',
 };
 

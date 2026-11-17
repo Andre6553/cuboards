@@ -18,12 +18,21 @@ export function sheetPurchaseFraction(material: Material): number {
   return SHEET_PURCHASE_FRACTION[resolveSheetPurchaseUnit(material)];
 }
 
-export function resolveMasonitePurchaseUnit(masonite: MasoniteConfig): SheetPurchaseUnit {
+export function resolveMasonitePurchaseUnit(
+  masonite: MasoniteConfig,
+  size: 'small' | 'large' = 'small',
+): SheetPurchaseUnit {
+  if (size === 'large') {
+    return masonite.largeSheetPurchaseUnit ?? masonite.sheetPurchaseUnit ?? DEFAULT_SHEET_PURCHASE_UNIT;
+  }
   return masonite.sheetPurchaseUnit ?? DEFAULT_SHEET_PURCHASE_UNIT;
 }
 
-export function masonitePurchaseFraction(masonite: MasoniteConfig): number {
-  return SHEET_PURCHASE_FRACTION[resolveMasonitePurchaseUnit(masonite)];
+export function masonitePurchaseFraction(
+  masonite: MasoniteConfig,
+  size: 'small' | 'large' = 'small',
+): number {
+  return SHEET_PURCHASE_FRACTION[resolveMasonitePurchaseUnit(masonite, size)];
 }
 
 export function sheetPurchaseDetailLabel(unit: SheetPurchaseUnit): string {

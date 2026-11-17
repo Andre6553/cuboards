@@ -228,9 +228,14 @@ export function CutListView({ job }: Props) {
   const factorySheetMaps = useMemo(
     () =>
       factory && factoryOrderSupplier
-        ? filterSheetMapGroupsForOrderSupplier(job, result.sheetMaps, factoryOrderSupplier)
+        ? filterSheetMapGroupsForOrderSupplier(
+            job,
+            result.sheetMaps,
+            factoryOrderSupplier,
+            result.pieces,
+          )
         : result.sheetMaps,
-    [factory, factoryOrderSupplier, job, result.sheetMaps],
+    [factory, factoryOrderSupplier, job, result.sheetMaps, result.pieces],
   );
   const unassignedOrder = useMemo(
     () => (factory ? summarizeUnassignedOrderSupplierPieces(job, result.pieces) : null),

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DrawerConfig, Unit } from '../types';
 import {
   drawerFrontHeight,
+  drawerFrontVsBoxWarning,
   drawerFrontWidth,
   frontStackFit,
   frontStackOverflowWarning,
@@ -91,5 +92,12 @@ describe('custom drawer front sizes', () => {
     const d = baseDrawer({ qty: 2, frontHeightMm: undefined });
     const seeded = seedCustomFrontHeights([d], 720);
     expect(seeded[0].frontHeightMm).toBeGreaterThan(0);
+  });
+
+  it('warns when front height is not bigger than box height', () => {
+    const short = baseDrawer({ frontHeightMm: 100, boxHeight: 120 });
+    expect(drawerFrontVsBoxWarning(short, 720, [short], true)).toMatch(/must be bigger than box height/);
+    const ok = baseDrawer({ frontHeightMm: 150, boxHeight: 120 });
+    expect(drawerFrontVsBoxWarning(ok, 720, [ok], true)).toBeNull();
   });
 });

@@ -75,6 +75,33 @@ export function mergeEdgingAddOnly(primary: EdgingMaterial[], addition: EdgingMa
   return mergeEdgingLists(primary, addition);
 }
 
+/**
+ * Update matching ids from `updates`, keep base order + extras not in updates.
+ * Never removes rows that only exist on `base`.
+ */
+export function upsertMaterialsById(base: Material[], updates: Material[]): Material[] {
+  const byId = new Map<string, Material>();
+  for (const m of base) byId.set(m.id, { ...m });
+  for (const m of updates) byId.set(m.id, { ...m });
+  const baseIds = new Set(base.map((m) => m.id));
+  return [
+    ...base.map((m) => byId.get(m.id)!),
+    ...updates.filter((m) => !baseIds.has(m.id)).map((m) => ({ ...m })),
+  ];
+}
+
+/** Same as upsertMaterialsById for edging. */
+export function upsertEdgingById(base: EdgingMaterial[], updates: EdgingMaterial[]): EdgingMaterial[] {
+  const byId = new Map<string, EdgingMaterial>();
+  for (const e of base) byId.set(e.id, { ...e });
+  for (const e of updates) byId.set(e.id, { ...e });
+  const baseIds = new Set(base.map((e) => e.id));
+  return [
+    ...base.map((e) => byId.get(e.id)!),
+    ...updates.filter((e) => !baseIds.has(e.id)).map((e) => ({ ...e })),
+  ];
+}
+
 function mergeMaterialLists(primary: Material[], secondary: Material[]): Material[] {
   const byId = new Map<string, Material>();
   for (const m of primary) byId.set(m.id, { ...m });
@@ -96,6 +123,40 @@ function mergeEdgingLists(primary: EdgingMaterial[], secondary: EdgingMaterial[]
     ...primary.map((e) => byId.get(e.id)!),
     ...secondary.filter((e) => !primaryIds.has(e.id)).map((e) => ({ ...e })),
   ];
+}
+
+/** Union of catalog + every job’s boards/edging (add-only by id; first occurrence wins). */
+export function unionMaterialsFromJobs(jobs: Job[], catalog?: BoardCatalog | null): {
+  materials: Material[];
+  edgingMaterials: EdgingMaterial[];
+} {
+  const cat = catalog ?? loadMaterialCatalog();
+  let materials = (cat?.materials ?? []).map((m) => ({ ...m }));
+  let edgingMaterials = (cat?.edgingMaterials ?? []).map((e) => ({ ...e }));
+  for (const job of jobs) {
+    if (job.materials?.length) materials = mergeMaterialLists(materials, job.materials);
+    if (job.edgingMaterials?.length) edgingMaterials = mergeEdgingLists(edgingMaterials, job.edgingMaterials);
+  }
+  return { materials, edgingMaterials };
+}
+
+/**
+ * Write job boards into the account catalog: update matching ids from the job,
+ * keep catalog (and union) rows the job does not have. Never deletes board types.
+ */
+export function upsertMaterialCatalogFromJob(
+  jobMaterials: Material[],
+  jobEdging: EdgingMaterial[],
+  jobs: Job[] = [],
+): BoardCatalog {
+  const { materials: unionMats, edgingMaterials: unionEdge } = unionMaterialsFromJobs(
+    jobs,
+    loadMaterialCatalog(),
+  );
+  return saveMaterialCatalog(
+    upsertMaterialsById(unionMats, jobMaterials),
+    upsertEdgingById(unionEdge, jobEdging),
+  );
 }
 
 /** Create or upgrade catalog from defaults, price list, or existing jobs (first run). */

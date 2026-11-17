@@ -201,6 +201,24 @@ export function frontStackOverflowWarning(unit: Pick<Unit, 'height' | 'doors' | 
   );
 }
 
+/**
+ * Drawer front must be taller than the box. Warn when finished front height ≤ box height.
+ */
+export function drawerFrontVsBoxWarning(
+  drawer: DrawerConfig,
+  carcassHeight: number,
+  allDrawers: DrawerConfig[],
+  customSizes = false,
+): string | null {
+  if (!isActiveDrawer(drawer)) return null;
+  const frontH = drawerFrontHeight(drawer, carcassHeight, allDrawers, customSizes);
+  const boxH = Math.round(Math.max(1, drawer.boxHeight));
+  if (frontH > boxH) return null;
+  return (
+    `Warning: front height ${frontH} mm must be bigger than box height ${boxH} mm — the drawer front covers the box.`
+  );
+}
+
 export function drawerFrontCutListSize(
   drawer: DrawerConfig,
   ctx: Pick<Job, 'settings' | 'edgingMaterials' | 'materials'>,

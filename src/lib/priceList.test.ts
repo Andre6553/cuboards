@@ -1,10 +1,11 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from './constants';
-import { applyPriceListToJob, type PriceList } from './priceList';
+import { loadMaterialCatalog } from './materialCatalog';
+import { applyPriceListToJob, loadPriceList, saveDefaultsAcrossJobs, type PriceList } from './priceList';
 import { setUserDataScope } from './userDataScope';
 import type { Job } from '../types';
 
-beforeAll(() => {
+beforeEach(() => {
   setUserDataScope('vitest-user');
   const store = new Map<string, string>();
   vi.stubGlobal('localStorage', {
@@ -57,5 +58,68 @@ describe('applyPriceListToJob', () => {
     expect(out.settings.pricePerFoot).toBe(42);
     expect(out.settings.sheetWidth).toBe(3600);
     expect(out.quoteTerms?.validityDays).toBe(14);
+  });
+
+  it('keeps job-only boards when price list has fewer types', () => {
+    const job = stubJob({
+      materials: [
+        { id: 'mat-white', name: 'White', colour: 'White', pricePerSheet: 850, hasGrain: false },
+        { id: 'mat-oak', name: 'Oak', colour: 'Oak', pricePerSheet: 1200, hasGrain: true },
+      ],
+    });
+    const list: PriceList = {
+      savedAt: '2026-01-02',
+      settings: { ...DEFAULT_SETTINGS, pricePerFoot: 50 },
+      materials: [{ id: 'mat-white', name: 'White', colour: 'White', pricePerSheet: 900, hasGrain: false }],
+      edgingMaterials: job.edgingMaterials,
+      masonite: job.masonite,
+      plasticKickplate: job.plasticKickplate,
+      runnerPrices: {},
+      hingePrices: {},
+      screwPrices: {},
+      connectingFittingPrices: {},
+      installRates: job.installRates,
+      quoteTerms: { validityDays: 14, depositPercent: 40, paymentNote: 'EFT', extraNotes: '' },
+    };
+    const out = applyPriceListToJob(job, list);
+    expect(out.materials.map((m) => m.id).sort()).toEqual(['mat-oak', 'mat-white'].sort());
+    expect(out.materials.find((m) => m.id === 'mat-white')?.pricePerSheet).toBe(900);
+    expect(out.materials.find((m) => m.id === 'mat-oak')?.name).toBe('Oak');
+  });
+});
+
+describe('saveDefaultsAcrossJobs', () => {
+  it('enriches a thin job, updates settings on all jobs, and never drops boards', () => {
+    const thin = stubJob({
+      id: 'thin',
+      settings: { ...DEFAULT_SETTINGS, pricePerFoot: 99 },
+      materials: [{ id: 'mat-white', name: 'White', colour: 'White', pricePerSheet: 777, hasGrain: false }],
+    });
+    const rich = stubJob({
+      id: 'rich',
+      settings: { ...DEFAULT_SETTINGS, pricePerFoot: 10 },
+      materials: [
+        { id: 'mat-white', name: 'White', colour: 'White', pricePerSheet: 850, hasGrain: false },
+        { id: 'mat-oak', name: 'Oak', colour: 'Oak', pricePerSheet: 1200, hasGrain: true },
+      ],
+      client: { name: 'Keep me', ref: 'R1', phone: '', address: '', notes: '' },
+      units: [{ id: 'u1', name: 'Base', unitQty: 1 } as Job['units'][number]],
+    });
+
+    const { jobs, currentJob, priceList } = saveDefaultsAcrossJobs([thin, rich], thin);
+
+    expect(currentJob.materials.map((m) => m.id).sort()).toEqual(['mat-oak', 'mat-white'].sort());
+    expect(currentJob.materials.find((m) => m.id === 'mat-white')?.pricePerSheet).toBe(777);
+
+    const richOut = jobs.find((j) => j.id === 'rich')!;
+    expect(richOut.settings.pricePerFoot).toBe(99);
+    expect(richOut.materials.map((m) => m.id).sort()).toEqual(['mat-oak', 'mat-white'].sort());
+    expect(richOut.materials.find((m) => m.id === 'mat-white')?.pricePerSheet).toBe(777);
+    expect(richOut.client.name).toBe('Keep me');
+    expect(richOut.units).toHaveLength(1);
+
+    expect(loadPriceList()?.settings.pricePerFoot).toBe(99);
+    expect(priceList.materials.map((m) => m.id).sort()).toEqual(['mat-oak', 'mat-white'].sort());
+    expect(loadMaterialCatalog()?.materials.map((m) => m.id).sort()).toEqual(['mat-oak', 'mat-white'].sort());
   });
 });

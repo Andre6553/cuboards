@@ -7,6 +7,7 @@ import {
   shouldShowBackupReminder,
 } from '../lib/backupReminder';
 import { formatMoney } from '../lib/currency';
+import { fetchAccountPriceList } from '../lib/jobCloudSync';
 import { displayGrandTotal } from './QuoteTotals';
 import { createNewJob, deleteJob, duplicateJob, exportAllJobsJson, exportJobJson, importJobsJson } from '../lib/storage';
 import { CouponPanel } from './CouponPanel';
@@ -19,6 +20,8 @@ interface Props {
   onOpen: (id: string) => void;
   onJobsChange: (jobs: Job[]) => void;
   onSyncNow?: () => void;
+  /** When signed in, new jobs pull the latest account price_list from Supabase first. */
+  userId?: string | null;
 }
 
 function quoteTotal(job: Job): number | null {
@@ -72,10 +75,12 @@ export function Dashboard({
   onOpen,
   onJobsChange,
   onSyncNow,
+  userId = null,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   const [lastJsonBackup, setLastJsonBackup] = useState(() => getLastBackupIso());
+  const [creating, setCreating] = useState(false);
 
   const handleJsonBackup = () => {
     exportAllJobsJson(jobs);
@@ -93,10 +98,23 @@ export function Dashboard({
     );
   }, [jobs, search]);
 
-  const handleNew = () => {
-    const job = createNewJob();
-    onJobsChange([job, ...jobs]);
-    onOpen(job.id);
+  const handleNew = async () => {
+    if (creating) return;
+    setCreating(true);
+    try {
+      if (userId) {
+        try {
+          await fetchAccountPriceList(userId);
+        } catch (e) {
+          console.error('fetchAccountPriceList before new job', e);
+        }
+      }
+      const job = createNewJob();
+      onJobsChange([job, ...jobs]);
+      onOpen(job.id);
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,8 +167,13 @@ export function Dashboard({
             Import
           </button>
           <input ref={fileRef} type="file" accept=".json" hidden onChange={handleImport} />
-          <button type="button" className="btn btn-primary" onClick={handleNew}>
-            + New job
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void handleNew()}
+            disabled={creating}
+          >
+            {creating ? 'Creating…' : '+ New job'}
           </button>
         </div>
       </header>
@@ -199,8 +222,13 @@ export function Dashboard({
         <div className="empty-state dashboard-empty">
           <h2>No jobs yet</h2>
           <p>Create a new job, enter cupboard sizes, and generate a cut list PDF for your cutter.</p>
-          <button type="button" className="btn btn-primary" onClick={handleNew}>
-            Create first job
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void handleNew()}
+            disabled={creating}
+          >
+            {creating ? 'Creating…' : 'Create first job'}
           </button>
         </div>
       ) : (

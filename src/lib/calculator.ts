@@ -98,6 +98,7 @@ import {
   normalizeBedroomWallExtra,
 } from './extrasRules';
 import { customExtraBoardCuts, customExtrasForCutList } from './customExtrasRules';
+import { resolveMasoniteSheetForJob } from './masoniteSheetRules';
 import {
   estimateSheetsFromArea,
   formatSheetCount,
@@ -1094,14 +1095,15 @@ function calcDoors(
   hardware: HardwareItem[],
   mult: number,
 ) {
+  const customDoors = unit.customDoorSizes === true;
   for (const door of unit.doors) {
     const w = doorPanelWidth(door);
-    const h = doorPanelHeight(door);
+    const h = doorPanelHeight(door, customDoors);
     const totalQty = door.qty * mult;
     if (totalQty <= 0 || w <= 0 || h <= 0) continue;
 
     const finishedH = h;
-    const perLeaf = hingesPerDoorLeafForDoor(door);
+    const perLeaf = hingesPerDoorLeafForDoor(door, customDoors);
     const drillHoles = door.factoryHingeHoles !== false;
 
     pushBoardPiece(job, pieces, {
@@ -1779,11 +1781,12 @@ function calcCosts(
   const masonitePieces = pieces.filter((p) => p.materialId === MASONITE_ID);
   const masoniteArea = masonitePieces.reduce((sum, p) => sum + p.width * p.length * p.qty, 0);
   if (masoniteArea > 0) {
-    const mW = job.masonite.sheetWidth;
-    const mH = job.masonite.sheetHeight;
+    const picked = resolveMasoniteSheetForJob(job.masonite, masonitePieces, job.units);
+    const mW = picked.width;
+    const mH = picked.height;
     const mSheetArea = mW * mH;
-    const mPurchaseUnit = resolveMasonitePurchaseUnit(job.masonite);
-    const masoniteFrac = masonitePurchaseFraction(job.masonite);
+    const mPurchaseUnit = resolveMasonitePurchaseUnit(job.masonite, picked.label);
+    const masoniteFrac = masonitePurchaseFraction(job.masonite, picked.label);
     const masoniteLabel = sheetPurchaseDetailLabel(mPurchaseUnit);
     let sheetsNeeded = estimateSheetsFromArea(masoniteArea, mSheetArea, masoniteFrac);
     const { sheetsFromLayout, unplaced } = sheetCountFromNesting(
@@ -1800,26 +1803,29 @@ function calcCosts(
       cutHouseCh.masoniteOneFullSheetFromCutHouse === true
         ? masoniteQuoteSheetCount(job, sheetsNeeded, cutHouseCh)
         : sheetsNeeded;
-    const masoniteDetailBase = `${job.masonite.thickness}mm · ${formatSheetCount(masoniteBillSheets)} @ ${mW}×${mH}`;
+    const sizeTag = picked.label === 'large' ? 'large sheet' : 'small sheet';
+    const pickNote = picked.reason ? ` · auto ${sizeTag} (${picked.reason})` : ` · auto ${sizeTag}`;
+    const masoniteDetailBase = `${picked.thickness}mm · ${formatSheetCount(masoniteBillSheets)} @ ${mW}×${mH}${pickNote}`;
     const masoniteLayoutNote =
       masoniteBillSheets !== sheetsNeeded
         ? `${masoniteDetailBase} · cut house bills 1 full sheet (layout uses ${formatSheetCount(sheetsNeeded)})`
         : `${masoniteDetailBase} · panel layout (${masoniteLabel}; ${sawKerfMm} mm saw cut)`;
     pushUnplacedSheetWarnings(
-      `${job.masonite.name} (${job.masonite.colour})`,
+      `${job.masonite.name} (${picked.colour})`,
       mW,
       mH,
       unplaced,
       sheetWarnings,
     );
-    const masoniteSheetPrice = quoteUnitPrice(job.masonite.pricePerSheet, job.settings);
+    const masoniteStoredPrice = picked.pricePerSheet;
+    const masoniteSheetPrice = quoteUnitPrice(masoniteStoredPrice, job.settings);
     costs.push({
       category: 'masonite',
-      name: `${job.masonite.name} (${job.masonite.colour})`,
+      name: `${job.masonite.name} (${picked.colour})`,
       detail: `${masoniteLayoutNote} · ${formatSheetCount(masoniteBillSheets)} billed @ ${masoniteSheetPrice}/sheet`,
       quantity: masoniteBillSheets,
       unitPrice: masoniteSheetPrice,
-      subtotal: quoteLineSubtotal(masoniteBillSheets, job.masonite.pricePerSheet, job.settings),
+      subtotal: quoteLineSubtotal(masoniteBillSheets, masoniteStoredPrice, job.settings),
     });
   }
 
@@ -1912,6 +1918,17 @@ export function generateCutList(job: Job): CutListResult {
     }
     calcBedroomWallExtras(layoutUnit, job, pieces, edging, hardware, mult);
     calcCustomExtras(layoutUnit, job, pieces, edging, mult);
+  }
+
+  const masonitePick = resolveMasoniteSheetForJob(
+    job.masonite,
+    pieces.filter((p) => p.materialId === MASONITE_ID),
+    job.units,
+  );
+  for (const p of pieces) {
+    if (p.materialId !== MASONITE_ID) continue;
+    p.materialName = `${job.masonite.name} — ${masonitePick.colour}`;
+    p.notes = p.notes.replace(/^\d+(\.\d+)?mm/, `${masonitePick.thickness}mm`);
   }
 
   const boardPieces = pieces.filter((p) => p.materialId !== MASONITE_ID);

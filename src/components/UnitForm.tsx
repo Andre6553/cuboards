@@ -1,10 +1,8 @@
 import { useEffect, useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
 import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorCorner, isFloorUnit, isKitchenBase, isSpiceCupboard, isTallFloor, isWallCorner, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS, usesWallStyleCarcass } from '../lib/constants';
-
-/** Flip to `true` to show the carcass graphic again — component kept, only hidden. */
-const SHOW_CARCASS_PREVIEW = false;
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from '../lib/spiceCupboardRules';
+import { useWarningChime } from '../lib/useWarningChime';
 import {
   applyFloorCornerDefaults,
   calcFloorCornerSizes,
@@ -32,13 +30,23 @@ import {
   getRunnerGroupsForJob,
   usesGelmarCatalog,
 } from '../lib/hardwarePricing';
-import { doorSizeSummary, DEFAULT_DOOR_GAPS, HINGE_HOLE_OPTIONS, hingesPerDoorLeafForDoor, resolveDoorGaps } from '../lib/doorRules';
+import {
+  doorPanelHeight,
+  doorSizeSummary,
+  DEFAULT_DOOR_GAPS,
+  HINGE_HOLE_OPTIONS,
+  hingesPerDoorLeafForDoor,
+  resolveDoorGaps,
+  seedCustomDoorHeights,
+  usesCustomDoorSizes,
+} from '../lib/doorRules';
 import {
   drawerFrontHeight,
   drawerFrontWidth,
   drawerSizeSummary,
   DEFAULT_DRAWER_GAPS,
   DEFAULT_GAP_TO_DOOR_MM,
+  drawerFrontVsBoxWarning,
   frontStackOverflowWarning,
   isActiveDrawer,
   activeDrawers,
@@ -93,6 +101,9 @@ import { deletePreset, loadPresets, saveUnitAsPreset } from '../lib/presets';
 import { CollapsibleSection } from './CollapsibleSection';
 import { NumberInput } from './NumberInput';
 import type { DoorConfig, DoorGaps, DrawerConfig, DrawerGaps, EdgingMaterial, EdgingPattern, Job, Material, Unit } from '../types';
+
+/** Flip to `true` to show the carcass graphic again — component kept, only hidden. */
+const SHOW_CARCASS_PREVIEW = false;
 
 interface Props {
   job: Job;
@@ -168,6 +179,19 @@ export function UnitForm({
   const layoutUnit = resolveFrontLayout(unit);
   const activeDrawerRows = activeDrawers(layoutUnit.drawers);
   const hasActiveDrawers = activeDrawerRows.length > 0;
+  const customDrawersOn = usesCustomDrawerSizes(unit);
+  const unitWarningSignature = [
+    frontStackOverflowWarning(layoutUnit),
+    unit.doors.length > 0 && !usesCustomDoorSizes(unit)
+      ? 'This unit already has a door. Turn on Customize door sizes'
+      : null,
+    ...layoutUnit.drawers.map((d) =>
+      drawerFrontVsBoxWarning(d, unit.height, layoutUnit.drawers, customDrawersOn),
+    ),
+  ]
+    .filter((w): w is string => typeof w === 'string' && w.length > 0)
+    .join('\n');
+  useWarningChime(unitWarningSignature);
 
   const applyUnit = (next: Unit, opts?: { changedDrawerId?: string }) =>
     onChange(syncFrontLayoutToUnit(next, opts));
@@ -357,6 +381,8 @@ export function UnitForm({
   };
 
   const addDoor = () => {
+    const gaps = { ...DEFAULT_DOOR_GAPS, between: settings.defaultGap };
+    const doorH = Math.max(1, Math.round(unit.height - gaps.top - gaps.bottom));
     const door: DoorConfig = {
       id: crypto.randomUUID(),
       qty: 1,
@@ -365,14 +391,20 @@ export function UnitForm({
       edgingMaterialId: defaultEdgingForMaterial(defaultMat),
       openingWidth: unit.width,
       openingHeight: unit.height,
-      gaps: { ...DEFAULT_DOOR_GAPS, between: settings.defaultGap },
+      gaps,
       hinge: { type: 'preset', presetId: DEFAULT_HINGE_PRESET_ID },
+      ...(usesCustomDoorSizes(unit) ? { doorHeightMm: doorH } : {}),
     };
     applyUnit({ ...unit, doors: [...unit.doors, door] });
   };
 
   const addDrawer = () => {
     const hasDoor = unit.doors.length > 0;
+    if (hasDoor && !usesCustomDoorSizes(unit)) {
+      window.alert(
+        'This unit already has a door. Turn on Customize door sizes (Doors section) if you want drawers sharing the front with a fixed door height. Otherwise remove the door first, or continue knowing openings will be auto-split.',
+      );
+    }
     const newCount = unit.drawers.length + 1;
     const equalShare = Math.round((unit.height / newCount) * 10) / 10;
     const existingDrawers = hasDoor
@@ -1528,12 +1560,42 @@ export function UnitForm({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Doors" variant="nested">
+      <CollapsibleSection
+        title="Doors"
+        variant="nested"
+        headerAction={
+          !cornerMount ? (
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={usesCustomDoorSizes(unit)}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  if (on) {
+                    applyUnit({
+                      ...unit,
+                      customDoorSizes: true,
+                      doors: seedCustomDoorHeights(unit.doors),
+                    });
+                  } else {
+                    applyUnit({ ...unit, customDoorSizes: false });
+                  }
+                }}
+              />
+              Customize door sizes
+            </label>
+          ) : undefined
+        }
+      >
       <p className="hint">
         Cut list mode: <strong>{CUT_SIZE_MODE_LABELS[settings.cutSizeMode ?? 'final']}</strong>
         {(settings.cutSizeMode ?? 'final') === 'net'
           ? ' — finished sizes shown below; cut list deducts edging tape thickness from board.'
           : ' — cut list matches finished panel sizes (edging included in dimensions).'}
+        {usesCustomDoorSizes(unit) && !cornerMount && (
+          <> Type <strong>door height</strong> yourself; width still = opening − left − right gaps. Opening height is
+          calculated (door + top/bottom gaps). Drawers then use the remaining carcass after door openings.</>
+        )}
       </p>
       {floorCornerMount && (
         <p className="hint">
@@ -1561,7 +1623,9 @@ export function UnitForm({
       {unit.doors.length === 0 && <p className="hint">No doors on this unit.</p>}
       {unit.doors.map((door, i) => {
         const layoutDoor = layoutUnit.doors.find((d) => d.id === door.id) ?? door;
-        const doorOpeningAuto = cornerMount || hasActiveDrawers || unit.doors.length === 1;
+        const customDoorsOn = usesCustomDoorSizes(unit) && !cornerMount;
+        const finishedDoorH = doorPanelHeight(layoutDoor, customDoorsOn);
+        const doorOpeningAuto = customDoorsOn || cornerMount || hasActiveDrawers || unit.doors.length === 1;
         const cornerDoorLabel = floorCornerMount
           ? i === 0
             ? 'Door 1 (341 mm wide)'
@@ -1589,7 +1653,7 @@ export function UnitForm({
                 type="text"
                 className="readonly"
                 readOnly
-                value={`${hingesPerDoorLeafForDoor(layoutDoor)} on the quote`}
+                value={`${hingesPerDoorLeafForDoor(layoutDoor, customDoorsOn)} on the quote`}
                 title="Same count as Hinge holes when factory drill is on. Default: 2 up to 1200 mm finished height, 4 above that."
               />
             </label>
@@ -1610,15 +1674,34 @@ export function UnitForm({
                 readOnly={doorOpeningAuto}
                 value={layoutDoor.openingHeight}
                 title={
-                  cornerMount
-                    ? 'Matches side height'
-                    : doorOpeningAuto
-                      ? (hasActiveDrawers ? 'Carcass height minus active drawer rows' : 'Full carcass height')
-                      : 'Split between door rows — scales with cupboard height'
+                  customDoorsOn
+                    ? 'Calculated from door height + top/bottom gaps — display only'
+                    : cornerMount
+                      ? 'Matches side height'
+                      : doorOpeningAuto
+                        ? (hasActiveDrawers ? 'Carcass height minus active drawer rows' : 'Full carcass height')
+                        : 'Split between door rows — scales with cupboard height'
                 }
                 onChange={(n) => updateDoor(door.id, { openingHeight: n })}
               />
             </label>
+            {!cornerMount && (
+              <label>
+                Door height (mm)
+                <NumberInput
+                  className={!customDoorsOn ? 'readonly' : ''}
+                  min={1}
+                  value={customDoorsOn ? (door.doorHeightMm ?? finishedDoorH) : finishedDoorH}
+                  readOnly={!customDoorsOn}
+                  title={
+                    customDoorsOn
+                      ? 'Finished door panel height — grain top to bottom'
+                      : 'Auto from opening − gaps — tick Customize door sizes to type this'
+                  }
+                  onChange={(n) => updateDoor(door.id, { doorHeightMm: Math.max(1, Math.round(n)) })}
+                />
+              </label>
+            )}
             <label>
               Material
               <MaterialSelect
@@ -1655,7 +1738,7 @@ export function UnitForm({
               <label>
                 Hinge holes
                 <select
-                  value={hingesPerDoorLeafForDoor(layoutDoor)}
+                  value={hingesPerDoorLeafForDoor(layoutDoor, customDoorsOn)}
                   title="Default 2 if the finished door is 1200 mm or shorter, 4 if taller. This is also how many hinges are priced."
                   onChange={(e) => updateDoor(door.id, { hingeHoleCount: Number(e.target.value) })}
                 >
@@ -1750,7 +1833,7 @@ export function UnitForm({
               </label>
             )}
           </div>
-          <p className="hint">{doorSizeSummary(layoutDoor, { settings, edgingMaterials, materials })}</p>
+          <p className="hint">{doorSizeSummary(layoutDoor, { settings, edgingMaterials, materials }, customDoorsOn)}</p>
         </div>
         );
       })}
@@ -1804,6 +1887,12 @@ export function UnitForm({
       {frontStackOverflowWarning(layoutUnit) && (
         <p className="hint warn">{frontStackOverflowWarning(layoutUnit)}</p>
       )}
+      {unit.doors.length > 0 && !usesCustomDoorSizes(unit) && (
+        <p className="hint warn">
+          This unit already has a door. Turn on <strong>Customize door sizes</strong> if you want a fixed door height with
+          drawers on the same front; otherwise openings auto-split the carcass.
+        </p>
+      )}
       {unit.drawers.length === 0 && (
         <p className="hint">
           No drawers on this unit. Click <strong>+ Add drawers</strong> to include drawer fronts, box parts, runners, and drawer bottoms on the cut list.
@@ -1814,6 +1903,12 @@ export function UnitForm({
         const customOn = usesCustomDrawerSizes(unit);
         const finishedFrontW = drawerFrontWidth(layoutDrawer);
         const finishedFrontH = drawerFrontHeight(
+          layoutDrawer,
+          unit.height,
+          layoutUnit.drawers,
+          customOn,
+        );
+        const frontVsBoxWarn = drawerFrontVsBoxWarning(
           layoutDrawer,
           unit.height,
           layoutUnit.drawers,
@@ -1830,6 +1925,7 @@ export function UnitForm({
               Not on cut list — set <strong>Qty per cupboard</strong> to 1 or more to include this drawer (front, box, runners, and {drawer.bottomType === 'solid' ? 'solid melamine' : 'masonite'} bottom).
             </p>
           )}
+          {frontVsBoxWarn && <p className="hint warn">{frontVsBoxWarn}</p>}
           <div className="form-grid form-grid-4">
             <label className={drawer.qty <= 0 ? 'qty-inactive' : ''}>
               Qty per cupboard

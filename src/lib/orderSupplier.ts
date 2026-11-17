@@ -1,4 +1,5 @@
 import { isCompleteSupplierName, normalizeSupplierName } from './materialSupplierPrices';
+import { resolveMasoniteSheetForJob } from './masoniteSheetRules';
 import type { CutPiece, Job, SheetMapGroup } from '../types';
 
 export const MASONITE_MATERIAL_ID = 'masonite';
@@ -32,8 +33,10 @@ function jobDefaultOrderSupplier(job: Job): string {
   return normalizeSupplierName(job.settings.defaultOrderSupplier ?? '');
 }
 
-function resolveMasoniteOrderSupplier(job: Job): string {
-  const explicit = normalizeSupplierName(job.masonite.orderFromSupplier ?? '');
+function resolveMasoniteOrderSupplier(job: Job, pieces: CutPiece[] = []): string {
+  const masonitePieces = pieces.filter((p) => p.materialId === MASONITE_MATERIAL_ID);
+  const picked = resolveMasoniteSheetForJob(job.masonite, masonitePieces, job.units);
+  const explicit = normalizeSupplierName(picked.orderFromSupplier);
   if (explicit) return explicit;
   const fromJobDefault = jobDefaultOrderSupplier(job);
   if (fromJobDefault) return fromJobDefault;
@@ -41,9 +44,13 @@ function resolveMasoniteOrderSupplier(job: Job): string {
 }
 
 /** Who should cut / supply this material (cut house). */
-export function resolveOrderSupplierForMaterialId(job: Job, materialId: string): string {
+export function resolveOrderSupplierForMaterialId(
+  job: Job,
+  materialId: string,
+  pieces: CutPiece[] = [],
+): string {
   if (materialId === MASONITE_MATERIAL_ID) {
-    return resolveMasoniteOrderSupplier(job);
+    return resolveMasoniteOrderSupplier(job, pieces);
   }
   const mat = job.materials.find((m) => m.id === materialId);
   return normalizeSupplierName(mat?.orderFromSupplier ?? jobDefaultOrderSupplier(job));
@@ -53,10 +60,11 @@ export function pieceMatchesOrderSupplierFilter(
   job: Job,
   piece: CutPiece,
   supplierFilter: string,
+  pieces: CutPiece[] = [],
 ): boolean {
   const want = normalizeSupplierName(supplierFilter);
   if (!want) return true;
-  const assigned = resolveOrderSupplierForMaterialId(job, piece.materialId);
+  const assigned = resolveOrderSupplierForMaterialId(job, piece.materialId, pieces);
   return assigned.toLowerCase() === want.toLowerCase();
 }
 
@@ -66,18 +74,19 @@ export function filterPiecesForOrderSupplier(
   supplierFilter: string | null | undefined,
 ): CutPiece[] {
   if (!supplierFilter?.trim()) return pieces;
-  return pieces.filter((p) => pieceMatchesOrderSupplierFilter(job, p, supplierFilter));
+  return pieces.filter((p) => pieceMatchesOrderSupplierFilter(job, p, supplierFilter, pieces));
 }
 
 export function filterSheetMapGroupsForOrderSupplier(
   job: Job,
   groups: SheetMapGroup[],
   supplierFilter: string | null | undefined,
+  pieces: CutPiece[] = [],
 ): SheetMapGroup[] {
   if (!supplierFilter?.trim()) return groups;
   const want = normalizeSupplierName(supplierFilter).toLowerCase();
   return groups.filter((g) => {
-    const assigned = resolveOrderSupplierForMaterialId(job, g.materialId);
+    const assigned = resolveOrderSupplierForMaterialId(job, g.materialId, pieces);
     return assigned.toLowerCase() === want;
   });
 }
@@ -87,7 +96,7 @@ export function listOrderSuppliersOnJob(job: Job, pieces: CutPiece[]): string[] 
   const seen = new Map<string, string>();
   for (const p of pieces) {
     if (p.qty <= 0) continue;
-    const name = resolveOrderSupplierForMaterialId(job, p.materialId);
+    const name = resolveOrderSupplierForMaterialId(job, p.materialId, pieces);
     if (!name) continue;
     const key = name.toLowerCase();
     if (!seen.has(key)) seen.set(key, name);
@@ -108,7 +117,7 @@ export function summarizeUnassignedOrderSupplierPieces(
   let otherLines = 0;
   for (const p of pieces) {
     if (p.qty <= 0) continue;
-    if (resolveOrderSupplierForMaterialId(job, p.materialId)) continue;
+    if (resolveOrderSupplierForMaterialId(job, p.materialId, pieces)) continue;
     total += 1;
     if (p.materialId === MASONITE_MATERIAL_ID) masoniteLines += 1;
     else otherLines += 1;

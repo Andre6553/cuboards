@@ -12,6 +12,15 @@ export function resolveCutHouseCharges(job: Job): Required<CutHouseChargeSetting
 
 export function materialUsesCutHouse(job: Job, materialId: string, onlyWhenOrderFromSet: boolean): boolean {
   if (!onlyWhenOrderFromSet) return true;
+  if (materialId === MASONITE_MATERIAL_ID) {
+    // Either sheet size may name a cut house; treat masonite as ordered if any is set.
+    const small = job.masonite.orderFromSupplier?.trim() ?? '';
+    const large = job.masonite.largeOrderFromSupplier?.trim() ?? '';
+    if (small && isCompleteSupplierName(small)) return true;
+    if (large && isCompleteSupplierName(large)) return true;
+    const name = resolveOrderSupplierForMaterialId(job, materialId);
+    return Boolean(name && isCompleteSupplierName(name));
+  }
   const name = resolveOrderSupplierForMaterialId(job, materialId);
   return Boolean(name && isCompleteSupplierName(name));
 }
