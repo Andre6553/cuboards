@@ -1,6 +1,32 @@
-import { defaultPlinth, EDGING_LABELS, isSpiceCupboard, plinthHasKickplate, showsKickplate } from './constants';
+import {
+  defaultPlinth,
+  EDGING_LABELS,
+  isFloorCorner,
+  isSpiceCupboard,
+  isWallCorner,
+  plinthHasKickplate,
+  showsKickplate,
+} from './constants';
 import { cabinetFootHardwareDescription, cabinetFootHardwareDetail } from './footCatalog';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig } from './spiceCupboardRules';
+import {
+  calcFloorCornerSizes,
+  FLOOR_CORNER_FILLER_EDGING,
+  FLOOR_CORNER_FILLER_QTY,
+  FLOOR_CORNER_MASONITE_QTY,
+  FLOOR_CORNER_SIDE_EDGING,
+  syncFloorCornerDoors,
+} from './floorCornerRules';
+import {
+  calcWallCornerSizes,
+  WALL_CORNER_FILLER_EDGING,
+  WALL_CORNER_FILLER1_QTY,
+  WALL_CORNER_FILLER2_QTY,
+  WALL_CORNER_FILLER3_QTY,
+  WALL_CORNER_MASONITE_QTY,
+  WALL_CORNER_SIDE_EDGING,
+  syncWallCornerDoors,
+} from './wallCornerRules';
 import {
   getHingeByIdForJob,
   getRunnerByIdForJob,
@@ -321,6 +347,307 @@ function pushBoardPiece(
   });
 }
 
+function calcFloorCorner(
+  unit: Unit,
+  job: Job,
+  pieces: CutPiece[],
+  edging: EdgingLine[],
+  mult: number,
+) {
+  if (!isFloorCorner(unit)) return;
+
+  const c = unit.carcass;
+  const sizes = calcFloorCornerSizes(unit);
+  const leftEdging = c.leftEdgingPattern ?? FLOOR_CORNER_SIDE_EDGING;
+  const rightEdging = c.rightEdgingPattern ?? FLOOR_CORNER_SIDE_EDGING;
+  const fillerEdging = c.fillerEdgingPattern ?? FLOOR_CORNER_FILLER_EDGING;
+  const fillerMatId = c.fillerMaterialId || c.leftMaterialId;
+
+  const addEdged = (
+    partName: string,
+    materialId: string,
+    w: number,
+    l: number,
+    qty: number,
+    grain: CutPiece['grain'],
+    notes: string,
+    edgingPattern: EdgingPattern,
+    edgingMaterialId?: string,
+    longAlong: LongAlong = 'length',
+  ) => {
+    const totalQty = qty * mult;
+    if (totalQty <= 0) return;
+    pushBoardPiece(job, pieces, {
+      category: 'carcass',
+      materialId,
+      partName,
+      unitId: unit.id,
+      unitName: unit.name,
+      width: w,
+      length: l,
+      qty: totalQty,
+      grain,
+      notes: mult > 1 ? joinNotes(notes, `${mult} cupboards`) : notes,
+      edgingPattern,
+      edgingMaterialId,
+      longAlong,
+    });
+    if (edgingPattern !== 'none') {
+      addEdging(edging, job, materialId, partName, unit.name, edgingPattern, w, l, totalQty, edgingMaterialId, longAlong);
+    }
+  };
+
+  addEdged(
+    'Bottom',
+    c.bottomMaterialId,
+    sizes.panelMm,
+    sizes.panelMm,
+    1,
+    'none',
+    'Floor corner · fixed · no edging',
+    'none',
+  );
+  addEdged(
+    'Shelf',
+    c.shelfMaterialId,
+    sizes.panelMm,
+    sizes.panelMm,
+    1,
+    'none',
+    'Floor corner · fixed · no edging',
+    'none',
+  );
+  addEdged(
+    'Top',
+    c.topMaterialId || c.bottomMaterialId,
+    sizes.panelMm,
+    sizes.panelMm,
+    1,
+    'none',
+    'Floor corner · fixed · no edging',
+    'none',
+  );
+
+  addEdged(
+    'Side (left)',
+    c.leftMaterialId,
+    sizes.sideDepthMm,
+    sizes.sideHeightMm,
+    1,
+    materialHasGrain(job.materials, c.leftMaterialId) ? 'vertical' : 'none',
+    materialHasGrain(job.materials, c.leftMaterialId) ? 'Grain vertical · floor corner' : 'Floor corner',
+    leftEdging,
+    c.leftEdgingMaterialId,
+  );
+  addEdged(
+    'Side (right)',
+    c.rightMaterialId,
+    sizes.sideDepthMm,
+    sizes.sideHeightMm,
+    1,
+    materialHasGrain(job.materials, c.rightMaterialId) ? 'vertical' : 'none',
+    materialHasGrain(job.materials, c.rightMaterialId) ? 'Grain vertical · floor corner' : 'Floor corner',
+    rightEdging,
+    c.rightEdgingMaterialId,
+  );
+
+  addEdged(
+    'Filler',
+    fillerMatId,
+    sizes.fillerWidthMm,
+    sizes.fillerLengthMm,
+    FLOOR_CORNER_FILLER_QTY,
+    'none',
+    `Floor corner · ${FLOOR_CORNER_FILLER_QTY}× ${sizes.fillerLengthMm}×${sizes.fillerWidthMm}`,
+    fillerEdging,
+    c.fillerEdgingMaterialId,
+  );
+
+  pieces.push({
+    category: 'carcass',
+    materialId: MASONITE_ID,
+    materialName: `${job.masonite.name} — ${job.masonite.colour}`,
+    partName: 'Carcass back (masonite)',
+    unitId: unit.id,
+    unitName: unit.name,
+    width: Math.round(sizes.masoniteWidthMm),
+    length: Math.round(sizes.masoniteHeightMm),
+    qty: FLOOR_CORNER_MASONITE_QTY * mult,
+    grain: 'none',
+    edgingPattern: 'none',
+    notes: `${job.masonite.thickness}mm · floor corner ${FLOOR_CORNER_MASONITE_QTY}/cupboard${
+      mult > 1 ? ` · ${mult} cupboards` : ''
+    }`.trim(),
+  });
+}
+
+function calcWallCorner(
+  unit: Unit,
+  job: Job,
+  pieces: CutPiece[],
+  edging: EdgingLine[],
+  mult: number,
+) {
+  if (!isWallCorner(unit)) return;
+
+  const T = job.settings.thickness;
+  const c = unit.carcass;
+  const sizes = calcWallCornerSizes(unit, T);
+  const leftEdging = c.leftEdgingPattern ?? WALL_CORNER_SIDE_EDGING;
+  const rightEdging = c.rightEdgingPattern ?? WALL_CORNER_SIDE_EDGING;
+  const fillerEdging = c.fillerEdgingPattern ?? WALL_CORNER_FILLER_EDGING;
+  const fillerMatId = c.fillerMaterialId || c.leftMaterialId;
+
+  const addEdged = (
+    partName: string,
+    materialId: string,
+    w: number,
+    l: number,
+    qty: number,
+    grain: CutPiece['grain'],
+    notes: string,
+    edgingPattern: EdgingPattern,
+    edgingMaterialId?: string,
+    longAlong: LongAlong = 'length',
+  ) => {
+    const totalQty = qty * mult;
+    if (totalQty <= 0) return;
+    pushBoardPiece(job, pieces, {
+      category: 'carcass',
+      materialId,
+      partName,
+      unitId: unit.id,
+      unitName: unit.name,
+      width: w,
+      length: l,
+      qty: totalQty,
+      grain,
+      notes: mult > 1 ? joinNotes(notes, `${mult} cupboards`) : notes,
+      edgingPattern,
+      edgingMaterialId,
+      longAlong,
+    });
+    if (edgingPattern !== 'none') {
+      addEdging(edging, job, materialId, partName, unit.name, edgingPattern, w, l, totalQty, edgingMaterialId, longAlong);
+    }
+  };
+
+  addEdged(
+    'Bottom',
+    c.bottomMaterialId,
+    sizes.panelMm,
+    sizes.panelMm,
+    1,
+    'none',
+    'Wall corner · fixed · no edging',
+    'none',
+  );
+  addEdged(
+    'Shelf 1',
+    c.shelfMaterialId,
+    sizes.panelMm,
+    sizes.panelMm,
+    1,
+    'none',
+    'Wall corner · fixed · no edging',
+    'none',
+  );
+  addEdged(
+    'Shelf 2',
+    c.shelfMaterialId,
+    sizes.panelMm,
+    sizes.panelMm,
+    1,
+    'none',
+    'Wall corner · fixed · no edging',
+    'none',
+  );
+  addEdged(
+    'Top',
+    c.topMaterialId || c.bottomMaterialId,
+    sizes.panelMm,
+    sizes.panelMm,
+    1,
+    'none',
+    'Wall corner · fixed · no edging',
+    'none',
+  );
+
+  addEdged(
+    'Side (left)',
+    c.leftMaterialId,
+    sizes.sideDepthMm,
+    sizes.sideHeightMm,
+    1,
+    materialHasGrain(job.materials, c.leftMaterialId) ? 'vertical' : 'none',
+    materialHasGrain(job.materials, c.leftMaterialId) ? 'Grain vertical · wall corner' : 'Wall corner',
+    leftEdging,
+    c.leftEdgingMaterialId,
+  );
+  addEdged(
+    'Side (right)',
+    c.rightMaterialId,
+    sizes.sideDepthMm,
+    sizes.sideHeightMm,
+    1,
+    materialHasGrain(job.materials, c.rightMaterialId) ? 'vertical' : 'none',
+    materialHasGrain(job.materials, c.rightMaterialId) ? 'Grain vertical · wall corner' : 'Wall corner',
+    rightEdging,
+    c.rightEdgingMaterialId,
+  );
+
+  addEdged(
+    'Filler 1',
+    fillerMatId,
+    sizes.filler1WidthMm,
+    sizes.filler1LengthMm,
+    WALL_CORNER_FILLER1_QTY,
+    'none',
+    `Wall corner · H−2×${T} × width (user)`,
+    fillerEdging,
+    c.fillerEdgingMaterialId,
+  );
+  addEdged(
+    'Filler 2',
+    fillerMatId,
+    sizes.filler2WidthMm,
+    sizes.filler2LengthMm,
+    WALL_CORNER_FILLER2_QTY,
+    'none',
+    'Wall corner · fixed 514×70',
+    fillerEdging,
+    c.fillerEdgingMaterialId,
+  );
+  addEdged(
+    'Filler 3',
+    fillerMatId,
+    sizes.filler3WidthMm,
+    sizes.filler3LengthMm,
+    WALL_CORNER_FILLER3_QTY,
+    'none',
+    'Wall corner · fixed 498×70',
+    fillerEdging,
+    c.fillerEdgingMaterialId,
+  );
+
+  pieces.push({
+    category: 'carcass',
+    materialId: MASONITE_ID,
+    materialName: `${job.masonite.name} — ${job.masonite.colour}`,
+    partName: 'Carcass back (masonite)',
+    unitId: unit.id,
+    unitName: unit.name,
+    width: Math.round(sizes.masoniteWidthMm),
+    length: Math.round(sizes.masoniteHeightMm),
+    qty: WALL_CORNER_MASONITE_QTY * mult,
+    grain: 'none',
+    edgingPattern: 'none',
+    notes: `${job.masonite.thickness}mm · wall corner ${WALL_CORNER_MASONITE_QTY}/cupboard${
+      mult > 1 ? ` · ${mult} cupboards` : ''
+    }`.trim(),
+  });
+}
+
 function calcCarcass(
   unit: Unit,
   job: Job,
@@ -328,6 +655,8 @@ function calcCarcass(
   edging: EdgingLine[],
   mult: number,
 ) {
+  if (isFloorCorner(unit) || isWallCorner(unit)) return;
+
   const T = job.settings.thickness;
   const { width: W, height: H, depth: D, carcass: c } = unit;
   const internalW = W - 2 * T;
@@ -1568,12 +1897,16 @@ export function generateCutList(job: Job): CutListResult {
   for (const unit of job.units) {
     const mult = Math.max(0, unit.unitQty ?? 0);
     if (mult <= 0) continue;
-    const layoutUnit = resolveFrontLayout(unit);
+    const layoutUnit = syncWallCornerDoors(syncFloorCornerDoors(resolveFrontLayout(unit)));
     calcCarcass(layoutUnit, job, pieces, edging, mult);
+    calcFloorCorner(layoutUnit, job, pieces, edging, mult);
+    calcWallCorner(layoutUnit, job, pieces, edging, mult);
     calcSpiceCupboard(layoutUnit, job, pieces, edging, mult);
     calcKitchenPlinth(layoutUnit, job, pieces, edging, hardware, plasticKickplates, mult);
     calcDoors(layoutUnit, job, pieces, edging, hardware, mult);
-    calcDrawers(layoutUnit, job, pieces, edging, hardware, mult);
+    if (!isFloorCorner(layoutUnit) && !isWallCorner(layoutUnit)) {
+      calcDrawers(layoutUnit, job, pieces, edging, hardware, mult);
+    }
     calcBedroomWallExtras(layoutUnit, job, pieces, edging, hardware, mult);
     calcCustomExtras(layoutUnit, job, pieces, edging, mult);
   }

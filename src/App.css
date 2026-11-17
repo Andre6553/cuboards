@@ -2594,8 +2594,12 @@ fieldset.sub-card:disabled {
 }
 
 .sheet-map-zoom-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
   flex-shrink: 0;
   transform-origin: 0 0;
+  will-change: transform;
 }
 
 .sheet-map-lightbox {
@@ -2676,12 +2680,10 @@ fieldset.sub-card:disabled {
 .sheet-map-lightbox-canvas {
   flex: 1;
   width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+  display: block;
   min-width: 0;
   min-height: 120px;
-  padding: 0.35rem;
+  padding: 0;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
@@ -2691,18 +2693,10 @@ fieldset.sub-card:disabled {
   position: relative;
 }
 
-.sheet-map-lightbox-canvas--centered {
-  align-items: center;
-  justify-content: center;
-}
-
-.sheet-map-lightbox-canvas--centered .sheet-map-zoom-layer {
-  transform: none !important;
-}
-
+/* Pan/zoom uses transform only — native scroll would fight centering. */
 .sheet-map-lightbox-canvas--zoomed {
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  cursor: grab;
 }
 
 .sheet-map-lightbox-canvas--dragging {

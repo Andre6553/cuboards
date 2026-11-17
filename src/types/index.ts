@@ -4,7 +4,7 @@ export type UnitType = 'kitchen_base' | 'wall' | 'bedroom';
 export type BottomType = 'solid' | 'masonite';
 export type BackingType = 'none' | 'masonite' | 'melamine';
 export type CountertopType = 'granite' | 'wooden';
-export type MountType = 'floor' | 'wall' | 'spice';
+export type MountType = 'floor' | 'floor_corner' | 'wall' | 'wall_corner' | 'spice';
 export type KickplateType = 'wood' | 'plastic' | 'none';
 export type KickplateCoverage = 'front' | 'front-one-side' | 'front-both-sides';
 export type KickplateSide = 'left' | 'right';
@@ -284,12 +284,21 @@ export interface CarcassConfig {
   rightMaterialId: string;
   leftEdgingMaterialId: string;
   rightEdgingMaterialId: string;
+  /** Side edging pattern (floor corner / when set). Empty = 1 long. */
+  leftEdgingPattern?: EdgingPattern;
+  rightEdgingPattern?: EdgingPattern;
   bottomMaterialId: string;
   bottomEdgingMaterialId: string;
+  /** Corner units (floor/wall): top panel board. Empty = same as bottom. */
+  topMaterialId?: string;
   shelfMaterialId: string;
   shelfEdgingMaterialId: string;
   fillerMaterialId: string;
   fillerEdgingMaterialId: string;
+  /** Floor/wall-corner fillers. Empty = 1 long. */
+  fillerEdgingPattern?: EdgingPattern;
+  /** Wall corner filler 1 strip width (mm). Empty = 70. Length = H − 2T. */
+  wallCornerFiller1WidthMm?: number;
   shelfQty: number;
   fillerWidth: number;
   /** External finished face — affects corner block count (defaults from materials). */

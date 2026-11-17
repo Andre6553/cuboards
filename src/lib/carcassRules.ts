@@ -42,7 +42,10 @@ export function fillersFollowSideMaterial(carcass: CarcassConfig, materials: Mat
  */
 export function topFillerCount(unit: Pick<Unit, 'type' | 'carcass'>): number {
   const mount = unit.carcass.mountType ?? 'floor';
-  if (mount === 'wall' && unit.type !== 'wall' && unit.type !== 'kitchen_base') return 0;
+  if (mount === 'floor_corner' || mount === 'wall_corner') return 0;
+  if (mount === 'wall' && unit.type !== 'wall' && unit.type !== 'kitchen_base') {
+    return 0;
+  }
   return unit.carcass.countertopType === 'wooden' ? 3 : 2;
 }
 

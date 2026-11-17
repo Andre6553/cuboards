@@ -171,14 +171,16 @@ export function showsKickplate(unit: { type: UnitType; carcass?: { mountType?: M
 
 export const MOUNT_TYPE_LABELS = {
   floor: 'Floor unit',
+  floor_corner: 'Floor corner',
   wall: 'Wall unit',
+  wall_corner: 'Wall corner',
   spice: 'Spice cupboard',
 } as const;
 
-/** Mount choices shown per unit type (spice only on kitchen base). */
+/** Mount choices shown per unit type. */
 export function mountTypesForUnitType(type: UnitType): MountType[] {
-  if (type === 'wall') return ['wall'];
-  if (type === 'kitchen_base') return ['floor', 'spice', 'wall'];
+  if (type === 'wall') return ['wall', 'wall_corner'];
+  if (type === 'kitchen_base') return ['floor', 'floor_corner', 'spice', 'wall'];
   return ['floor', 'wall'];
 }
 
@@ -186,21 +188,34 @@ export function isSpiceCupboard(unit: { type?: UnitType; carcass?: { mountType?:
   return unit.type === 'kitchen_base' && unit.carcass?.mountType === 'spice';
 }
 
+export function isFloorCorner(unit: { type?: UnitType; carcass?: { mountType?: MountType } }): boolean {
+  return unit.type === 'kitchen_base' && unit.carcass?.mountType === 'floor_corner';
+}
+
+export function isWallCorner(unit: { type?: UnitType; carcass?: { mountType?: MountType } }): boolean {
+  return unit.type === 'wall' && unit.carcass?.mountType === 'wall_corner';
+}
+
 export function isFloorUnit(unit: { carcass?: { mountType?: MountType } }): boolean {
   const m = unit.carcass?.mountType ?? 'floor';
-  return m === 'floor' || m === 'spice';
+  return m === 'floor' || m === 'spice' || m === 'floor_corner';
 }
 
 export function isWallUnit(unit: { carcass?: { mountType?: MountType } }): boolean {
-  return unit.carcass?.mountType === 'wall';
+  const m = unit.carcass?.mountType;
+  return m === 'wall' || m === 'wall_corner';
 }
 
-/** Old jobs: spice mount only valid on kitchen base. */
+/** Old jobs: spice / floor corner only on kitchen base; wall corner only on wall. */
 export function normalizeMountType(type: UnitType, mountType: MountType | undefined): MountType {
   const m = mountType ?? (type === 'wall' ? 'wall' : 'floor');
-  if (m === 'spice' && type !== 'kitchen_base') return 'floor';
-  if (type === 'wall') return 'wall';
-  if (!mountTypesForUnitType(type).includes(m)) return 'floor';
+  if ((m === 'spice' || m === 'floor_corner') && type !== 'kitchen_base') {
+    return type === 'wall' ? 'wall' : 'floor';
+  }
+  if (m === 'wall_corner' && type !== 'wall') return type === 'kitchen_base' ? 'floor' : 'floor';
+  if (!mountTypesForUnitType(type).includes(m)) {
+    return type === 'wall' ? 'wall' : 'floor';
+  }
   return m;
 }
 

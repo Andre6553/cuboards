@@ -1,7 +1,26 @@
 import { useEffect, useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
-import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorUnit, isKitchenBase, isSpiceCupboard, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS } from '../lib/constants';
+import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorCorner, isFloorUnit, isKitchenBase, isSpiceCupboard, isWallCorner, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS } from '../lib/constants';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from '../lib/spiceCupboardRules';
+import {
+  applyFloorCornerDefaults,
+  calcFloorCornerSizes,
+  FLOOR_CORNER_DEFAULT_HEIGHT_MM,
+  FLOOR_CORNER_FILLER_EDGING,
+  FLOOR_CORNER_SIDE_EDGING,
+  floorCornerDoorGaps,
+  syncFloorCornerDoors,
+} from '../lib/floorCornerRules';
+import {
+  applyWallCornerDefaults,
+  calcWallCornerSizes,
+  WALL_CORNER_DEFAULT_HEIGHT_MM,
+  WALL_CORNER_FILLER_EDGING,
+  WALL_CORNER_SIDE_EDGING,
+  resolveWallCornerFiller1WidthMm,
+  syncWallCornerDoors,
+  wallCornerDoorGaps,
+} from '../lib/wallCornerRules';
 import {
   getHingeByIdForJob,
   getHingeGroupsForJob,
@@ -150,6 +169,12 @@ export function UnitForm({
           frontHeightMm: resolveSpiceFrontHeightMm(next.spice, next.height),
         };
       }
+      if (isFloorCorner(next)) {
+        next = syncFloorCornerDoors(next);
+      }
+      if (isWallCorner(next)) {
+        next = syncWallCornerDoors(next);
+      }
       if (next.plinth) {
         const w = next.width;
         const d = next.depth;
@@ -219,15 +244,40 @@ export function UnitForm({
 
   const handleMountChange = (mountType: Unit['carcass']['mountType']) => {
     const nextMount = normalizeMountType(unit.type, mountType);
-    const next = {
+    let next: Unit = {
       ...unit,
       carcass: {
         ...unit.carcass,
         mountType: nextMount,
-        shelfQty: nextMount === 'spice' ? 0 : unit.carcass.shelfQty,
+        shelfQty:
+          nextMount === 'spice'
+            ? 0
+            : nextMount === 'floor_corner'
+              ? 1
+              : nextMount === 'wall_corner'
+                ? 2
+                : unit.carcass.shelfQty,
       },
       spice: nextMount === 'spice' ? (unit.spice ?? defaultSpiceCupboardConfig(unit.height)) : unit.spice,
     };
+    if (nextMount === 'floor_corner') {
+      next = applyFloorCornerDefaults(
+        {
+          ...next,
+          height: next.height || FLOOR_CORNER_DEFAULT_HEIGHT_MM,
+        },
+        job,
+      );
+    }
+    if (nextMount === 'wall_corner') {
+      next = applyWallCornerDefaults(
+        {
+          ...next,
+          height: next.height || WALL_CORNER_DEFAULT_HEIGHT_MM,
+        },
+        job,
+      );
+    }
     if (((isFloorUnit(next) && isKitchenBase(unit.type)) || unit.type === 'bedroom') && !next.plinth) {
       next.plinth = defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
     }
@@ -251,14 +301,19 @@ export function UnitForm({
 
   const mountOptions = mountTypesForUnitType(unit.type);
   const spiceMount = isSpiceCupboard(unit);
+  const floorCornerMount = isFloorCorner(unit);
+  const wallCornerMount = isWallCorner(unit);
+  const cornerMount = floorCornerMount || wallCornerMount;
   const spiceSizes = spiceMount
     ? calcSpiceCupboardSizes(unit.width, unit.height, unit.depth, settings.thickness, unit.spice)
     : null;
   const spiceConfig = unit.spice ?? defaultSpiceCupboardConfig(unit.height);
+  const floorCornerSizes = floorCornerMount ? calcFloorCornerSizes(unit) : null;
+  const wallCornerSizes = wallCornerMount ? calcWallCornerSizes(unit, settings.thickness) : null;
 
   const isFloor = isFloorUnit(unit);
   const wallTopFillers = !isFloor && (unit.type === 'wall' || isKitchenBase(unit.type));
-  const showTopFillers = isFloor || wallTopFillers;
+  const showTopFillers = !cornerMount && (isFloor || wallTopFillers);
 
   const defaultMat = materials[0]?.id ?? '';
   const fillerFromSides = fillersFollowSideMaterial(unit.carcass, materials);
@@ -333,7 +388,14 @@ export function UnitForm({
     const door = unit.doors.find((d) => d.id === id);
     if (!door) return;
     const gaps = resolveDoorGaps(door);
-    updateDoor(id, { gaps: { ...gaps, [field]: Math.max(0, value) } });
+    const nextGaps = { ...gaps, [field]: Math.max(0, value) };
+    updateDoor(id, {
+      gaps: isFloorCorner(unit)
+        ? floorCornerDoorGaps(nextGaps)
+        : isWallCorner(unit)
+          ? wallCornerDoorGaps(nextGaps)
+          : nextGaps,
+    });
   };
 
   const updateDrawerGap = (id: string, field: keyof DrawerGaps, value: number) => {
@@ -344,8 +406,11 @@ export function UnitForm({
   };
 
   const updateDoor = (id: string, patch: Partial<DoorConfig>) => {
-    const doors = unit.doors.map((d) => (d.id === id ? { ...d, ...patch } : d));
-    applyUnit({ ...unit, doors });
+    let doors = unit.doors.map((d) => (d.id === id ? { ...d, ...patch } : d));
+    let next = { ...unit, doors };
+    if (isFloorCorner(next)) next = syncFloorCornerDoors(next);
+    if (isWallCorner(next)) next = syncWallCornerDoors(next);
+    applyUnit(next);
   };
 
   const updateDrawer = (id: string, patch: Partial<DrawerConfig>, opts?: { changedDrawerId?: string }) => {
@@ -420,24 +485,74 @@ export function UnitForm({
           </label>
           <label>
             Width (mm)
-            <NumberInput  value={unit.width} onChange={(n) => set('width', n)} />
+            {cornerMount ? (
+              <input
+                type="number"
+                className="readonly"
+                value={unit.width}
+                readOnly
+                title={floorCornerMount ? 'Floor corner — fixed panel 884 mm' : 'Wall corner — fixed panel 584 mm'}
+              />
+            ) : (
+              <NumberInput value={unit.width} onChange={(n) => set('width', n)} />
+            )}
           </label>
           <label>
-            Height (mm)
-            <NumberInput  value={unit.height} onChange={(n) => set('height', n)} />
+            {cornerMount ? 'Side height (mm)' : 'Height (mm)'}
+            <NumberInput value={unit.height} onChange={(n) => set('height', n)} />
           </label>
           <label>
             Depth (mm)
-            <NumberInput  value={unit.depth} onChange={(n) => set('depth', n)} />
+            {cornerMount ? (
+              <input
+                type="number"
+                className="readonly"
+                value={unit.depth}
+                readOnly
+                title={floorCornerMount ? 'Floor corner — side depth 550 mm' : 'Wall corner — side depth 300 mm'}
+              />
+            ) : (
+              <NumberInput value={unit.depth} onChange={(n) => set('depth', n)} />
+            )}
           </label>
         </div>
 
-        <CupboardViewer
-          unit={layoutUnit}
-          thickness={settings.thickness}
-          materials={materials}
-          onShelfQtyChange={(qty) => setCarcass('shelfQty', qty)}
-        />
+        {!cornerMount && (
+          <CupboardViewer
+            unit={layoutUnit}
+            thickness={settings.thickness}
+            materials={materials}
+            onShelfQtyChange={(qty) => setCarcass('shelfQty', qty)}
+          />
+        )}
+
+      {floorCornerMount && floorCornerSizes && (
+        <CollapsibleSection title="Floor corner — fixed cut sizes" variant="nested" defaultOpen>
+          <p className="hint">
+            Bottom / shelf / top {floorCornerSizes.panelMm}×{floorCornerSizes.panelMm} mm (no edging) · Sides{' '}
+            {floorCornerSizes.sideHeightMm}×{floorCornerSizes.sideDepthMm} mm (1 long on height — changeable) · Fillers 2×{' '}
+            {floorCornerSizes.fillerLengthMm}×{floorCornerSizes.fillerWidthMm} mm · Masonite 2×{' '}
+            {floorCornerSizes.masoniteHeightMm}×{floorCornerSizes.masoniteWidthMm} mm · Doors{' '}
+            {floorCornerSizes.doorHeightMm}×{floorCornerSizes.door1WidthMm} and {floorCornerSizes.doorHeightMm}×
+            {floorCornerSizes.door2WidthMm} mm (height = side height − top − bottom gaps only).
+          </p>
+        </CollapsibleSection>
+      )}
+
+      {wallCornerMount && wallCornerSizes && (
+        <CollapsibleSection title="Wall corner — fixed cut sizes" variant="nested" defaultOpen>
+          <p className="hint">
+            Bottom / 2 shelves / top {wallCornerSizes.panelMm}×{wallCornerSizes.panelMm} mm (no edging) · Sides{' '}
+            {wallCornerSizes.sideHeightMm}×{wallCornerSizes.sideDepthMm} mm · Filler 1: 2×{' '}
+            {wallCornerSizes.filler1LengthMm}×{wallCornerSizes.filler1WidthMm} mm (H−2T × typed width) · Filler 2: 2×{' '}
+            {wallCornerSizes.filler2LengthMm}×{wallCornerSizes.filler2WidthMm} · Filler 3: 2×{' '}
+            {wallCornerSizes.filler3LengthMm}×{wallCornerSizes.filler3WidthMm} · Masonite 2×{' '}
+            {wallCornerSizes.masoniteHeightMm}×{wallCornerSizes.masoniteWidthMm} mm · Doors{' '}
+            {wallCornerSizes.doorHeightMm}×{wallCornerSizes.door1WidthMm} and {wallCornerSizes.doorHeightMm}×
+            {wallCornerSizes.door2WidthMm} mm (T/B gaps only).
+          </p>
+        </CollapsibleSection>
+      )}
 
       {spiceMount && (
         <CollapsibleSection title="Spice cupboard — cut sizes" variant="nested">
@@ -755,9 +870,25 @@ export function UnitForm({
               })}
             />
           </label>
+          {cornerMount && (
+            <label>
+              Left side edging pattern
+              <select
+                value={
+                  unit.carcass.leftEdgingPattern ??
+                  (floorCornerMount ? FLOOR_CORNER_SIDE_EDGING : WALL_CORNER_SIDE_EDGING)
+                }
+                onChange={(e) => setCarcass('leftEdgingPattern', e.target.value as EdgingPattern)}
+              >
+                {Object.entries(EDGING_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Left side edging type
-            <span className="hint inline-hint">1 long edge (front)</span>
+            <span className="hint inline-hint">{cornerMount ? 'Tape for the long (height) edge' : '1 long edge (front)'}</span>
             <EdgingTypeSelect
               value={unit.carcass.leftEdgingMaterialId}
               fallbackMaterialId={unit.carcass.leftMaterialId}
@@ -791,9 +922,25 @@ export function UnitForm({
               })}
             />
           </label>
+          {cornerMount && (
+            <label>
+              Right side edging pattern
+              <select
+                value={
+                  unit.carcass.rightEdgingPattern ??
+                  (floorCornerMount ? FLOOR_CORNER_SIDE_EDGING : WALL_CORNER_SIDE_EDGING)
+                }
+                onChange={(e) => setCarcass('rightEdgingPattern', e.target.value as EdgingPattern)}
+              >
+                {Object.entries(EDGING_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Right side edging type
-            <span className="hint inline-hint">1 long edge (front)</span>
+            <span className="hint inline-hint">{cornerMount ? 'Tape for the long (height) edge' : '1 long edge (front)'}</span>
             <EdgingTypeSelect
               value={unit.carcass.rightEdgingMaterialId}
               fallbackMaterialId={unit.carcass.rightMaterialId}
@@ -828,20 +975,55 @@ export function UnitForm({
                 ...unit.carcass,
                 bottomMaterialId: v,
                 bottomEdgingMaterialId: defaultEdgingForMaterial(v),
+                ...(cornerMount && !unit.carcass.topMaterialId ? { topMaterialId: v } : {}),
               },
             })}
           />
+          {cornerMount && <span className="hint-inline">Fixed panel · no edging</span>}
         </label>
-        <label>
-          Bottom edging type
-          <EdgingTypeSelect
-            value={unit.carcass.bottomEdgingMaterialId}
-            fallbackMaterialId={unit.carcass.bottomMaterialId}
-            materials={materials}
-            edgingMaterials={edgingMaterials}
-            onChange={(v) => setCarcass('bottomEdgingMaterialId', v)}
-          />
-        </label>
+        {cornerMount && (
+          <label>
+            Top material
+            <MaterialSelect
+              value={unit.carcass.topMaterialId || unit.carcass.bottomMaterialId}
+              materials={materials}
+              onChange={(v) => setCarcass('topMaterialId', v)}
+            />
+            <span className="hint-inline">Fixed panel · no edging</span>
+          </label>
+        )}
+        {!cornerMount && (
+          <label>
+            Bottom edging type
+            <EdgingTypeSelect
+              value={unit.carcass.bottomEdgingMaterialId}
+              fallbackMaterialId={unit.carcass.bottomMaterialId}
+              materials={materials}
+              edgingMaterials={edgingMaterials}
+              onChange={(v) => setCarcass('bottomEdgingMaterialId', v)}
+            />
+          </label>
+        )}
+        {cornerMount && (
+          <label>
+            Shelf material
+            <MaterialSelect
+              value={unit.carcass.shelfMaterialId}
+              materials={materials}
+              onChange={(v) => onChange({
+                ...unit,
+                carcass: {
+                  ...unit.carcass,
+                  shelfMaterialId: v,
+                  shelfEdgingMaterialId: defaultEdgingForMaterial(v),
+                },
+              })}
+            />
+            <span className="hint-inline">
+              {floorCornerMount ? '884×884 · no edging' : '2× 584×584 · no edging'}
+            </span>
+          </label>
+        )}
         {showTopFillers && (
           <label>
             Countertop type
@@ -852,25 +1034,34 @@ export function UnitForm({
             </select>
           </label>
         )}
-        <label>
-          Carcass backing
-          <select
-            value={unit.carcass.backingType ?? 'none'}
-            onChange={(e) => {
-              const backingType = e.target.value as Unit['carcass']['backingType'];
-              const carcass = { ...unit.carcass, backingType };
-              if (backingType !== 'none' && carcass.visibleBackPanel?.enabled) {
-                carcass.visibleBackPanel = { ...carcass.visibleBackPanel, enabled: false };
-              }
-              onChange({ ...unit, carcass });
-            }}
-          >
-            {Object.entries(BACKING_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </label>
-        {unit.carcass.backingType === 'none' && (
+        {cornerMount ? (
+          <p className="hint">
+            Backing is fixed masonite — 2 ×{' '}
+            {(floorCornerSizes ?? wallCornerSizes)?.masoniteHeightMm ?? unit.height} ×{' '}
+            {(floorCornerSizes ?? wallCornerSizes)?.masoniteWidthMm ?? (floorCornerMount ? 900 : 600)} mm
+            (follows side height).
+          </p>
+        ) : (
+          <label>
+            Carcass backing
+            <select
+              value={unit.carcass.backingType ?? 'none'}
+              onChange={(e) => {
+                const backingType = e.target.value as Unit['carcass']['backingType'];
+                const carcass = { ...unit.carcass, backingType };
+                if (backingType !== 'none' && carcass.visibleBackPanel?.enabled) {
+                  carcass.visibleBackPanel = { ...carcass.visibleBackPanel, enabled: false };
+                }
+                onChange({ ...unit, carcass });
+              }}
+            >
+              {Object.entries(BACKING_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {!cornerMount && unit.carcass.backingType === 'none' && (
           <div className="visible-back-panel-fields">
             <label className="checkbox-label">
               <input
@@ -975,19 +1166,13 @@ export function UnitForm({
             </p>
           </div>
         )}
-        {unit.carcass.backingType === 'melamine' && (
+        {!cornerMount && unit.carcass.backingType === 'melamine' && (
           <label>
             Backing material
             <MaterialSelect value={unit.carcass.backingMaterialId ?? defaultMat} materials={materials} onChange={(v) => setCarcass('backingMaterialId', v)} />
           </label>
         )}
-        {fillerFromSides ? (
-          <label className="readonly-label">
-            Top filler material
-            <input value={effectiveFillerName} readOnly className="readonly" />
-            <span className="hint-inline">Auto — matches side panels (sides not both white melamine)</span>
-          </label>
-        ) : (
+        {cornerMount || !fillerFromSides ? (
           <label>
             Filler material
             <MaterialSelect
@@ -1002,14 +1187,56 @@ export function UnitForm({
                 },
               })}
             />
-            <span className="hint-inline">Both sides white melamine — fillers can differ</span>
+            <span className="hint-inline">
+              {floorCornerMount
+                ? '2 × 748 × 100 mm'
+                : wallCornerMount
+                  ? 'Filler 1/2/3 (same board)'
+                  : 'Both sides white melamine — fillers can differ'}
+            </span>
+          </label>
+        ) : (
+          <label className="readonly-label">
+            Top filler material
+            <input value={effectiveFillerName} readOnly className="readonly" />
+            <span className="hint-inline">Auto — matches side panels (sides not both white melamine)</span>
+          </label>
+        )}
+        {wallCornerMount && (
+          <label>
+            Filler 1 width (mm)
+            <NumberInput
+              min={1}
+              value={resolveWallCornerFiller1WidthMm(unit)}
+              onChange={(n) => setCarcass('wallCornerFiller1WidthMm', Math.max(1, n))}
+              title={`Length = side height − 2×${settings.thickness} mm`}
+            />
+            <span className="hint-inline">
+              Length {wallCornerSizes?.filler1LengthMm ?? unit.height - 2 * settings.thickness} mm (H−2T) · qty 2
+            </span>
+          </label>
+        )}
+        {cornerMount && (
+          <label>
+            Filler edging pattern
+            <select
+              value={
+                unit.carcass.fillerEdgingPattern ??
+                (floorCornerMount ? FLOOR_CORNER_FILLER_EDGING : WALL_CORNER_FILLER_EDGING)
+              }
+              onChange={(e) => setCarcass('fillerEdgingPattern', e.target.value as EdgingPattern)}
+            >
+              {Object.entries(EDGING_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
           </label>
         )}
         <label>
           Filler edging type
           <EdgingTypeSelect
             value={unit.carcass.fillerEdgingMaterialId}
-            fallbackMaterialId={fillerFromSides ? effectiveFillerId : unit.carcass.fillerMaterialId}
+            fallbackMaterialId={cornerMount || !fillerFromSides ? unit.carcass.fillerMaterialId : effectiveFillerId}
             materials={materials}
             edgingMaterials={edgingMaterials}
             onChange={(v) => setCarcass('fillerEdgingMaterialId', v)}
@@ -1167,13 +1394,25 @@ export function UnitForm({
       </CollapsibleSection>
 
       <CollapsibleSection title="Shelves" variant="nested">
+        {floorCornerMount && (
+          <p className="hint">
+            Floor corner has one fixed shelf ({floorCornerSizes?.panelMm ?? 884}×{floorCornerSizes?.panelMm ?? 884} mm, no
+            edging). Change shelf board under Carcass.
+          </p>
+        )}
+        {wallCornerMount && (
+          <p className="hint">
+            Wall corner has two fixed shelves ({wallCornerSizes?.panelMm ?? 584}×{wallCornerSizes?.panelMm ?? 584} mm, no
+            edging). Change shelf board under Carcass.
+          </p>
+        )}
         {spiceMount && (
           <p className="hint">Spice mount — no carcass shelf. Left/right spice shelves are on the cut list under spice parts.</p>
         )}
-        {!spiceMount && (unit.carcass.shelfQty ?? 0) <= 0 && (
+        {!spiceMount && !cornerMount && (unit.carcass.shelfQty ?? 0) <= 0 && (
           <p className="hint">No shelves on this unit.</p>
         )}
-        {!spiceMount && (unit.carcass.shelfQty ?? 0) > 0 && (
+        {!spiceMount && !cornerMount && (unit.carcass.shelfQty ?? 0) > 0 && (
           <>
             <div className="form-grid form-grid-3">
               <label>
@@ -1226,7 +1465,7 @@ export function UnitForm({
             </button>
           </>
         )}
-        {!spiceMount && (unit.carcass.shelfQty ?? 0) <= 0 && (
+        {!spiceMount && !cornerMount && (unit.carcass.shelfQty ?? 0) <= 0 && (
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -1244,7 +1483,19 @@ export function UnitForm({
           ? ' — finished sizes shown below; cut list deducts edging tape thickness from board.'
           : ' — cut list matches finished panel sizes (edging included in dimensions).'}
       </p>
-      {(unit.doors.length > 0 || unit.drawers.length > 0) && (
+      {floorCornerMount && (
+        <p className="hint">
+          Floor corner: two fixed-width doors (341 mm and 325 mm). Only top and bottom gaps apply. Door height = side
+          height − top − bottom.
+        </p>
+      )}
+      {wallCornerMount && (
+        <p className="hint">
+          Wall corner: two fixed-width doors (291 mm and 275 mm). Only top and bottom gaps apply. Door height = side
+          height − top − bottom.
+        </p>
+      )}
+      {!cornerMount && (unit.doors.length > 0 || unit.drawers.length > 0) && (
         <p className="hint">
           Opening width follows cupboard width ({unit.width} mm). Finished door width = width − left − right gaps.
           {hasActiveDrawers && unit.doors.length > 0 && (
@@ -1258,15 +1509,28 @@ export function UnitForm({
       {unit.doors.length === 0 && <p className="hint">No doors on this unit.</p>}
       {unit.doors.map((door, i) => {
         const layoutDoor = layoutUnit.doors.find((d) => d.id === door.id) ?? door;
-        const doorOpeningAuto = hasActiveDrawers || unit.doors.length === 1;
+        const doorOpeningAuto = cornerMount || hasActiveDrawers || unit.doors.length === 1;
+        const cornerDoorLabel = floorCornerMount
+          ? i === 0
+            ? 'Door 1 (341 mm wide)'
+            : 'Door 2 (325 mm wide)'
+          : wallCornerMount
+            ? i === 0
+              ? 'Door 1 (291 mm wide)'
+              : 'Door 2 (275 mm wide)'
+            : `Door set ${i + 1}`;
         return (
         <div key={door.id} className="sub-card">
           <div className="sub-card-header">
-            <strong>Door set {i + 1}</strong>
-            <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => applyUnit({ ...unit, doors: unit.doors.filter((d) => d.id !== door.id) })}>Remove</button>
+            <strong>{cornerDoorLabel}</strong>
+            {!cornerMount && (
+              <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => applyUnit({ ...unit, doors: unit.doors.filter((d) => d.id !== door.id) })}>Remove</button>
+            )}
           </div>
           <div className="form-grid form-grid-4">
-            <label>Qty per cupboard<NumberInput  min={1} value={door.qty} onChange={(n) => updateDoor(door.id, { qty: n })} /></label>
+            {!cornerMount && (
+              <label>Qty per cupboard<NumberInput  min={1} value={door.qty} onChange={(n) => updateDoor(door.id, { qty: n })} /></label>
+            )}
             <label>
               Hinges / door
               <input
@@ -1278,8 +1542,14 @@ export function UnitForm({
               />
             </label>
             <label>
-              Opening width (mm)
-              <input type="number" className="readonly" value={layoutDoor.openingWidth} readOnly title="Matches cupboard width" />
+              {cornerMount ? 'Door width (mm)' : 'Opening width (mm)'}
+              <input
+                type="number"
+                className="readonly"
+                value={layoutDoor.openingWidth}
+                readOnly
+                title={cornerMount ? 'Corner unit — fixed door width' : 'Matches cupboard width'}
+              />
             </label>
             <label>
               Opening height (mm)
@@ -1287,7 +1557,13 @@ export function UnitForm({
                 className={doorOpeningAuto ? 'readonly' : undefined}
                 readOnly={doorOpeningAuto}
                 value={layoutDoor.openingHeight}
-                title={doorOpeningAuto ? (hasActiveDrawers ? 'Carcass height minus active drawer rows' : 'Full carcass height') : 'Split between door rows — scales with cupboard height'}
+                title={
+                  cornerMount
+                    ? 'Matches side height'
+                    : doorOpeningAuto
+                      ? (hasActiveDrawers ? 'Carcass height minus active drawer rows' : 'Full carcass height')
+                      : 'Split between door rows — scales with cupboard height'
+                }
                 onChange={(n) => updateDoor(door.id, { openingHeight: n })}
               />
             </label>
@@ -1384,24 +1660,38 @@ export function UnitForm({
             </label>
           </div>
           <h4 className="subsection-title">Door gaps (mm)</h4>
-          <div className="form-grid form-grid-5 door-gaps-grid">
-            <label>
-              Left
-              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).left} onChange={(n) => updateDoorGap(door.id, 'left', n)} />
-            </label>
-            <label>
-              Right
-              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).right} onChange={(n) => updateDoorGap(door.id, 'right', n)} />
-            </label>
+          <div className={`form-grid ${cornerMount ? 'form-grid-2' : 'form-grid-5'} door-gaps-grid`}>
+            {!cornerMount && (
+              <>
+                <label>
+                  Left
+                  <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).left} onChange={(n) => updateDoorGap(door.id, 'left', n)} />
+                </label>
+                <label>
+                  Right
+                  <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).right} onChange={(n) => updateDoorGap(door.id, 'right', n)} />
+                </label>
+              </>
+            )}
             <label>
               Top
-              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).top} onChange={(n) => updateDoorGap(door.id, 'top', n)} />
+              <NumberInput
+                min={0}
+                step={0.5}
+                value={resolveDoorGaps(door).top}
+                onChange={(n) => updateDoorGap(door.id, 'top', n)}
+              />
             </label>
             <label>
               Bottom
-              <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).bottom} onChange={(n) => updateDoorGap(door.id, 'bottom', n)} />
+              <NumberInput
+                min={0}
+                step={0.5}
+                value={resolveDoorGaps(door).bottom}
+                onChange={(n) => updateDoorGap(door.id, 'bottom', n)}
+              />
             </label>
-            {door.qty > 1 && (
+            {!cornerMount && door.qty > 1 && (
               <label>
                 Between doors
                 <NumberInput  min={0} step={0.5} value={resolveDoorGaps(door).between} onChange={(n) => updateDoorGap(door.id, 'between', n)} />
@@ -1412,9 +1702,12 @@ export function UnitForm({
         </div>
         );
       })}
-      <button type="button" className="btn btn-secondary btn-sm" onClick={addDoor}>+ Add doors</button>
+      {!cornerMount && (
+        <button type="button" className="btn btn-secondary btn-sm" onClick={addDoor}>+ Add doors</button>
+      )}
       </CollapsibleSection>
 
+      {!cornerMount && (
       <CollapsibleSection title="Drawers" variant="nested">
       <p className="hint">
         Drawers stack <strong>vertically</strong> on the front — one full-width front per row. Use <strong>+ Add drawers</strong> for another row.
@@ -1673,6 +1966,7 @@ export function UnitForm({
       })}
       <button type="button" className="btn btn-secondary btn-sm" onClick={addDrawer}>+ Add drawers</button>
       </CollapsibleSection>
+      )}
 
       <CollapsibleSection
           title="Extras"

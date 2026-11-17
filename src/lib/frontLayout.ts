@@ -1,4 +1,5 @@
 import type { DoorConfig, DrawerConfig, Unit } from '../types';
+import { isFloorCorner, isWallCorner } from './constants';
 import { minDoorOpeningHeight } from './doorRules';
 import {
   activeDrawers,
@@ -6,6 +7,8 @@ import {
   syncDrawerOpeningFromFront,
   targetDrawerOpeningHeight,
 } from './drawerRules';
+import { syncFloorCornerDoors } from './floorCornerRules';
+import { syncWallCornerDoors } from './wallCornerRules';
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -197,6 +200,10 @@ export interface FrontLayoutOptions {
  * Only drawers with qty &gt; 0 take space on the front. qty 0 = no drawer cuts, door uses full height.
  */
 export function resolveFrontLayout(unit: Unit, opts?: FrontLayoutOptions): Unit {
+  // Corner doors are fixed widths / full-height openings — do not rebalance.
+  if (isFloorCorner(unit)) return syncFloorCornerDoors(unit);
+  if (isWallCorner(unit)) return syncWallCornerDoors(unit);
+
   const { width, height, doors, drawers } = unit;
   const hasDoor = doors.length > 0;
 

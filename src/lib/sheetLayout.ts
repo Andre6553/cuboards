@@ -315,8 +315,13 @@ export function layoutSheets(
       if (!plan) continue;
       if (!bestPlan || plan.rank < bestPlan.rank) {
         bestPlan = { ...plan, iw, ih };
-      } else if (plan.rank === bestPlan.rank && iw * ih < bestPlan.iw * bestPlan.ih) {
-        bestPlan = { ...plan, iw, ih };
+      } else if (plan.rank === bestPlan.rank) {
+        // Same shelf/sheet choice: prefer lower cross-grain height so a rotatable
+        // panel (e.g. 780×1810) does not lock a full-height rip strip and force
+        // an extra sheet for a leftover filler. Then prefer smaller footprint.
+        if (ih < bestPlan.ih || (ih === bestPlan.ih && iw * ih < bestPlan.iw * bestPlan.ih)) {
+          bestPlan = { ...plan, iw, ih };
+        }
       }
     }
     if (!bestPlan) {

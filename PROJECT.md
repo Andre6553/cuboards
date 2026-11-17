@@ -29,6 +29,10 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-11-17:** **Floor corner** (kitchen base) + **Wall corner** (wall unit). Floor: 884² panels, H×550 sides, fillers 2×748×100, masonite 2×H×900, doors 341/325. Wall: 584² panels (bottom+2 shelves+top), H×300 sides, filler1 2×(H−2T)×typed width (default 70), filler2 2×514×70, filler3 2×498×70, masonite 2×H×600, doors 291/275. T/B gaps only on doors (`floorCornerRules.ts`, `wallCornerRules.ts`).
+- **2026-11-17:** **My default prices** — Save uploads `cuboards_user_prefs.price_list` immediately; Load pulls that row from Supabase (account wins) then applies to the job so devices match when signed in.
+- **2026-11-17:** Sheet-map lightbox zoom: always position via `translate(pan)` (center pan at fit). Old CSS flex-center + top-left pan math made the sheet jump left when zooming in.
+- **2026-11-17:** Guillotine nest (`sheetLayout.ts`): when a rotatable part ties on shelf/sheet rank, prefer **lower cross-grain height** so a non-grain tall panel (e.g. 780×1810 Esperanza back) does not lock a full-height rip strip and open an extra sheet for a thin filler.
 - **2026-11-16:** Carcass **shelves** with **solid melamine backing**: depth **D−T**, width **W−2T** (was full D with masonite/none). `carcassShelfSize` in `carcassRules.ts`.
 - **2026-11-16:** Drawer box side depth = carcass depth − back clearance − 2×board T (not front clearance). Solid melamine bottom depth = same as drawer side; width = front/back inner (FB width − 2×T). Masonite bottom still uses inner −2×T both ways (`drawerBoxRules.ts`).
 - **2026-11-16:** `record_device_login` 409 was FK on `user_devices` when `device_installs` had no row for this browser. RPC now upserts the install first (`0011_record_device_login_ensure_install.sql`). Client also coalesces duplicate login RPCs on page load.

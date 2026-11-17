@@ -96,6 +96,14 @@ function SheetThumbnail({
   );
 }
 
+/** Pan so content sits in the middle of the canvas (fit / reset). */
+function centerPan(canvasW: number, canvasH: number, contentW: number, contentH: number) {
+  return {
+    x: (canvasW - contentW) / 2,
+    y: (canvasH - contentH) / 2,
+  };
+}
+
 function SheetMapLightbox({
   slides,
   index,
@@ -118,6 +126,9 @@ function SheetMapLightbox({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  /** Latest zoom for resize re-center without stale closures. */
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   const pad = 14;
   const grainBand = 22;
@@ -137,7 +148,12 @@ function SheetMapLightbox({
     if (availW < 80 || availH < 80) return;
     const widthIfFull = availW;
     const widthIfHeightLimited = availH / viewAspect;
-    setFitWidth(Math.max(200, Math.min(widthIfFull, widthIfHeightLimited)));
+    const nextFit = Math.max(200, Math.min(widthIfFull, widthIfHeightLimited));
+    setFitWidth(nextFit);
+    // Keep fit view centered when the canvas size or fit width changes.
+    if (zoomRef.current <= MIN_ZOOM) {
+      setPan(centerPan(el.clientWidth, el.clientHeight, nextFit, nextFit * viewAspect));
+    }
   }, [viewAspect]);
 
   useLayoutEffect(() => {
@@ -155,27 +171,35 @@ function SheetMapLightbox({
 
   const resetView = useCallback(() => {
     setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, []);
+    const el = canvasRef.current;
+    if (el) {
+      setPan(centerPan(el.clientWidth, el.clientHeight, fitWidth, fitWidth * viewAspect));
+    } else {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [fitWidth, viewAspect]);
 
   const applyZoomStep = useCallback(
     (factor: number, focal?: { x: number; y: number }) => {
       const el = canvasRef.current;
-      const px = focal?.x ?? (el ? el.clientWidth / 2 : 0);
-      const py = focal?.y ?? (el ? el.clientHeight / 2 : 0);
+      const canvasW = el?.clientWidth ?? 0;
+      const canvasH = el?.clientHeight ?? 0;
+      const px = focal?.x ?? canvasW / 2;
+      const py = focal?.y ?? canvasH / 2;
       setZoom((prevZoom) => {
         const nextZoom = clampZoom(prevZoom * factor);
-        if (nextZoom <= MIN_ZOOM) {
-          setPan({ x: 0, y: 0 });
-          return MIN_ZOOM;
-        }
         const oldW = fitWidth * prevZoom;
         const oldH = oldW * viewAspect;
         const newW = fitWidth * nextZoom;
         const newH = newW * viewAspect;
+        if (nextZoom <= MIN_ZOOM) {
+          setPan(centerPan(canvasW, canvasH, newW, newH));
+          return MIN_ZOOM;
+        }
         setPan((prevPan) => {
-          const fx = oldW > 0 ? (px - prevPan.x) / oldW : 0;
-          const fy = oldH > 0 ? (py - prevPan.y) / oldH : 0;
+          // Keep the same content point under the focal (canvas center or cursor).
+          const fx = oldW > 0 ? (px - prevPan.x) / oldW : 0.5;
+          const fy = oldH > 0 ? (py - prevPan.y) / oldH : 0.5;
           return { x: px - fx * newW, y: py - fy * newH };
         });
         return nextZoom;
@@ -252,7 +276,7 @@ function SheetMapLightbox({
 
   const patternId = `grain-fs-${slide.materialId}-${slide.sheet.sheetIndex}-${index}`;
   const zoomPct = Math.round(zoom * 100);
-  const centered = zoom <= MIN_ZOOM && pan.x === 0 && pan.y === 0;
+  const atFit = zoom <= MIN_ZOOM;
 
   const lightbox = (
     <div className="sheet-map-lightbox" role="dialog" aria-modal="true" aria-labelledby="sheet-map-lightbox-title">
@@ -287,7 +311,7 @@ function SheetMapLightbox({
 
             <div
               ref={canvasRef}
-              className={`sheet-map-lightbox-canvas${dragging ? ' sheet-map-lightbox-canvas--dragging' : ''}${centered ? ' sheet-map-lightbox-canvas--centered' : ''}${zoom > MIN_ZOOM ? ' sheet-map-lightbox-canvas--zoomed' : ''}`}
+              className={`sheet-map-lightbox-canvas${dragging ? ' sheet-map-lightbox-canvas--dragging' : ''}${!atFit ? ' sheet-map-lightbox-canvas--zoomed' : ''}`}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
@@ -299,7 +323,7 @@ function SheetMapLightbox({
                 style={{
                   width: contentWidth,
                   height: contentHeight,
-                  ...(centered ? {} : { transform: `translate(${pan.x}px, ${pan.y}px)` }),
+                  transform: `translate(${pan.x}px, ${pan.y}px)`,
                 }}
               >
                 <SheetDiagramSvg
@@ -338,7 +362,7 @@ function SheetMapLightbox({
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyZoomStep(1.2)} aria-label="Zoom in">
               +
             </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={resetView} disabled={zoom <= 1 && pan.x === 0 && pan.y === 0}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetView} disabled={atFit}>
               Fit
             </button>
           </div>

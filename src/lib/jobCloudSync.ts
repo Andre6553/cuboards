@@ -181,6 +181,25 @@ export async function pullUserPrefs(userId: string): Promise<void> {
   applyPrefsFromCloud(data as PrefsRow);
 }
 
+/**
+ * Explicit “Load default prices”: always take `price_list` from the account row
+ * (not local-wins merge), so another device’s Save is what you get.
+ */
+export async function fetchAccountPriceList(userId: string): Promise<PriceList | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('cuboards_user_prefs')
+    .select('price_list')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const priceList = (data?.price_list ?? null) as PriceList | null;
+  if (!priceList?.settings) return null;
+  requireUserDataScope();
+  localStorage.setItem(userStorageKeys.priceList(), JSON.stringify(priceList));
+  return priceList;
+}
+
 export async function pushUserPrefsFromLocal(userId: string): Promise<void> {
   const supabase = getSupabase();
   const board_catalog = loadMaterialCatalog();
@@ -199,6 +218,12 @@ export async function pushUserPrefsFromLocal(userId: string): Promise<void> {
   });
   if (error) throw new Error(error.message);
   await publishCommunityMaterialsFromCatalog(board_catalog);
+}
+
+/** Save button: write prefs to Supabase immediately (not the 800 ms debounce). */
+export async function pushAccountPrefsNow(userId: string): Promise<void> {
+  await pushUserPrefsFromLocal(userId);
+  notifyCloudSaved();
 }
 
 export function setCloudSyncUserId(userId: string | null): void {

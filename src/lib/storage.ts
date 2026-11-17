@@ -10,10 +10,14 @@ import {
   DEFAULT_SETTINGS,
   DEFAULT_CUT_HOUSE_CHARGES,
   defaultPlinth,
+  isFloorCorner,
   isKitchenBase,
+  isWallCorner,
   normalizeMountType,
 } from './constants';
 import { defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from './spiceCupboardRules';
+import { syncFloorCornerDoors } from './floorCornerRules';
+import { syncWallCornerDoors } from './wallCornerRules';
 import { kickplateEdgingFromLegacyPattern } from './kickplateEdging';
 import { getDefaultRunnerPrices, getRunnerClearances } from './runnerCatalog';
 import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
@@ -282,7 +286,7 @@ export function migrateJob(job: Job): Job {
               frontHeightMm: resolveSpiceFrontHeightMm(u.spice ?? defaultSpiceCupboardConfig(unitHeight), unitHeight),
             }
           : u.spice;
-      return syncFrontLayoutToUnit({
+      const migrated = syncFrontLayoutToUnit({
         ...u,
         unitQty,
         plinth,
@@ -293,7 +297,14 @@ export function migrateJob(job: Job): Job {
           backingMaterialId: carcass.backingMaterialId ?? carcass.bottomMaterialId ?? defaultMat,
           countertopType: carcass.countertopType ?? 'granite',
           mountType,
-          shelfQty: mountType === 'spice' ? 0 : (carcass.shelfQty ?? 0),
+          shelfQty:
+            mountType === 'spice'
+              ? 0
+              : mountType === 'floor_corner'
+                ? 1
+                : mountType === 'wall_corner'
+                  ? 2
+                  : (carcass.shelfQty ?? 0),
           leftEdgingMaterialId: carcass.leftEdgingMaterialId ?? leftMat?.edgingMaterialId ?? defaultEdgingId,
           rightEdgingMaterialId: carcass.rightEdgingMaterialId ?? rightMat?.edgingMaterialId ?? defaultEdgingId,
           bottomEdgingMaterialId: carcass.bottomEdgingMaterialId ?? bottomMat?.edgingMaterialId ?? defaultEdgingId,
@@ -314,6 +325,9 @@ export function migrateJob(job: Job): Job {
           ),
         ),
       });
+      if (isFloorCorner(migrated)) return syncFloorCornerDoors(migrated);
+      if (isWallCorner(migrated)) return syncWallCornerDoors(migrated);
+      return migrated;
     }),
   };
 }
