@@ -1174,7 +1174,7 @@ function calcDrawers(
     const drawerMult = drawer.qty * mult;
     const frontPieceQty = drawerMult * resolveFrontQty(drawer);
     const facadeW = drawerFrontWidth(drawer);
-    const facadeH = drawerFrontHeight(drawer, unit.height, drawers);
+    const facadeH = drawerFrontHeight(drawer, unit.height, drawers, unit.customDrawerSizes === true);
     const boxWidthNote = drawerBoxFrontBackWidthNote(W, T, sideClearance);
     const inner = drawerBoxInnerSize(frontBackWidth, sideDepth, T);
     const solidBottom = drawerBoxSolidBottomSize(frontBackWidth, sideDepth, T);

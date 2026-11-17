@@ -206,6 +206,7 @@ export function resolveFrontLayout(unit: Unit, opts?: FrontLayoutOptions): Unit 
 
   const { width, height, doors, drawers } = unit;
   const hasDoor = doors.length > 0;
+  const customSizes = unit.customDrawerSizes === true;
 
   let syncedDrawers: DrawerConfig[] = drawers.map((d) => ({
     ...d,
@@ -221,6 +222,15 @@ export function resolveFrontLayout(unit: Unit, opts?: FrontLayoutOptions): Unit 
   const doorCount = syncedDoors.length;
 
   if (active().length === 0 && doorCount === 0) {
+    return { ...unit, doors: syncedDoors, drawers: syncedDrawers };
+  }
+
+  // Custom mode: user types front height only; opening height is derived (display) from front + gaps.
+  // Do not rebalance / split carcass across rows.
+  if (customSizes) {
+    syncedDrawers = syncedDrawers.map((d) =>
+      syncDrawerOpeningFromFront(d, hasDoor, height, syncedDrawers, true),
+    );
     return { ...unit, doors: syncedDoors, drawers: syncedDrawers };
   }
 

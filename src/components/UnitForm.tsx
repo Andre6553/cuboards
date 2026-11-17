@@ -30,7 +30,24 @@ import {
   usesGelmarCatalog,
 } from '../lib/hardwarePricing';
 import { doorSizeSummary, DEFAULT_DOOR_GAPS, HINGE_HOLE_OPTIONS, hingesPerDoorLeafForDoor, resolveDoorGaps } from '../lib/doorRules';
-import { drawerSizeSummary, DEFAULT_DRAWER_GAPS, DEFAULT_GAP_TO_DOOR_MM, isActiveDrawer, activeDrawers, resolveDrawerBoxMaterialId, resolveDrawerFrontMaterialId, resolveDrawerGaps, resolveFrontQty, resolveGapToDoor, syncDrawerOpeningFromFront } from '../lib/drawerRules';
+import {
+  drawerFrontHeight,
+  drawerFrontWidth,
+  drawerSizeSummary,
+  DEFAULT_DRAWER_GAPS,
+  DEFAULT_GAP_TO_DOOR_MM,
+  frontStackOverflowWarning,
+  isActiveDrawer,
+  activeDrawers,
+  resolveDrawerBoxMaterialId,
+  resolveDrawerFrontMaterialId,
+  resolveDrawerGaps,
+  resolveFrontQty,
+  resolveGapToDoor,
+  seedCustomFrontHeights,
+  syncDrawerOpeningFromFront,
+  usesCustomDrawerSizes,
+} from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, maxDrawerOpeningHeight, minDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
 import { fillersFollowSideMaterial, resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
@@ -379,7 +396,12 @@ export function UnitForm({
       frontClearance: 20,
       backClearance: 5,
     };
-    const ready = syncDrawerOpeningFromFront(drawer, unit.doors.length > 0, unit.height, [...unit.drawers, drawer]);
+    const withNew = [...existingDrawers, drawer];
+    let ready = syncDrawerOpeningFromFront(drawer, unit.doors.length > 0, unit.height, withNew);
+    if (usesCustomDrawerSizes(unit)) {
+      const frontH = drawerFrontHeight(ready, unit.height, [...existingDrawers, ready], false);
+      ready = { ...ready, frontHeightMm: frontH > 0 ? frontH : Math.round(unit.height / Math.max(1, newCount)) };
+    }
     applyUnit({ ...unit, drawers: [...existingDrawers, ready] });
   };
 
@@ -1751,14 +1773,45 @@ export function UnitForm({
         Drawers stack <strong>vertically</strong> on the front — one full-width front per row. Use <strong>+ Add drawers</strong> for another row.
         <strong> Qty per cupboard</strong> = how many matching drawers on that row (e.g. 4 = four same height). Different heights = separate rows with qty 1 each.
       </p>
+      <label className="checkbox-label">
+        <input
+          type="checkbox"
+          checked={usesCustomDrawerSizes(unit)}
+          onChange={(e) => {
+            const on = e.target.checked;
+            if (on) {
+              applyUnit({
+                ...unit,
+                customDrawerSizes: true,
+                drawers: seedCustomFrontHeights(unit.drawers, unit.height),
+              });
+            } else {
+              applyUnit({ ...unit, customDrawerSizes: false });
+            }
+          }}
+        />
+        Customize drawer / front sizes
+      </label>
       <p className="hint">
-        Cut list mode: <strong>{CUT_SIZE_MODE_LABELS[settings.cutSizeMode ?? 'final']}</strong>
-        Drawer front height = (carcass H − top gap − bottom gap − 4 mm between each stacked front) ÷ qty per cupboard.
-        Box height is what you enter; it does not change when front height is recalculated.
-        {(settings.cutSizeMode ?? 'final') === 'net'
-          ? ' Cut list board size deducts edging thickness.'
-          : ' Cut list shows finished size after edge banding.'}
+        {usesCustomDrawerSizes(unit) ? (
+          <>
+            Custom: type <strong>front height</strong> and <strong>box height</strong> per row. Front width = opening − left − right
+            gaps (grain top → bottom). Opening height is calculated for display (front + gaps). Warns if drawers + doors exceed
+            carcass height — cut list still runs.
+          </>
+        ) : (
+          <>
+            Cut list mode: <strong>{CUT_SIZE_MODE_LABELS[settings.cutSizeMode ?? 'final']}</strong>.
+            Front height auto = (carcass H − top − bottom − 4 mm between fronts) ÷ qty. Tick customize to type front height yourself.
+            {(settings.cutSizeMode ?? 'final') === 'net'
+              ? ' Cut list board size deducts edging thickness.'
+              : ' Cut list shows finished size after edge banding.'}
+          </>
+        )}
       </p>
+      {frontStackOverflowWarning(layoutUnit) && (
+        <p className="hint warn">{frontStackOverflowWarning(layoutUnit)}</p>
+      )}
       {unit.drawers.length === 0 && (
         <p className="hint">
           No drawers on this unit. Click <strong>+ Add drawers</strong> to include drawer fronts, box parts, runners, and drawer bottoms on the cut list.
@@ -1766,6 +1819,14 @@ export function UnitForm({
       )}
       {unit.drawers.map((drawer, i) => {
         const layoutDrawer = layoutUnit.drawers.find((d) => d.id === drawer.id) ?? drawer;
+        const customOn = usesCustomDrawerSizes(unit);
+        const finishedFrontW = drawerFrontWidth(layoutDrawer);
+        const finishedFrontH = drawerFrontHeight(
+          layoutDrawer,
+          unit.height,
+          layoutUnit.drawers,
+          customOn,
+        );
         return (
         <div key={drawer.id} className="sub-card">
           <div className="sub-card-header">
@@ -1789,17 +1850,43 @@ export function UnitForm({
             <label>
               Opening height (mm)
               <NumberInput
-                className={isActiveDrawer(drawer) ? 'readonly' : ''}
-                min={minDrawerOpeningHeight(drawer, unit.doors.length > 0, unit)}
-                max={unit.doors.length > 0 ? maxDrawerOpeningHeight(unit, drawer.id) : unit.height}
+                className="readonly"
+                min={1}
                 value={layoutDrawer.openingHeight}
-                readOnly={isActiveDrawer(drawer)}
+                readOnly
                 title={
-                  isActiveDrawer(drawer)
-                    ? 'Auto from carcass height, qty, 4 mm gaps between fronts, and top/bottom gaps'
-                    : 'Inactive — set qty to 0; does not affect door'
+                  customOn
+                    ? 'Calculated from front height + top/bottom gaps (and gap to door) — display only'
+                    : isActiveDrawer(drawer)
+                      ? 'Auto from carcass height, qty, 4 mm gaps between fronts, and top/bottom gaps'
+                      : 'Inactive — set qty to 0; does not affect door'
                 }
                 onChange={(n) => setDrawerOpeningHeight(drawer.id, n)}
+              />
+            </label>
+            <label>
+              Front height (mm)
+              <NumberInput
+                className={!customOn ? 'readonly' : ''}
+                min={1}
+                value={customOn ? (drawer.frontHeightMm ?? finishedFrontH) : finishedFrontH}
+                readOnly={!customOn}
+                title={
+                  customOn
+                    ? 'Finished drawer front height — grain runs top to bottom'
+                    : 'Auto from carcass — tick Customize drawer / front sizes to type this'
+                }
+                onChange={(n) => updateDrawer(drawer.id, { frontHeightMm: Math.max(1, Math.round(n)) })}
+              />
+            </label>
+            <label>
+              Front width (mm)
+              <input
+                type="number"
+                className="readonly"
+                value={Math.round(finishedFrontW * 10) / 10}
+                readOnly
+                title="Opening width − left − right gaps (and between if side-by-side fronts)"
               />
             </label>
             <label>
@@ -1807,7 +1894,7 @@ export function UnitForm({
               <NumberInput
                 min={1}
                 value={drawer.boxHeight}
-                title="Drawer box front/back/sides on cut list — you set this; drawer front height is calculated from carcass separately"
+                title="Drawer box front/back/sides on cut list — you set this"
                 onChange={(n) => updateDrawer(drawer.id, { boxHeight: Math.max(1, n) })}
               />
             </label>
@@ -1965,15 +2052,23 @@ export function UnitForm({
           </div>
           <p className="hint">
             {isActiveDrawer(drawer) ? (
-              <>
-                Drawer front height comes from carcass ÷ qty (see summary below). Box height = {drawer.boxHeight} mm on cut list.
-                Opening row = top + stacked fronts + bottom gaps{unit.doors.length > 0 ? ` + ${resolveGapToDoor(drawer)} mm to door` : ''} = {layoutDrawer.openingHeight} mm.
-              </>
+              customOn ? (
+                <>
+                  Custom front {finishedFrontW} × {finishedFrontH} mm (grain top → bottom). Box height = {drawer.boxHeight} mm.
+                  Opening height ({layoutDrawer.openingHeight} mm) is calculated from front + gaps
+                  {unit.doors.length > 0 ? ` · includes ${resolveGapToDoor(drawer)} mm gap to door` : ''} — display only.
+                </>
+              ) : (
+                <>
+                  Drawer front height comes from carcass ÷ qty (see summary below). Box height = {drawer.boxHeight} mm on cut list.
+                  Opening row = top + stacked fronts + bottom gaps{unit.doors.length > 0 ? ` + ${resolveGapToDoor(drawer)} mm to door` : ''} = {layoutDrawer.openingHeight} mm.
+                </>
+              )
             ) : (
               <>Qty 0 — drawer not on cut list. Door uses full carcass height ({unit.height} mm opening).</>
             )}
           </p>
-          <p className="hint">{drawerSizeSummary(layoutDrawer, { settings, edgingMaterials, materials }, unit.doors.length > 0, unit.height, unit.drawers)}</p>
+          <p className="hint">{drawerSizeSummary(layoutDrawer, { settings, edgingMaterials, materials }, unit.doors.length > 0, unit.height, unit.drawers, customOn)}</p>
           <h4 className="subsection-title">Drawer box clearances</h4>
           <p className="hint">Side clearance = gap each side for the runners. Front/back = gap behind the drawer front and at the rear of the box.</p>
           <div className="form-grid form-grid-3 drawer-clearances">

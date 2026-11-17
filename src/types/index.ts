@@ -402,6 +402,11 @@ export interface DrawerConfig {
   materialId?: string;
   bottomType: BottomType;
   boxHeight: number;
+  /**
+   * Finished drawer front height (mm) when `Unit.customDrawerSizes` is on.
+   * Width still comes from opening − L/R gaps. Grain runs top → bottom (vertical).
+   */
+  frontHeightMm?: number;
   /** @deprecated Ignored — box height is set on `boxHeight`. Kept for old saved jobs. */
   frontOverhangMm?: number;
   runner: DrawerRunner;
@@ -536,6 +541,11 @@ export interface Unit {
   spice?: SpiceCupboardConfig;
   doors: DoorConfig[];
   drawers: DrawerConfig[];
+  /**
+   * When on: front height is manual per drawer row; opening height is calculated for display.
+   * No auto carcass split. Warn if drawer openings + door openings exceed carcass height.
+   */
+  customDrawerSizes?: boolean;
   /** Off = extras form disabled and cut-list logic skipped. */
   extrasEnabled?: boolean;
   /** Bedroom — inner boxes, shelves, division, drawer stacks. */

@@ -82,21 +82,30 @@ export function drawerFrontPanelHeight(
 /**
  * Carcass row height for an active drawer row.
  * top + (qty × front + gaps between fronts) + bottom + (gap to door when a door is below).
+ * Custom sizes: use typed `frontHeightMm` instead of the auto carcass split.
  */
 export function targetDrawerOpeningHeight(
   drawer: DrawerConfig,
   hasDoorBelow = false,
   carcassHeight?: number,
   allDrawers?: DrawerConfig[],
+  customSizes = false,
 ): number {
   const gaps = resolveDrawerGaps(drawer);
   const gapToDoor = hasDoorBelow ? resolveGapToDoor(drawer) : 0;
 
-  if (carcassHeight != null && carcassHeight > 0 && allDrawers && isActiveDrawer(drawer)) {
-    const front = drawerFrontPanelHeight(drawer, carcassHeight, allDrawers);
-    const qty = Math.max(1, drawer.qty);
-    const stackMm = qty * front + Math.max(0, qty - 1) * DRAWER_STACK_GAP_MM;
-    return round1(gaps.top + stackMm + gaps.bottom + gapToDoor);
+  if (isActiveDrawer(drawer)) {
+    let front: number | null = null;
+    if (customSizes && drawer.frontHeightMm != null && drawer.frontHeightMm > 0) {
+      front = Math.round(drawer.frontHeightMm);
+    } else if (carcassHeight != null && carcassHeight > 0 && allDrawers) {
+      front = drawerFrontPanelHeight(drawer, carcassHeight, allDrawers);
+    }
+    if (front != null) {
+      const qty = Math.max(1, drawer.qty);
+      const stackMm = qty * front + Math.max(0, qty - 1) * DRAWER_STACK_GAP_MM;
+      return round1(gaps.top + stackMm + gaps.bottom + gapToDoor);
+    }
   }
 
   return round1(gaps.top + drawer.boxHeight + gaps.bottom + gapToDoor);
@@ -108,11 +117,12 @@ export function syncDrawerOpeningFromFront(
   hasDoorBelow = false,
   carcassHeight?: number,
   allDrawers?: DrawerConfig[],
+  customSizes = false,
 ): DrawerConfig {
   if (!isActiveDrawer(drawer)) return drawer;
   return {
     ...drawer,
-    openingHeight: targetDrawerOpeningHeight(drawer, hasDoorBelow, carcassHeight, allDrawers),
+    openingHeight: targetDrawerOpeningHeight(drawer, hasDoorBelow, carcassHeight, allDrawers, customSizes),
   };
 }
 
@@ -125,13 +135,70 @@ export function drawerFrontWidth(drawer: DrawerConfig): number {
   return (drawer.openingWidth - gaps.left - gaps.right - betweenTotal) / frontQty;
 }
 
-/** Finished drawer front panel height for cut list. */
+/** True when this unit uses typed front / opening sizes (no auto carcass split). */
+export function usesCustomDrawerSizes(unit: Pick<Unit, 'customDrawerSizes'>): boolean {
+  return unit.customDrawerSizes === true;
+}
+
+/**
+ * Finished drawer front panel height for cut list.
+ * Custom mode: use typed `frontHeightMm` (fallback to auto if unset).
+ * Grain on the front runs top → bottom (vertical) when the board has grain.
+ */
 export function drawerFrontHeight(
   drawer: DrawerConfig,
   carcassHeight: number,
   allDrawers: DrawerConfig[] = [drawer],
+  customSizes = false,
 ): number {
+  if (customSizes && drawer.frontHeightMm != null && drawer.frontHeightMm > 0) {
+    return Math.round(drawer.frontHeightMm);
+  }
   return drawerFrontPanelHeight(drawer, carcassHeight, allDrawers);
+}
+
+/** Seed `frontHeightMm` from the current auto formula (when turning custom on). */
+export function seedCustomFrontHeights(
+  drawers: DrawerConfig[],
+  carcassHeight: number,
+): DrawerConfig[] {
+  return drawers.map((d) => {
+    if (!isActiveDrawer(d)) return d;
+    const auto = drawerFrontPanelHeight(d, carcassHeight, drawers);
+    return {
+      ...d,
+      frontHeightMm: d.frontHeightMm != null && d.frontHeightMm > 0 ? Math.round(d.frontHeightMm) : auto,
+    };
+  });
+}
+
+/**
+ * Whole-front stack vs carcass height.
+ * Sum of active drawer openings + door openings (gap-to-door is already inside drawer opening).
+ */
+export function frontStackFit(unit: Pick<Unit, 'height' | 'doors' | 'drawers'>): {
+  usedMm: number;
+  carcassMm: number;
+  overflowMm: number;
+  fits: boolean;
+} {
+  const carcassMm = unit.height;
+  const drawerMm = activeDrawers(unit.drawers).reduce((sum, d) => sum + d.openingHeight, 0);
+  const doorMm = unit.doors.reduce((sum, d) => sum + d.openingHeight, 0);
+  const usedMm = round1(drawerMm + doorMm);
+  const overflowMm = round1(usedMm - carcassMm);
+  return { usedMm, carcassMm, overflowMm, fits: overflowMm <= 0.05 };
+}
+
+/** Human warning when custom sizes overflow the carcass (warn only — cut list still runs). */
+export function frontStackOverflowWarning(unit: Pick<Unit, 'height' | 'doors' | 'drawers' | 'customDrawerSizes'>): string | null {
+  if (!usesCustomDrawerSizes(unit)) return null;
+  const fit = frontStackFit(unit);
+  if (fit.fits) return null;
+  return (
+    `Warning: front stack ${fit.usedMm} mm (drawers + doors) is ${fit.overflowMm} mm taller than carcass ${fit.carcassMm} mm. ` +
+    `Adjust opening heights, front heights, or gaps so the total fits.`
+  );
 }
 
 export function drawerFrontCutListSize(
@@ -139,9 +206,10 @@ export function drawerFrontCutListSize(
   ctx: Pick<Job, 'settings' | 'edgingMaterials' | 'materials'>,
   carcassHeight: number,
   allDrawers: DrawerConfig[] = [drawer],
+  customSizes = false,
 ): { width: number; length: number; finishedWidth: number; finishedHeight: number; sizeNote: string } {
   const finishedWidth = drawerFrontWidth(drawer);
-  const finishedHeight = drawerFrontHeight(drawer, carcassHeight, allDrawers);
+  const finishedHeight = drawerFrontHeight(drawer, carcassHeight, allDrawers, customSizes);
   const panel = panelCutSizes(
     ctx as Job,
     resolveDrawerFrontMaterialId(drawer),
@@ -165,6 +233,7 @@ export function drawerSizeSummary(
   hasDoorBelow: boolean,
   carcassHeight: number,
   allDrawers: DrawerConfig[] = [drawer],
+  customSizes = false,
 ): string {
   if (!isActiveDrawer(drawer)) {
     return 'Qty 0 — no drawer parts on cut list. Door uses full cupboard height.';
@@ -173,7 +242,7 @@ export function drawerSizeSummary(
   const stackGaps = resolveDrawerStackGaps(allDrawers);
   const gapToDoor = hasDoorBelow ? resolveGapToDoor(drawer) : 0;
   const finishedWidth = drawerFrontWidth(drawer);
-  const finishedHeight = drawerFrontHeight(drawer, carcassHeight, allDrawers);
+  const finishedHeight = drawerFrontHeight(drawer, carcassHeight, allDrawers, customSizes);
   const boxH = Math.round(Math.max(1, drawer.boxHeight));
   const panel = panelCutSizes(
     ctx as Job,
@@ -195,8 +264,9 @@ export function drawerSizeSummary(
   const qtyPart = frontQty > 1
     ? `${totalFronts} drawer fronts on cut list (${perCupboard} high × ${frontQty} wide) · `
     : `${totalFronts} drawer front${totalFronts === 1 ? '' : 's'} on cut list (${perCupboard} per cupboard) · `;
-  const heightFormula =
-    `(H ${carcassHeight} − T${stackGaps.top} − B${stackGaps.bottom} − ${Math.max(0, totalSlots - 1)}×${DRAWER_STACK_GAP_MM} mm) ÷ ${totalSlots} fronts`;
+  const heightFormula = customSizes
+    ? `manual front H ${finishedHeight} mm · grain top→bottom`
+    : `(H ${carcassHeight} − T${stackGaps.top} − B${stackGaps.bottom} − ${Math.max(0, totalSlots - 1)}×${DRAWER_STACK_GAP_MM} mm) ÷ ${totalSlots} fronts`;
   return (
     `${qtyPart}` +
     `finished ${finishedWidth} × ${finishedHeight} mm · ${heightFormula} · ` +

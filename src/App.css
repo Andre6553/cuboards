@@ -776,7 +776,8 @@
   max-width: 100%;
 }
 
-.hint-inline.warn {
+.hint-inline.warn,
+.hint.warn {
   color: #b45309;
   font-weight: 600;
 }
