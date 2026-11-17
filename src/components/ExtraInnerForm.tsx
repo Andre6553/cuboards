@@ -214,8 +214,8 @@ export function ExtraInnerForm({
       boxEdgingMaterialId: defaultEdgingForMaterial(defaultMat),
       gapToDoorMm: DEFAULT_GAP_TO_DOOR_MM,
       sideClearance: 13,
-      frontClearance: 20,
-      backClearance: 5,
+      frontClearance: 0,
+      backClearance: 25,
     };
     const all = [...existing, drawer];
     const ready = syncDrawerOpeningFromFront(drawer, false, carcass.height, all);
@@ -875,7 +875,7 @@ export function ExtraInnerForm({
               </p>
               <p className="hint">
                 Box sides ({EDGING_LABELS[DRAWER_BOX_SIDE_EDGING]}):{' '}
-                {drawerBoxSideDepthNote(drawerCarcass.depth, drawer.backClearance ?? 5, settings.thickness)} × box height
+                {drawerBoxSideDepthNote(drawerCarcass.depth, drawer.backClearance ?? 25, settings.thickness)} × box height
               </p>
               <h4 className="subsection-title">Drawer front gaps (mm)</h4>
               <div className="form-grid form-grid-5 door-gaps-grid">

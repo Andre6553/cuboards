@@ -57,7 +57,7 @@ describe('generateCutList — floor carcass drawers', () => {
     expect(side).toBeDefined();
     expect(bottom).toBeDefined();
 
-    const expectedSideDepth = drawerBoxSideDepth(unit.depth, drawer.backClearance ?? 5, job.settings.thickness);
+    const expectedSideDepth = drawerBoxSideDepth(unit.depth, drawer.backClearance ?? 25, job.settings.thickness);
     expect(side!.width).toBe(expectedSideDepth);
     expect(bottom!.width).toBe(expectedSideDepth);
 

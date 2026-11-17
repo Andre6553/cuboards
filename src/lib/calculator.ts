@@ -1168,7 +1168,7 @@ function calcDrawers(
     );
 
     const frontBackWidth = drawerBoxFrontBackWidth(W, T, sideClearance);
-    const backClearance = drawer.backClearance ?? 5;
+    const backClearance = drawer.backClearance ?? 25;
     const sideDepth = drawerBoxSideDepth(D, backClearance, T);
     const boxH = Math.round(Math.max(1, drawer.boxHeight));
     const drawerMult = drawer.qty * mult;
@@ -1996,8 +1996,8 @@ export function createDefaultDrawer(unit: Unit, job: Job, materialId: string): D
     frontEdgingMaterialId: boardMat?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
     boxEdgingMaterialId: boardMat?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
     sideClearance: 13,
-    frontClearance: 20,
-    backClearance: 5,
+    frontClearance: 0,
+    backClearance: 25,
   };
   return { ...base, openingHeight: targetDrawerOpeningHeight(base, false, unit.height, [base]) };
 }

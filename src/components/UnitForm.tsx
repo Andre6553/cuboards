@@ -50,7 +50,7 @@ import {
 } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
-import { fillersFollowSideMaterial, resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
+import { resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
 import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
 import { defaultBedroomWallExtra } from '../lib/extrasRules';
 import { usesBedroomExtrasForm, usesCustomExtrasForm } from '../lib/customExtrasRules';
@@ -336,9 +336,7 @@ export function UnitForm({
   const showCountertopType = showTopFillers;
 
   const defaultMat = materials[0]?.id ?? '';
-  const fillerFromSides = fillersFollowSideMaterial(unit.carcass, materials);
   const effectiveFillerId = resolveFillerMaterial(unit.carcass, materials);
-  const effectiveFillerName = materials.find((m) => m.id === effectiveFillerId)?.name ?? '—';
 
   const handleSavePreset = () => {
     const name = prompt('Preset name (e.g. 600 Base with 1 shelf):', unit.name);
@@ -393,8 +391,8 @@ export function UnitForm({
       boxEdgingMaterialId: defaultEdgingForMaterial(defaultMat),
       gapToDoorMm: DEFAULT_GAP_TO_DOOR_MM,
       sideClearance: 13,
-      frontClearance: 20,
-      backClearance: 5,
+      frontClearance: 0,
+      backClearance: 25,
     };
     const withNew = [...existingDrawers, drawer];
     let ready = syncDrawerOpeningFromFront(drawer, unit.doors.length > 0, unit.height, withNew);
@@ -1228,36 +1226,28 @@ export function UnitForm({
             <MaterialSelect value={unit.carcass.backingMaterialId ?? defaultMat} materials={materials} onChange={(v) => setCarcass('backingMaterialId', v)} />
           </label>
         )}
-        {cornerMount || !fillerFromSides ? (
-          <label>
-            Filler material
-            <MaterialSelect
-              value={unit.carcass.fillerMaterialId}
-              materials={materials}
-              onChange={(v) => onChange({
-                ...unit,
-                carcass: {
-                  ...unit.carcass,
-                  fillerMaterialId: v,
-                  fillerEdgingMaterialId: defaultEdgingForMaterial(v),
-                },
-              })}
-            />
-            <span className="hint-inline">
-              {floorCornerMount
-                ? '2 × 748 × 100 mm'
-                : wallCornerMount
-                  ? 'Filler 1/2/3 (same board)'
-                  : 'Both sides white melamine — fillers can differ'}
-            </span>
-          </label>
-        ) : (
-          <label className="readonly-label">
-            Top filler material
-            <input value={effectiveFillerName} readOnly className="readonly" />
-            <span className="hint-inline">Auto — matches side panels (sides not both white melamine)</span>
-          </label>
-        )}
+        <label>
+          {cornerMount ? 'Filler material' : 'Top filler material'}
+          <MaterialSelect
+            value={unit.carcass.fillerMaterialId || effectiveFillerId}
+            materials={materials}
+            onChange={(v) => onChange({
+              ...unit,
+              carcass: {
+                ...unit.carcass,
+                fillerMaterialId: v,
+                fillerEdgingMaterialId: defaultEdgingForMaterial(v),
+              },
+            })}
+          />
+          <span className="hint-inline">
+            {floorCornerMount
+              ? '2 × 748 × 100 mm'
+              : wallCornerMount
+                ? 'Filler 1/2/3 (same board)'
+                : 'Choose any board — independent of visible sides'}
+          </span>
+        </label>
         {wallCornerMount && (
           <label>
             Filler 1 width (mm)
@@ -1292,7 +1282,7 @@ export function UnitForm({
           Filler edging type
           <EdgingTypeSelect
             value={unit.carcass.fillerEdgingMaterialId}
-            fallbackMaterialId={cornerMount || !fillerFromSides ? unit.carcass.fillerMaterialId : effectiveFillerId}
+            fallbackMaterialId={unit.carcass.fillerMaterialId || effectiveFillerId}
             materials={materials}
             edgingMaterials={edgingMaterials}
             onChange={(v) => setCarcass('fillerEdgingMaterialId', v)}
@@ -1930,7 +1920,7 @@ export function UnitForm({
           </p>
           <p className="hint">
             Box sides ({EDGING_LABELS[DRAWER_BOX_SIDE_EDGING]}):{' '}
-            {drawerBoxSideDepthNote(unit.depth, drawer.backClearance ?? 5, settings.thickness)} × box height
+            {drawerBoxSideDepthNote(unit.depth, drawer.backClearance ?? 25, settings.thickness)} × box height
           </p>
           <div className="form-grid form-grid-4">
             <label>

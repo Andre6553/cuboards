@@ -17,21 +17,17 @@ export function isWhiteMelamine(materials: Material[], materialId: string): bool
   return isWhite && isMelamine;
 }
 
-/** Both sides white → user picks filler; otherwise fillers match side board + edging. */
-export function resolveFillerMaterial(carcass: CarcassConfig, materials: Material[]): string {
-  const leftWhite = isWhiteMelamine(materials, carcass.leftMaterialId);
-  const rightWhite = isWhiteMelamine(materials, carcass.rightMaterialId);
-  if (leftWhite && rightWhite) {
-    return carcass.fillerMaterialId;
-  }
-  if (carcass.leftMaterialId === carcass.rightMaterialId) {
-    return carcass.leftMaterialId;
-  }
-  return carcass.leftMaterialId;
+/**
+ * Filler board is always the user-selected `fillerMaterialId`.
+ * Falls back to left side (then right) if unset — e.g. older jobs.
+ */
+export function resolveFillerMaterial(carcass: CarcassConfig, _materials?: Material[]): string {
+  return carcass.fillerMaterialId || carcass.leftMaterialId || carcass.rightMaterialId || '';
 }
 
-export function fillersFollowSideMaterial(carcass: CarcassConfig, materials: Material[]): boolean {
-  return !(isWhiteMelamine(materials, carcass.leftMaterialId) && isWhiteMelamine(materials, carcass.rightMaterialId));
+/** @deprecated Fillers are always user-picked; kept for old call sites. */
+export function fillersFollowSideMaterial(_carcass: CarcassConfig, _materials: Material[]): boolean {
+  return false;
 }
 
 /**

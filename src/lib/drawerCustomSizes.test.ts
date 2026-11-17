@@ -27,8 +27,8 @@ function baseDrawer(partial: Partial<DrawerConfig> = {}): DrawerConfig {
     boxEdgingMaterialId: 'e',
     gapToDoorMm: 2,
     sideClearance: 13,
-    frontClearance: 20,
-    backClearance: 5,
+    frontClearance: 0,
+    backClearance: 25,
     ...partial,
   };
 }

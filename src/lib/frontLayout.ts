@@ -57,8 +57,8 @@ export function defaultDrawerOpeningHeight(unit: Unit): number {
     frontEdgingMaterialId: '',
     boxEdgingMaterialId: '',
     sideClearance: 13,
-    frontClearance: 20,
-    backClearance: 5,
+    frontClearance: 0,
+    backClearance: 25,
   };
 
   const typical = targetDrawerOpeningHeight(stub, hasDoor, height, [...existing, stub]);
