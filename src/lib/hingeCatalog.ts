@@ -26,6 +26,7 @@ export interface HingeCatalogEntry {
   outOfStockOnline?: boolean;
   defaultPrice: number;
   url?: string;
+  imageUrl?: string;
 }
 
 export const HINGE_CATEGORY_ORDER = ['slide_on_4_hole', 'soft_close_clip'] as const;
@@ -117,6 +118,7 @@ function buildGelmarCatalog(): HingeCatalogEntry[] {
       outOfStockOnline: h.outOfStockOnline,
       defaultPrice: h.priceZar ?? 0,
       url: h.url,
+      imageUrl: h.imageUrl,
     };
   });
 }

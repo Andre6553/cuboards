@@ -19,6 +19,7 @@ export interface RunnerCatalogEntry {
   runnerLengthOffset: number;
   defaultPrice: number;
   url?: string;
+  imageUrl?: string;
 }
 
 /** Premium / brand runners (Blum, Hettich, etc.) — lengths calculated from cupboard depth. */
@@ -141,6 +142,7 @@ function buildGelmarCatalog(): RunnerCatalogEntry[] {
       runnerLengthOffset: 26,
       defaultPrice: r.priceZar ?? 0,
       url: r.url,
+      imageUrl: r.imageUrl,
     };
   });
 }

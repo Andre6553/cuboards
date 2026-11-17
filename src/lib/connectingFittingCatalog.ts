@@ -12,6 +12,7 @@ export interface ConnectingFittingCatalogEntry {
   packSize: number;
   defaultPackPrice: number;
   url?: string;
+  imageUrl?: string;
 }
 
 export const CONNECTING_FITTING_CATALOG: ConnectingFittingCatalogEntry[] = gelmarRaw.fittings.map((f) => ({
@@ -26,6 +27,7 @@ export const CONNECTING_FITTING_CATALOG: ConnectingFittingCatalogEntry[] = gelma
   packSize: f.packSize,
   defaultPackPrice: f.priceZar,
   url: f.url,
+  imageUrl: f.imageUrl,
 }));
 
 export const GELMAR_CONNECTING_FITTINGS_SCRAPED_AT = gelmarRaw.scrapedAt;

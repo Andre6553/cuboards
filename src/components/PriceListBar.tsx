@@ -17,13 +17,21 @@ export function PriceListBar({ job, onChange, onPrefsSaved }: Props) {
     const list = savePriceListFromJob(job);
     setSavedAt(list.savedAt);
     onPrefsSaved?.();
-    setNote('Saved. New jobs will start with these prices and settings.');
+    setNote(
+      'Saved job settings, boards, edging, masonite, PVC kickplate, install rates, quote terms, and hardware price overrides.',
+    );
   };
 
   const handleLoad = () => {
     const list = loadPriceList();
     if (!list) return;
-    if (!confirm('Overwrite the prices in this job with your saved default prices? Job settings and units stay as they are.')) return;
+    if (
+      !confirm(
+        'Apply your saved default prices and settings to this job? (Sheet size, foot price, boards, edging, masonite, kickplate, install rates, quote terms, hardware overrides.) Units and client stay as they are.',
+      )
+    ) {
+      return;
+    }
     onChange(applyPriceListToJob(job, list));
     setNote('Loaded your default prices into this job.');
   };
@@ -34,8 +42,8 @@ export function PriceListBar({ job, onChange, onPrefsSaved }: Props) {
         <h2>My default prices</h2>
         <p className="hint">
           {savedAt
-            ? `New jobs start with the prices you saved on ${new Date(savedAt).toLocaleString()}.`
-            : 'New jobs start with the built-in prices. Set your prices below, then save them as your defaults so every new job starts with them.'}
+            ? `New jobs start with the defaults you saved on ${new Date(savedAt).toLocaleString()}.`
+            : 'Set your prices and job settings below, then save as defaults. New jobs start with those values. Refresh Gelmar on a job updates trade hardware without changing your saved defaults.'}
         </p>
         {note && <p className="gelmar-refresh-status ok">{note}</p>}
       </div>

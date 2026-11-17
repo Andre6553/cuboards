@@ -10,7 +10,8 @@
       "lengthMm": 16,
       "packSize": 800,
       "priceZar": 73,
-      "url": "https://www.gelmar.co.za/chipboard-screws-pozi-no-8-4mm-x-16mm-800-pieces.html"
+      "url": "https://www.gelmar.co.za/chipboard-screws-pozi-no-8-4mm-x-16mm-800-pieces.html",
+      "imageUrl": "https://www.gelmar.co.za/media/catalog/product/4/3/4386_1.jpg"
     },
     {
       "id": "gelmar-1049",
@@ -21,7 +22,8 @@
       "lengthMm": 28,
       "packSize": 1000,
       "priceZar": 110,
-      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-28mm-1000-pieces.html"
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-28mm-1000-pieces.html",
+      "imageUrl": "https://www.gelmar.co.za/media/catalog/product/1/0/1049.jpg"
     },
     {
       "id": "gelmar-4359",
@@ -32,7 +34,8 @@
       "lengthMm": 28,
       "packSize": 120,
       "priceZar": 20,
-      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-28mm-120-pieces.html"
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-28mm-120-pieces.html",
+      "imageUrl": "https://www.gelmar.co.za/media/catalog/product/4/3/4359.jpg"
     },
     {
       "id": "gelmar-4360",
@@ -43,7 +46,8 @@
       "lengthMm": 32,
       "packSize": 150,
       "priceZar": 26,
-      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-32mm-150-pieces.html"
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-32mm-150-pieces.html",
+      "imageUrl": "https://www.gelmar.co.za/media/catalog/product/4/3/4360.jpg"
     },
     {
       "id": "gelmar-4372",
@@ -54,7 +58,8 @@
       "lengthMm": 41,
       "packSize": 700,
       "priceZar": 105,
-      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-41mm-700-pieces.html"
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-41mm-700-pieces.html",
+      "imageUrl": "https://www.gelmar.co.za/media/catalog/product/4/3/4372.jpg"
     },
     {
       "id": "gelmar-4361",
@@ -65,7 +70,8 @@
       "lengthMm": 41,
       "packSize": 80,
       "priceZar": 19,
-      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-41mm-80-pieces.html"
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-3-5mm-x-41mm-80-pieces.html",
+      "imageUrl": "https://www.gelmar.co.za/media/catalog/product/4/3/4361.jpg"
     },
     {
       "id": "gelmar-1037",
@@ -76,7 +82,8 @@
       "lengthMm": 32,
       "packSize": 1000,
       "priceZar": 119,
-      "url": "https://www.gelmar.co.za/drywall-screws-phillips-6mm-x-32mm-1000-pieces.html"
+      "url": "https://www.gelmar.co.za/drywall-screws-phillips-6mm-x-32mm-1000-pieces.html",
+      "imageUrl": "https://www.gelmar.co.za/media/catalog/product/1/0/1037.jpg"
     }
   ]
 }

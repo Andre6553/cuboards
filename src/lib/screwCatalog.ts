@@ -11,6 +11,7 @@ export interface ScrewCatalogEntry {
   packSize: number;
   defaultPackPrice: number;
   url?: string;
+  imageUrl?: string;
 }
 
 export const SCREW_CATALOG: ScrewCatalogEntry[] = gelmarRaw.screws.map((s) => ({
@@ -24,6 +25,7 @@ export const SCREW_CATALOG: ScrewCatalogEntry[] = gelmarRaw.screws.map((s) => ({
   packSize: s.packSize,
   defaultPackPrice: s.priceZar,
   url: s.url,
+  imageUrl: s.imageUrl,
 }));
 
 export const GELMAR_SCREWS_SCRAPED_AT = gelmarRaw.scrapedAt;

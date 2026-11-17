@@ -3201,3 +3201,150 @@ fieldset.sub-card:disabled {
     color: var(--border);
   }
 }
+
+.hw-shop-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.hw-shop-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.hw-shop-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
+.hw-shop-list {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hw-shop-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card, #fff);
+}
+
+.hw-shop-row.is-ticked {
+  opacity: 0.55;
+}
+
+.hw-shop-row.is-left {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+}
+
+.hw-shop-check {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  min-height: 3.25rem;
+  cursor: pointer;
+}
+
+.hw-shop-check input {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+}
+
+.hw-shop-thumb {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  object-fit: contain;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.hw-shop-thumb--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(
+    45deg,
+    #f1f5f9,
+    #f1f5f9 6px,
+    #e2e8f0 6px,
+    #e2e8f0 12px
+  );
+}
+
+a.hw-shop-thumb-link {
+  display: inline-flex;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.hw-shop-thumb-search {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hw-shop-qty {
+  flex: 0 0 5.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.hw-shop-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.hw-shop-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.hw-shop-link {
+  font-size: 0.85rem;
+}
+
+.hw-shop-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 0.75rem 0 1rem;
+  background: linear-gradient(to top, var(--bg, #f8fafc) 70%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hw-shop-ok {
+  margin: 0;
+  color: #166534;
+  font-weight: 600;
+}
+
+.hw-shop-left {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.hw-shop-left ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}

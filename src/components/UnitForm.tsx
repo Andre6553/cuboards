@@ -654,7 +654,7 @@ export function UnitForm({
             </label>
             <label className="checkbox-label">
               <input type="checkbox" checked={plinth.feetRequired !== false} onChange={(e) => setPlinth('feetRequired', e.target.checked)} />
-              Plastic feet required
+              Cabinet adjustable feet (Gelmar H98–122 mm)
             </label>
             {plinth.feetRequired !== false && (
               <label>
@@ -930,22 +930,24 @@ export function UnitForm({
                     value={vbp.edgingPattern ?? resolvedEdging.pattern}
                     onChange={(e) => setVisibleBackPanel({ edgingPattern: e.target.value as EdgingPattern })}
                   >
-                    {Object.entries(EDGING_LABELS).filter(([k]) => k !== 'none').map(([k, v]) => (
+                    {Object.entries(EDGING_LABELS).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
                     ))}
                   </select>
                 </label>
-                <label>
-                  Edging type
-                  <select
-                    value={vbp.edgingMaterialId ?? resolvedEdging.edgingMaterialId}
-                    onChange={(e) => setVisibleBackPanel({ edgingMaterialId: e.target.value })}
-                  >
-                    {edgingMaterials.map((e) => (
-                      <option key={e.id} value={e.id}>{e.name} ({e.thickness} mm)</option>
-                    ))}
-                  </select>
-                </label>
+                {(vbp.edgingPattern ?? resolvedEdging.pattern) !== 'none' && (
+                  <label>
+                    Edging type
+                    <select
+                      value={vbp.edgingMaterialId ?? resolvedEdging.edgingMaterialId}
+                      onChange={(e) => setVisibleBackPanel({ edgingMaterialId: e.target.value })}
+                    >
+                      {edgingMaterials.map((e) => (
+                        <option key={e.id} value={e.id}>{e.name} ({e.thickness} mm)</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </div>
               );
             })()}

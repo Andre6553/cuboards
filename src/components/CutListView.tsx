@@ -10,6 +10,9 @@ import type { Unit } from '../types';
 import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS, formatCutListDimensions } from '../lib/edgingCutSize';
 import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
+import { buildHardwareShoppingList } from '../lib/hardwareShopping';
+import { exportHardwareShoppingPdf } from '../lib/hardwareShoppingPdf';
+import { HardwareShoppingView } from './HardwareShoppingView';
 import { QuoteCostSummary, QuoteCostSummaryCompact } from './QuoteCostSummary';
 import { SheetMapView } from './SheetMapView';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from '../lib/sheetLayout';
@@ -195,13 +198,16 @@ function QuoteScopeTable({ units }: { units: Unit[] }) {
   );
 }
 
+type CutListViewMode = CutListPdfMode | 'hardware';
+
 export function CutListView({ job }: Props) {
-  const [mode, setMode] = useState<CutListPdfMode>('full');
+  const [mode, setMode] = useState<CutListViewMode>('full');
   const [factoryOrderSupplier, setFactoryOrderSupplier] = useState<string>('');
   const factory = mode === 'factory';
   const quote = mode === 'quote';
-  const showCutLists = !quote;
-  const showPricingDetail = !factory;
+  const hardware = mode === 'hardware';
+  const showCutLists = !quote && !hardware;
+  const showPricingDetail = !factory && !hardware;
   const showTechnical = mode === 'full';
   const result = generateCutList(job);
   const perUnitSections = useMemo(
@@ -251,13 +257,23 @@ export function CutListView({ job }: Props) {
     <section className="card cutlist-card">
       <div className="cutlist-header">
         <div>
-          <h2>{factory ? 'Factory cut list' : quote ? 'Client quotation' : 'Full cut list'}</h2>
+          <h2>
+            {factory
+              ? 'Factory cut list'
+              : quote
+                ? 'Client quotation'
+                : hardware
+                  ? 'Hardware shopping'
+                  : 'Full cut list'}
+          </h2>
           <p className="hint">
             {factory
               ? 'Grouped by board type + edging tape. Choose a cut house to show only boards you order from them — PDF download follows the same filter.'
               : quote
                 ? 'Client-facing: scope of work and quotation total only — no supply breakdown or cut sizes.'
-                : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
+                : hardware
+                  ? 'Store list: quantity, SKU and supplier. Tick items on your phone as you pick them up, or download a PDF with empty tick boxes.'
+                  : 'Full job sheet: cuts plus hardware, screws, installation, and the quote.'}
           </p>
         </div>
         <div className="cutlist-header-actions">
@@ -268,11 +284,14 @@ export function CutListView({ job }: Props) {
             <button type="button" className={`tab ${quote ? 'active' : ''}`} onClick={() => setMode('quote')}>
               Client quote
             </button>
-            <button type="button" className={`tab ${!factory && !quote ? 'active' : ''}`} onClick={() => setMode('full')}>
+            <button type="button" className={`tab ${!factory && !quote && !hardware ? 'active' : ''}`} onClick={() => setMode('full')}>
               Full
             </button>
+            <button type="button" className={`tab ${hardware ? 'active' : ''}`} onClick={() => setMode('hardware')}>
+              Hardware shopping
+            </button>
           </div>
-          {factory && orderSuppliersOnJob.length > 0 ? (
+          {factory && !hardware && orderSuppliersOnJob.length > 0 ? (
             <label className="factory-order-supplier-filter">
               Send to cut house
               <select
@@ -293,6 +312,12 @@ export function CutListView({ job }: Props) {
             type="button"
             className="btn btn-primary"
             onClick={() => {
+              if (hardware) {
+                void exportHardwareShoppingPdf(job, buildHardwareShoppingList(job, result)).catch(() => {
+                  alert('Could not create PDF. Check your connection and try again.');
+                });
+                return;
+              }
               void exportCutListPdf(job, result, mode, {
                 factoryOrderSupplier: factory ? factoryOrderSupplier || null : null,
               }).catch(() => {
@@ -300,7 +325,9 @@ export function CutListView({ job }: Props) {
               });
             }}
           >
-            Download {factory ? 'factory' : quote ? 'client quote' : 'full'} PDF
+            {hardware
+              ? 'Download shopping PDF'
+              : `Download ${factory ? 'factory' : quote ? 'client quote' : 'full'} PDF`}
             {factory && factoryOrderSupplier ? ` (${factoryOrderSupplier})` : ''}
           </button>
         </div>
@@ -383,6 +410,8 @@ export function CutListView({ job }: Props) {
         <p className="hint">No units on the cut list — set cupboard quantity to 1 or more on at least one unit.</p>
       ) : (
         <>
+          {hardware && <HardwareShoppingView job={job} result={result} />}
+
           {quote && (
             <>
               <QuoteScopeTable units={job.units} />

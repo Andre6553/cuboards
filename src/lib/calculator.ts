@@ -1,4 +1,5 @@
 import { defaultPlinth, EDGING_LABELS, isSpiceCupboard, plinthHasKickplate, showsKickplate } from './constants';
+import { cabinetFootHardwareDescription, cabinetFootHardwareDetail } from './footCatalog';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig } from './spiceCupboardRules';
 import {
   getHingeByIdForJob,
@@ -743,10 +744,10 @@ function calcKitchenPlinth(
     const footQty = plinth.feetPerUnit * mult;
     const pricePerFoot = job.settings.pricePerFoot;
     hardware.push({
-      description: 'Plastic adjustable foot',
+      description: cabinetFootHardwareDescription(),
       qty: footQty,
       unitName: unit.name,
-      detail: `${plinth.feetPerUnit}/cupboard · height adjustable`,
+      detail: cabinetFootHardwareDetail(plinth.feetPerUnit),
       pricePerPair: pricePerFoot,
       subtotal: pricePerFoot * footQty,
     });

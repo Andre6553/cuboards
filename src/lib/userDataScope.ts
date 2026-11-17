@@ -26,6 +26,7 @@ export const userStorageKeys = {
   priceList: () => scopedKey('cuboards_price_list'),
   unitPresets: () => scopedKey('cuboards_unit_presets'),
   gelmarPrices: () => scopedKey('cuboards_gelmar_prices'),
+  hardwareShoppingTicks: () => scopedKey('cuboards_hw_shop_ticks'),
 };
 
 const LEGACY_JOBS = 'cuboards_jobs';

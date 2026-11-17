@@ -44,3 +44,17 @@ export async function fetchProductPrice(url) {
 export function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
+
+/** Prefer the stable catalog file, not Magento's rotating cache hash. */
+export function uncacheGelmarMediaUrl(url) {
+  if (!url) return '';
+  return url.replace(/\/media\/catalog\/product\/cache\/[^/]+\//, '/media/catalog/product/');
+}
+
+export function parseOgImageFromHtml(html) {
+  const raw =
+    html.match(/property="og:image"\s+content="([^"]+)"/)?.[1] ??
+    html.match(/content="([^"]+)"\s+property="og:image"/)?.[1] ??
+    '';
+  return uncacheGelmarMediaUrl(decodeHtml(raw));
+}
