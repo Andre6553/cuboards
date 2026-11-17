@@ -1,6 +1,9 @@
 import { useEffect, useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
 import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorCorner, isFloorUnit, isKitchenBase, isSpiceCupboard, isTallFloor, isWallCorner, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS, usesWallStyleCarcass } from '../lib/constants';
+
+/** Flip to `true` to show the carcass graphic again — component kept, only hidden. */
+const SHOW_CARCASS_PREVIEW = false;
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from '../lib/spiceCupboardRules';
 import {
   applyFloorCornerDefaults,
@@ -538,7 +541,7 @@ export function UnitForm({
           </label>
         </div>
 
-        {!cornerMount && (
+        {SHOW_CARCASS_PREVIEW && !cornerMount && (
           <CupboardViewer
             unit={layoutUnit}
             thickness={settings.thickness}
