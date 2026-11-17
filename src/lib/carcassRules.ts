@@ -37,15 +37,14 @@ export function fillersFollowSideMaterial(carcass: CarcassConfig, materials: Mat
 /**
  * Top filler strips, same rule as a floor unit.
  * Granite / stone → 2 (front + back). Wooden top → 3 (plus centre).
- * Wall mount uses this when the unit is a wall unit or a kitchen base.
- * A bedroom wall unit uses optional side and top fillers instead.
+ * Pure wall units: full Top panel + always 2 fillers (front + back; no countertop type).
+ * Kitchen base on wall mount uses fillers like a floor unit. Bedroom wall uses optional ticks.
  */
 export function topFillerCount(unit: Pick<Unit, 'type' | 'carcass'>): number {
   const mount = unit.carcass.mountType ?? 'floor';
   if (mount === 'floor_corner' || mount === 'wall_corner') return 0;
-  if (mount === 'wall' && unit.type !== 'wall' && unit.type !== 'kitchen_base') {
-    return 0;
-  }
+  if (unit.type === 'wall') return 2;
+  if (mount === 'wall' && unit.type !== 'kitchen_base') return 0;
   return unit.carcass.countertopType === 'wooden' ? 3 : 2;
 }
 

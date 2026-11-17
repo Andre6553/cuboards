@@ -876,6 +876,11 @@
   margin-bottom: 1rem;
 }
 
+.carcass-sides--bottom-only {
+  grid-template-columns: 1fr;
+  max-width: 22rem;
+}
+
 .side-column {
   display: flex;
   flex-direction: column;

@@ -12,10 +12,10 @@ function unit(type: Unit['type'], mount: Unit['carcass']['mountType'], top: Unit
 }
 
 describe('topFillerCount', () => {
-  it('uses floor filler counts on a wall-mounted wall or kitchen base', () => {
+  it('uses fillers on wall units and kitchen wall/floor', () => {
     expect(topFillerCount(unit('wall', 'wall'))).toBe(2);
+    expect(topFillerCount(unit('wall', 'wall', 'wooden'))).toBe(2);
     expect(topFillerCount(unit('kitchen_base', 'wall'))).toBe(2);
-    expect(topFillerCount(unit('wall', 'wall', 'wooden'))).toBe(3);
     expect(topFillerCount(unit('kitchen_base', 'wall', 'wooden'))).toBe(3);
     expect(topFillerCount(unit('kitchen_base', 'floor'))).toBe(2);
     expect(topFillerCount(unit('kitchen_base', 'floor', 'wooden'))).toBe(3);

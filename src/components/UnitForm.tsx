@@ -312,8 +312,11 @@ export function UnitForm({
   const wallCornerSizes = wallCornerMount ? calcWallCornerSizes(unit, settings.thickness) : null;
 
   const isFloor = isFloorUnit(unit);
-  const wallTopFillers = !isFloor && (unit.type === 'wall' || isKitchenBase(unit.type));
+  const isWallUnitType = unit.type === 'wall';
+  /** Kitchen base on wall mount still uses countertop fillers; pure wall units use a top panel. */
+  const wallTopFillers = !isFloor && isKitchenBase(unit.type);
   const showTopFillers = !cornerMount && (isFloor || wallTopFillers);
+  const showCountertopType = showTopFillers;
 
   const defaultMat = materials[0]?.id ?? '';
   const fillerFromSides = fillersFollowSideMaterial(unit.carcass, materials);
@@ -837,18 +840,23 @@ export function UnitForm({
       <CollapsibleSection title="Carcass" variant="nested">
       {!isFloor && (
         <p className="hint">
-          {wallTopFillers ? (
+          {isWallUnitType && !wallCornerMount ? (
             <>
-              Wall unit:{' '}
+              Wall unit: bottom + top panel ({unit.depth} × {unit.width - 2 * settings.thickness} mm) plus 2 top
+              fillers (front + back, filler width × internal W). No kickplate or feet.
+            </>
+          ) : wallTopFillers ? (
+            <>
+              Kitchen base on wall:{' '}
               {unit.carcass.countertopType === 'wooden'
                 ? '3 top fillers (front, back, centre)'
                 : '2 top fillers (front + back)'}
-              , same as a floor unit, and an extra bottom panel ({unit.depth} × {unit.width - 2 * settings.thickness} mm). No kickplate or feet.
+              , same as a floor unit. No kickplate or feet.
             </>
           ) : (
             <>
-              Wall mount: extra bottom panel ({unit.depth} × {unit.width - 2 * settings.thickness} mm), same carcass as a wall unit.
-              Tick side fillers and top fillers below if you want them. No kickplate or feet.
+              Wall mount: same carcass as a wall unit. Tick side fillers and top fillers below if you want them. No
+              kickplate or feet.
             </>
           )}
         </p>
@@ -963,47 +971,77 @@ export function UnitForm({
         Corner blocks: {cornerBlocksPerCupboard(unit, materials)}/cupboard — {cornerBlockUsageDetail(unit, materials)}.
         {' '}No visible sides → none (unless solid melamine backing → +4). One visible → 2/shelf + 1/filler. Both → 4/shelf + 2/filler. Solid backing adds +4.
       </p>
-      <div className="form-grid form-grid-3">
-        <label>
-          Bottom material
-          <MaterialSelect
-            value={unit.carcass.bottomMaterialId}
-            materials={materials}
-            onChange={(v) => onChange({
-              ...unit,
-              carcass: {
-                ...unit.carcass,
-                bottomMaterialId: v,
-                bottomEdgingMaterialId: defaultEdgingForMaterial(v),
-                ...(cornerMount && !unit.carcass.topMaterialId ? { topMaterialId: v } : {}),
-              },
-            })}
-          />
-          {cornerMount && <span className="hint-inline">Fixed panel · no edging</span>}
-        </label>
-        {cornerMount && (
+      <div className={`carcass-sides${cornerMount || isWallUnitType ? '' : ' carcass-sides--bottom-only'}`}>
+        <div className="side-column">
           <label>
-            Top material
+            Bottom material
             <MaterialSelect
-              value={unit.carcass.topMaterialId || unit.carcass.bottomMaterialId}
+              value={unit.carcass.bottomMaterialId}
               materials={materials}
-              onChange={(v) => setCarcass('topMaterialId', v)}
+              onChange={(v) => onChange({
+                ...unit,
+                carcass: {
+                  ...unit.carcass,
+                  bottomMaterialId: v,
+                  bottomEdgingMaterialId: defaultEdgingForMaterial(v),
+                  ...((cornerMount || isWallUnitType) && !unit.carcass.topMaterialId
+                    ? { topMaterialId: v, topEdgingMaterialId: defaultEdgingForMaterial(v) }
+                    : {}),
+                },
+              })}
             />
-            <span className="hint-inline">Fixed panel · no edging</span>
+            {cornerMount && <span className="hint-inline">Fixed panel · no edging</span>}
           </label>
+          {!cornerMount && (
+            <label>
+              Bottom edging type
+              <EdgingTypeSelect
+                value={unit.carcass.bottomEdgingMaterialId}
+                fallbackMaterialId={unit.carcass.bottomMaterialId}
+                materials={materials}
+                edgingMaterials={edgingMaterials}
+                onChange={(v) => setCarcass('bottomEdgingMaterialId', v)}
+              />
+            </label>
+          )}
+        </div>
+        {(cornerMount || isWallUnitType) && (
+          <div className="side-column">
+            <label>
+              Top material
+              <MaterialSelect
+                value={unit.carcass.topMaterialId || unit.carcass.bottomMaterialId}
+                materials={materials}
+                onChange={(v) =>
+                  onChange({
+                    ...unit,
+                    carcass: {
+                      ...unit.carcass,
+                      topMaterialId: v,
+                      topEdgingMaterialId:
+                        unit.carcass.topEdgingMaterialId || defaultEdgingForMaterial(v),
+                    },
+                  })
+                }
+              />
+              {cornerMount && <span className="hint-inline">Fixed panel · no edging</span>}
+            </label>
+            {isWallUnitType && !wallCornerMount && (
+              <label>
+                Top edging type
+                <EdgingTypeSelect
+                  value={unit.carcass.topEdgingMaterialId}
+                  fallbackMaterialId={unit.carcass.topMaterialId || unit.carcass.bottomMaterialId}
+                  materials={materials}
+                  edgingMaterials={edgingMaterials}
+                  onChange={(v) => setCarcass('topEdgingMaterialId', v)}
+                />
+              </label>
+            )}
+          </div>
         )}
-        {!cornerMount && (
-          <label>
-            Bottom edging type
-            <EdgingTypeSelect
-              value={unit.carcass.bottomEdgingMaterialId}
-              fallbackMaterialId={unit.carcass.bottomMaterialId}
-              materials={materials}
-              edgingMaterials={edgingMaterials}
-              onChange={(v) => setCarcass('bottomEdgingMaterialId', v)}
-            />
-          </label>
-        )}
+      </div>
+      <div className="form-grid form-grid-3">
         {cornerMount && (
           <label>
             Shelf material
@@ -1024,7 +1062,7 @@ export function UnitForm({
             </span>
           </label>
         )}
-        {showTopFillers && (
+        {showCountertopType && (
           <label>
             Countertop type
             <select value={unit.carcass.countertopType ?? 'granite'} onChange={(e) => setCarcass('countertopType', e.target.value as Unit['carcass']['countertopType'])}>

@@ -289,8 +289,10 @@ export interface CarcassConfig {
   rightEdgingPattern?: EdgingPattern;
   bottomMaterialId: string;
   bottomEdgingMaterialId: string;
-  /** Corner units (floor/wall): top panel board. Empty = same as bottom. */
+  /** Top panel board (wall units + corner units). Empty = same as bottom. */
   topMaterialId?: string;
+  /** Top panel edging tape. Empty = match top/bottom board default. */
+  topEdgingMaterialId?: string;
   shelfMaterialId: string;
   shelfEdgingMaterialId: string;
   fillerMaterialId: string;

@@ -737,8 +737,12 @@ function calcCarcass(
   addEdgedPiece('Bottom', c.bottomMaterialId, D, internalW, 1, 'none', '', '1_long', c.bottomEdgingMaterialId);
 
   const isWall = c.mountType === 'wall';
-  if (isWall) {
-    addEdgedPiece('Extra bottom (wall)', c.bottomMaterialId, D, internalW, 1, 'none', 'Wall unit — second bottom panel', '1_long', c.bottomEdgingMaterialId);
+
+  // Pure wall units: full top panel (material + edging) + 2 top fillers via topFillerCount.
+  if (unit.type === 'wall' && isWall) {
+    const topMat = c.topMaterialId || c.bottomMaterialId;
+    const topEdge = c.topEdgingMaterialId || c.bottomEdgingMaterialId;
+    addEdgedPiece('Top', topMat, D, internalW, 1, 'none', 'Wall unit top panel', '1_long', topEdge);
   }
 
   const shelfCount = isSpiceCupboard(unit) ? 0 : c.shelfQty;

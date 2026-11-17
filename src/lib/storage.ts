@@ -308,6 +308,13 @@ export function migrateJob(job: Job): Job {
           leftEdgingMaterialId: carcass.leftEdgingMaterialId ?? leftMat?.edgingMaterialId ?? defaultEdgingId,
           rightEdgingMaterialId: carcass.rightEdgingMaterialId ?? rightMat?.edgingMaterialId ?? defaultEdgingId,
           bottomEdgingMaterialId: carcass.bottomEdgingMaterialId ?? bottomMat?.edgingMaterialId ?? defaultEdgingId,
+          topMaterialId: carcass.topMaterialId ?? carcass.bottomMaterialId ?? defaultMat,
+          topEdgingMaterialId:
+            carcass.topEdgingMaterialId ??
+            (job.materials ?? []).find((m) => m.id === (carcass.topMaterialId ?? carcass.bottomMaterialId ?? defaultMat))
+              ?.edgingMaterialId ??
+            bottomMat?.edgingMaterialId ??
+            defaultEdgingId,
           shelfEdgingMaterialId: carcass.shelfEdgingMaterialId ?? shelfMat?.edgingMaterialId ?? defaultEdgingId,
           fillerEdgingMaterialId: fillerEdgingDefault,
         },
