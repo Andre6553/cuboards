@@ -1,4 +1,5 @@
 import type { CarcassConfig, Material, Unit } from '../types';
+import { usesWallStyleCarcass } from './constants';
 
 export {
   resolveBedroomWallSideFillerEdging,
@@ -33,13 +34,13 @@ export function fillersFollowSideMaterial(_carcass: CarcassConfig, _materials: M
 /**
  * Top filler strips, same rule as a floor unit.
  * Granite / stone → 2 (front + back). Wooden top → 3 (plus centre).
- * Pure wall units: full Top panel + always 2 fillers (front + back; no countertop type).
+ * Wall-style carcass (pure wall + kitchen tall floor): always 2 fillers (no countertop type).
  * Kitchen base on wall mount uses fillers like a floor unit. Bedroom wall uses optional ticks.
  */
 export function topFillerCount(unit: Pick<Unit, 'type' | 'carcass'>): number {
   const mount = unit.carcass.mountType ?? 'floor';
   if (mount === 'floor_corner' || mount === 'wall_corner') return 0;
-  if (unit.type === 'wall') return 2;
+  if (usesWallStyleCarcass(unit)) return 2;
   if (mount === 'wall' && unit.type !== 'kitchen_base') return 0;
   return unit.carcass.countertopType === 'wooden' ? 3 : 2;
 }

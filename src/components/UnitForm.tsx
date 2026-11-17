@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
-import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorCorner, isFloorUnit, isKitchenBase, isSpiceCupboard, isWallCorner, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS } from '../lib/constants';
+import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorCorner, isFloorUnit, isKitchenBase, isSpiceCupboard, isTallFloor, isWallCorner, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS, usesWallStyleCarcass } from '../lib/constants';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from '../lib/spiceCupboardRules';
 import {
   applyFloorCornerDefaults,
@@ -329,11 +329,13 @@ export function UnitForm({
   const wallCornerSizes = wallCornerMount ? calcWallCornerSizes(unit, settings.thickness) : null;
 
   const isFloor = isFloorUnit(unit);
-  const isWallUnitType = unit.type === 'wall';
-  /** Kitchen base on wall mount still uses countertop fillers; pure wall units use a top panel. */
+  const tallFloorMount = isTallFloor(unit);
+  /** Wall-style: Top panel + 2 fillers (pure wall or kitchen tall floor). */
+  const wallStyleCarcass = usesWallStyleCarcass(unit);
+  /** Kitchen base on wall mount still uses countertop fillers; pure wall / tall floor use a top panel. */
   const wallTopFillers = !isFloor && isKitchenBase(unit.type);
   const showTopFillers = !cornerMount && (isFloor || wallTopFillers);
-  const showCountertopType = showTopFillers;
+  const showCountertopType = showTopFillers && !tallFloorMount;
 
   const defaultMat = materials[0]?.id ?? '';
   const effectiveFillerId = resolveFillerMaterial(unit.carcass, materials);
@@ -854,12 +856,13 @@ export function UnitForm({
       })()}
 
       <CollapsibleSection title="Carcass" variant="nested">
-      {!isFloor && (
+      {(tallFloorMount || !isFloor) && (
         <p className="hint">
-          {isWallUnitType && !wallCornerMount ? (
+          {wallStyleCarcass ? (
             <>
-              Wall unit: bottom + top panel ({unit.depth} × {unit.width - 2 * settings.thickness} mm) plus 2 top
-              fillers (front + back, filler width × internal W). No kickplate or feet.
+              {tallFloorMount ? 'Tall Floor' : 'Wall unit'}: bottom + top panel (
+              {unit.depth} × {unit.width - 2 * settings.thickness} mm) plus 2 top fillers (front + back, filler width ×
+              internal W).{tallFloorMount ? ' Includes kitchen plinth (kickplate & feet).' : ' No kickplate or feet.'}
             </>
           ) : wallTopFillers ? (
             <>
@@ -987,7 +990,7 @@ export function UnitForm({
         Corner blocks: {cornerBlocksPerCupboard(unit, materials)}/cupboard — {cornerBlockUsageDetail(unit, materials)}.
         {' '}No visible sides → none (unless solid melamine backing → +4). One visible → 2/shelf + 1/filler. Both → 4/shelf + 2/filler. Solid backing adds +4.
       </p>
-      <div className={`carcass-sides${cornerMount || isWallUnitType ? '' : ' carcass-sides--bottom-only'}`}>
+      <div className={`carcass-sides${cornerMount || wallStyleCarcass ? '' : ' carcass-sides--bottom-only'}`}>
         <div className="side-column">
           <label>
             Bottom material
@@ -1000,7 +1003,7 @@ export function UnitForm({
                   ...unit.carcass,
                   bottomMaterialId: v,
                   bottomEdgingMaterialId: defaultEdgingForMaterial(v),
-                  ...((cornerMount || isWallUnitType) && !unit.carcass.topMaterialId
+                  ...((cornerMount || wallStyleCarcass) && !unit.carcass.topMaterialId
                     ? { topMaterialId: v, topEdgingMaterialId: defaultEdgingForMaterial(v) }
                     : {}),
                 },
@@ -1021,7 +1024,7 @@ export function UnitForm({
             </label>
           )}
         </div>
-        {(cornerMount || isWallUnitType) && (
+        {(cornerMount || wallStyleCarcass) && (
           <div className="side-column">
             <label>
               Top material
@@ -1042,7 +1045,7 @@ export function UnitForm({
               />
               {cornerMount && <span className="hint-inline">Fixed panel · no edging</span>}
             </label>
-            {isWallUnitType && !wallCornerMount && (
+            {wallStyleCarcass && (
               <label>
                 Top edging type
                 <EdgingTypeSelect

@@ -163,7 +163,7 @@ export function isKitchenBase(type: UnitType): boolean {
   return type === 'kitchen_base';
 }
 
-/** Kickplate and feet: kitchen floor (including spice), and every bedroom cupboard. */
+/** Kickplate and feet: kitchen floor (including spice / tall floor), and every bedroom cupboard. */
 export function showsKickplate(unit: { type: UnitType; carcass?: { mountType?: MountType } }): boolean {
   if (unit.type === 'bedroom') return true;
   return isKitchenBase(unit.type) && isFloorUnit(unit);
@@ -172,6 +172,7 @@ export function showsKickplate(unit: { type: UnitType; carcass?: { mountType?: M
 export const MOUNT_TYPE_LABELS = {
   floor: 'Floor unit',
   floor_corner: 'Floor corner',
+  tall_floor: 'Tall Floor unit',
   wall: 'Wall unit',
   wall_corner: 'Wall corner',
   spice: 'Spice cupboard',
@@ -180,7 +181,7 @@ export const MOUNT_TYPE_LABELS = {
 /** Mount choices shown per unit type. */
 export function mountTypesForUnitType(type: UnitType): MountType[] {
   if (type === 'wall') return ['wall', 'wall_corner'];
-  if (type === 'kitchen_base') return ['floor', 'floor_corner', 'spice', 'wall'];
+  if (type === 'kitchen_base') return ['floor', 'floor_corner', 'tall_floor', 'spice', 'wall'];
   return ['floor', 'wall'];
 }
 
@@ -192,13 +193,27 @@ export function isFloorCorner(unit: { type?: UnitType; carcass?: { mountType?: M
   return unit.type === 'kitchen_base' && unit.carcass?.mountType === 'floor_corner';
 }
 
+/** Kitchen base tall cupboard: wall-style carcass (Top + 2 fillers) standing on a plinth. */
+export function isTallFloor(unit: { type?: UnitType; carcass?: { mountType?: MountType } }): boolean {
+  return unit.type === 'kitchen_base' && unit.carcass?.mountType === 'tall_floor';
+}
+
+/**
+ * Wall-style carcass: full Top panel + always 2 top fillers (no countertop type).
+ * Pure wall units and kitchen tall floor.
+ */
+export function usesWallStyleCarcass(unit: { type?: UnitType; carcass?: { mountType?: MountType } }): boolean {
+  if (isTallFloor(unit)) return true;
+  return unit.type === 'wall' && (unit.carcass?.mountType ?? 'wall') === 'wall';
+}
+
 export function isWallCorner(unit: { type?: UnitType; carcass?: { mountType?: MountType } }): boolean {
   return unit.type === 'wall' && unit.carcass?.mountType === 'wall_corner';
 }
 
 export function isFloorUnit(unit: { carcass?: { mountType?: MountType } }): boolean {
   const m = unit.carcass?.mountType ?? 'floor';
-  return m === 'floor' || m === 'spice' || m === 'floor_corner';
+  return m === 'floor' || m === 'spice' || m === 'floor_corner' || m === 'tall_floor';
 }
 
 export function isWallUnit(unit: { carcass?: { mountType?: MountType } }): boolean {
@@ -206,10 +221,10 @@ export function isWallUnit(unit: { carcass?: { mountType?: MountType } }): boole
   return m === 'wall' || m === 'wall_corner';
 }
 
-/** Old jobs: spice / floor corner only on kitchen base; wall corner only on wall. */
+/** Old jobs: spice / floor corner / tall floor only on kitchen base; wall corner only on wall. */
 export function normalizeMountType(type: UnitType, mountType: MountType | undefined): MountType {
   const m = mountType ?? (type === 'wall' ? 'wall' : 'floor');
-  if ((m === 'spice' || m === 'floor_corner') && type !== 'kitchen_base') {
+  if ((m === 'spice' || m === 'floor_corner' || m === 'tall_floor') && type !== 'kitchen_base') {
     return type === 'wall' ? 'wall' : 'floor';
   }
   if (m === 'wall_corner' && type !== 'wall') return type === 'kitchen_base' ? 'floor' : 'floor';

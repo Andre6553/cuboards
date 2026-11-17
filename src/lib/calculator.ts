@@ -6,6 +6,7 @@ import {
   isWallCorner,
   plinthHasKickplate,
   showsKickplate,
+  usesWallStyleCarcass,
 } from './constants';
 import { cabinetFootHardwareDescription, cabinetFootHardwareDetail } from './footCatalog';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig } from './spiceCupboardRules';
@@ -736,13 +737,11 @@ function calcCarcass(
 
   addEdgedPiece('Bottom', c.bottomMaterialId, D, internalW, 1, 'none', '', '1_long', c.bottomEdgingMaterialId);
 
-  const isWall = c.mountType === 'wall';
-
-  // Pure wall units: full top panel (material + edging) + 2 top fillers via topFillerCount.
-  if (unit.type === 'wall' && isWall) {
+  // Wall-style carcass (pure wall + kitchen tall floor): full top panel + 2 fillers via topFillerCount.
+  if (usesWallStyleCarcass(unit)) {
     const topMat = c.topMaterialId || c.bottomMaterialId;
     const topEdge = c.topEdgingMaterialId || c.bottomEdgingMaterialId;
-    addEdgedPiece('Top', topMat, D, internalW, 1, 'none', 'Wall unit top panel', '1_long', topEdge);
+    addEdgedPiece('Top', topMat, D, internalW, 1, 'none', 'Top panel', '1_long', topEdge);
   }
 
   const shelfCount = isSpiceCupboard(unit) ? 0 : c.shelfQty;
