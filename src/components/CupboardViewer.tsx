@@ -1,8 +1,26 @@
 import { useEffect, useState } from 'react';
-import { isSpiceCupboard, plinthHasKickplate, showsKickplate } from '../lib/constants';
+import {
+  isFloorCorner,
+  isSpiceCupboard,
+  isTallFloor,
+  isWallCorner,
+  plinthHasKickplate,
+  showsKickplate,
+} from '../lib/constants';
 import type { Material, Unit } from '../types';
 import { ReferenceGraphicView } from './graphics/ReferenceGraphicView';
-import { GRAPHIC_VIEWS, SHELF_VARIANTS, SPICE_VIEW_HINT, VIEW_HINTS, type GraphicView, type ShelfVariant } from './graphics/types';
+import {
+  FLOOR_CORNER_VIEW_HINT,
+  GRAPHIC_VIEWS,
+  SHELF_VARIANTS,
+  SPICE_VIEW_HINT,
+  TALL_VIEW_HINT,
+  VIEW_HINTS,
+  WALL_CORNER_VIEW_HINT,
+  WALL_VIEW_HINT,
+  type GraphicView,
+  type ShelfVariant,
+} from './graphics/types';
 
 interface Props {
   unit: Unit;
@@ -12,20 +30,47 @@ interface Props {
   onShelfQtyChange: (qty: number) => void;
 }
 
+function isWallMountSelected(unit: Unit): boolean {
+  return (unit.carcass?.mountType ?? (unit.type === 'wall' ? 'wall' : 'floor')) === 'wall';
+}
+
+function resolvePreviewVariant(unit: Unit): ShelfVariant {
+  if (isSpiceCupboard(unit)) return 'spice';
+  if (isFloorCorner(unit)) return 'floor-corner';
+  if (isWallCorner(unit)) return 'wall-corner';
+  if (isTallFloor(unit)) return 'tall';
+  if (isWallMountSelected(unit)) return 'wall';
+  return (unit.carcass.shelfQty ?? 0) > 0 ? 'with-shelf' : 'no-shelf';
+}
+
+function previewHint(unit: Unit, view: GraphicView, spiceOn3d: boolean): string {
+  if (spiceOn3d) return SPICE_VIEW_HINT;
+  if (isFloorCorner(unit)) return FLOOR_CORNER_VIEW_HINT;
+  if (isWallCorner(unit)) return WALL_CORNER_VIEW_HINT;
+  if (isTallFloor(unit)) return TALL_VIEW_HINT;
+  if (isWallMountSelected(unit)) return WALL_VIEW_HINT;
+  return VIEW_HINTS[view];
+}
+
 export function CupboardViewer({ unit, thickness, onShelfQtyChange }: Props) {
   const [view, setView] = useState<GraphicView>('front');
-  const spiceMount = isSpiceCupboard(unit);
+  const previewVariant = resolvePreviewVariant(unit);
   const shelfVariant: ShelfVariant = (unit.carcass.shelfQty ?? 0) > 0 ? 'with-shelf' : 'no-shelf';
+  const fixedMountPhoto =
+    previewVariant === 'spice' ||
+    previewVariant === 'wall' ||
+    previewVariant === 'tall' ||
+    previewVariant === 'floor-corner' ||
+    previewVariant === 'wall-corner';
   const kh =
     showsKickplate(unit) && unit.plinth && plinthHasKickplate(unit.plinth)
       ? unit.plinth.kickplateHeight
       : 0;
-  const previewVariant: ShelfVariant = spiceMount ? 'spice' : shelfVariant;
-  const showingSpice = spiceMount && view === '3d';
+  const showingSpice = previewVariant === 'spice' && view === '3d';
 
   useEffect(() => {
-    if (spiceMount) setView('3d');
-  }, [spiceMount, unit.id]);
+    if (fixedMountPhoto) setView('3d');
+  }, [fixedMountPhoto, unit.id, previewVariant]);
 
   return (
     <div className="cupboard-viewer">
@@ -46,7 +91,7 @@ export function CupboardViewer({ unit, thickness, onShelfQtyChange }: Props) {
         </div>
       </div>
 
-      {!spiceMount && (
+      {!fixedMountPhoto && (
         <div className="viewer-shelf-bar">
           <span className="viewer-shelf-label">Carcass graphic</span>
           <div className="view-tabs view-tabs-compact">
@@ -78,7 +123,7 @@ export function CupboardViewer({ unit, thickness, onShelfQtyChange }: Props) {
           {unit.width} W × {unit.height} H × {unit.depth} D mm · {thickness}mm board
           {kh > 0 ? ` · ${kh}mm kick` : ''}
         </span>
-        <span className="viewer-ref-hint">{showingSpice ? SPICE_VIEW_HINT : VIEW_HINTS[view]}</span>
+        <span className="viewer-ref-hint">{previewHint(unit, view, showingSpice)}</span>
       </div>
     </div>
   );

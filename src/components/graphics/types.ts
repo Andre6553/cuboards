@@ -15,7 +15,14 @@ export interface GraphicProps {
   thickness: number;
 }
 
-export type ShelfVariant = 'no-shelf' | 'with-shelf' | 'spice';
+export type ShelfVariant =
+  | 'no-shelf'
+  | 'with-shelf'
+  | 'spice'
+  | 'wall'
+  | 'tall'
+  | 'floor-corner'
+  | 'wall-corner';
 
 export const SHELF_VARIANTS: { id: ShelfVariant; label: string }[] = [
   { id: 'no-shelf', label: 'No shelf' },
@@ -23,21 +30,26 @@ export const SHELF_VARIANTS: { id: ShelfVariant; label: string }[] = [
 ];
 
 /** Shown on the 3D tab when the spice cupboard graphic is selected. */
-export const SPICE_CUPBOARD_3D = '/graphics/spice-cupboard-3d.png';
+export const SPICE_CUPBOARD_3D = '/graphics/spice.jpg';
 
-/** Reference PNG for view + shelf variant. Spice cupboard only has a 3D drawing. */
+/** Photoreal carcass references (same photo for Front/Left/Right/3D until view-specific art exists). */
+export const CARCASS_NO_SHELF_3D = '/graphics/no_Shelf.jpg';
+export const CARCASS_WITH_SHELF_3D = '/graphics/with_Shelf.jpg';
+export const WALL_MOUNT_3D = '/graphics/wall.jpg';
+export const TALL_FLOOR_3D = '/graphics/tall.jpg';
+export const FLOOR_CORNER_3D = '/graphics/corner_floor.jpg';
+export const WALL_CORNER_3D = '/graphics/corner_wall.jpg';
+
+/** Reference image for view + shelf / mount variant. Mount-specific photos ignore shelf toggles. */
 export function getReferenceImage(view: GraphicView, variant: ShelfVariant): string | null {
   if (variant === 'spice') {
     return view === '3d' ? SPICE_CUPBOARD_3D : null;
   }
-  const withShelf = variant === 'with-shelf';
-  const map: Record<GraphicView, [string, string]> = {
-    front: ['/graphics/front-carcass.png', '/graphics/front-carcass-with-shelf.png'],
-    left: ['/graphics/left-carcass-no-shelf.png', '/graphics/left-carcass-with-shelf.png'],
-    right: ['/graphics/right-carcass-no-shelf.png', '/graphics/right-carcass-with-shelf.png'],
-    '3d': ['/graphics/iso-no-shelf.png', '/graphics/iso-with-shelf.png'],
-  };
-  return map[view][withShelf ? 1 : 0];
+  if (variant === 'wall') return WALL_MOUNT_3D;
+  if (variant === 'tall') return TALL_FLOOR_3D;
+  if (variant === 'floor-corner') return FLOOR_CORNER_3D;
+  if (variant === 'wall-corner') return WALL_CORNER_3D;
+  return variant === 'with-shelf' ? CARCASS_WITH_SHELF_3D : CARCASS_NO_SHELF_3D;
 }
 
 export const VIEW_HINTS: Record<GraphicView, string> = {
@@ -48,3 +60,7 @@ export const VIEW_HINTS: Record<GraphicView, string> = {
 };
 
 export const SPICE_VIEW_HINT = 'Spice cupboard mount — 3D reference. Cut sizes come next.';
+export const WALL_VIEW_HINT = 'Wall mount — 3D reference (full top, no floor kickplate).';
+export const TALL_VIEW_HINT = 'Tall floor unit — wall-style carcass with plinth.';
+export const FLOOR_CORNER_VIEW_HINT = 'Floor corner — fixed L-shape cut sizes.';
+export const WALL_CORNER_VIEW_HINT = 'Wall corner — fixed L-shape cut sizes.';

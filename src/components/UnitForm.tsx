@@ -103,7 +103,7 @@ import { NumberInput } from './NumberInput';
 import type { DoorConfig, DoorGaps, DrawerConfig, DrawerGaps, EdgingMaterial, EdgingPattern, Job, Material, Unit } from '../types';
 
 /** Flip to `true` to show the carcass graphic again — component kept, only hidden. */
-const SHOW_CARCASS_PREVIEW = false;
+const SHOW_CARCASS_PREVIEW = true;
 
 interface Props {
   job: Job;
@@ -573,7 +573,7 @@ export function UnitForm({
           </label>
         </div>
 
-        {SHOW_CARCASS_PREVIEW && !cornerMount && (
+        {SHOW_CARCASS_PREVIEW && (
           <CupboardViewer
             unit={layoutUnit}
             thickness={settings.thickness}
