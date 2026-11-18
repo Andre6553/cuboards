@@ -2448,6 +2448,84 @@ fieldset.sub-card:disabled {
   margin-top: 0.5rem;
 }
 
+.sheet-map-colour-legend {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.sheet-map-colour-legend-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.sheet-map-colour-legend-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sheet-map-colour-legend-list li {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #334155;
+}
+
+.sheet-map-swatch {
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.05rem;
+  margin-top: 0.15rem;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.sheet-map-swatch--part {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.sheet-map-swatch--offcut {
+  background: #fef3c7;
+  border-color: #d97706;
+  border-style: dashed;
+}
+
+.sheet-map-swatch--paid {
+  background: #d1fae5;
+  border-color: #059669;
+  border-style: dashed;
+}
+
+.sheet-map-swatch--unpaid {
+  background: #fafafa;
+  border-color: #94a3b8;
+}
+
+.sheet-map-swatch--cuts {
+  background: repeating-linear-gradient(
+    -45deg,
+    #fee2e2,
+    #fee2e2 3px,
+    #dc2626 3px,
+    #dc2626 5px
+  );
+  border-color: #dc2626;
+}
+
 .sheet-map-material {
   margin: 0;
 }
@@ -2788,11 +2866,11 @@ fieldset.sub-card:disabled {
   flex-shrink: 0;
 }
 
-.sheet-map-lightbox-footer > .btn:first-child {
+.sheet-map-lightbox-footer > .btn.btn-secondary:first-of-type {
   justify-self: start;
 }
 
-.sheet-map-lightbox-footer > .btn:last-child {
+.sheet-map-lightbox-footer > .btn.btn-secondary:last-of-type {
   justify-self: end;
 }
 
@@ -2800,8 +2878,15 @@ fieldset.sub-card:disabled {
   justify-self: center;
 }
 
+.sheet-map-lightbox-footer .sheet-map-lightbox-legend,
 .sheet-map-lightbox-footer .sheet-map-lightbox-foot-hint {
   grid-column: 1 / -1;
+}
+
+.sheet-map-lightbox-legend {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
 }
 
 .sheet-map-lightbox-foot-hint {
@@ -2833,8 +2918,8 @@ fieldset.sub-card:disabled {
     padding: 0.5rem 0.65rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .sheet-map-lightbox-footer > .btn:first-child,
-  .sheet-map-lightbox-footer > .btn:last-child {
+  .sheet-map-lightbox-footer > .btn.btn-secondary:first-of-type,
+  .sheet-map-lightbox-footer > .btn.btn-secondary:last-of-type {
     justify-self: stretch;
   }
 

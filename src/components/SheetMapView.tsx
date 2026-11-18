@@ -355,6 +355,9 @@ function SheetMapLightbox({
         </div>
 
         <footer className="sheet-map-lightbox-footer">
+          <p className="sheet-map-lightbox-legend hint">
+            Blue = parts (hatched = grain locked) · Amber = offcuts · Green = paying (Buy as) · Red dashes = saw lines
+          </p>
           <button type="button" className="btn btn-secondary btn-sm" onClick={goPrev} disabled={!hasPrev}>
             ← Previous
           </button>
@@ -380,6 +383,50 @@ function SheetMapLightbox({
   );
 
   return createPortal(lightbox, document.body);
+}
+
+function SheetMapColourLegend() {
+  return (
+    <div className="sheet-map-colour-legend" aria-label="Sheet map colour key">
+      <p className="sheet-map-colour-legend-title">Colour key</p>
+      <ul className="sheet-map-colour-legend-list">
+        <li>
+          <span className="sheet-map-swatch sheet-map-swatch--part" aria-hidden="true" />
+          <span>
+            <strong>Blue parts</strong> — panels you cut. Solid = no grain lock (can rotate). Hatched = grain locked
+            (must stay along sheet length →).
+          </span>
+        </li>
+        <li>
+          <span className="sheet-map-swatch sheet-map-swatch--offcut" aria-hidden="true" />
+          <span>
+            <strong>Amber areas</strong> — keeper offcuts (named e.g. Offcut 1 · 1200 × 450). Leftover after nesting,
+            about 50 mm+ both ways.
+          </span>
+        </li>
+        <li>
+          <span className="sheet-map-swatch sheet-map-swatch--paid" aria-hidden="true" />
+          <span>
+            <strong>Green area</strong> — what you <strong>pay for</strong> on that sheet (Buy as ¼ / ⅓ / ½ / full).
+            Matches the quote sheet step.
+          </span>
+        </li>
+        <li>
+          <span className="sheet-map-swatch sheet-map-swatch--unpaid" aria-hidden="true" />
+          <span>
+            <strong>White / light grey</strong> outside green — rest of the physical sheet you are not billed for on
+            that map.
+          </span>
+        </li>
+        <li>
+          <span className="sheet-map-swatch sheet-map-swatch--cuts" aria-hidden="true" />
+          <span>
+            <strong>Red dashed lines</strong> — panel-saw rip / crosscut guides (not material).
+          </span>
+        </li>
+      </ul>
+    </div>
+  );
 }
 
 interface Props {
@@ -413,6 +460,7 @@ export function SheetMapView({ groups }: Props) {
   return (
     <>
       <div className="sheet-map-view">
+        <SheetMapColourLegend />
         {groups.map((group) => (
           <div key={group.materialId} className="sheet-map-material">
             <h4 className="subsection-title">{group.materialName}</h4>
