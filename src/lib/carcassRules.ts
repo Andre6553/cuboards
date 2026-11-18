@@ -87,11 +87,21 @@ export function bedroomWallFillerPieces(unit: Pick<Unit, 'type' | 'width' | 'hei
   };
 }
 
-/** Melamine back panel sits inside carcass: W−2T × (H−T). */
-export function melamineBackingSize(width: number, height: number, thickness: number) {
+/**
+ * Melamine back panel sits inside carcass.
+ * Default floor/wall: W−2T × (H−T).
+ * Tall floor: W−2T × (H−2T) — grain runs along height (length).
+ */
+export function melamineBackingSize(
+  width: number,
+  height: number,
+  thickness: number,
+  opts?: { heightClearances?: 1 | 2 },
+) {
+  const heightClearances = opts?.heightClearances ?? 1;
   return {
-    width: width - 2 * thickness,
-    height: height - thickness,
+    width: Math.max(0, width - 2 * thickness),
+    height: Math.max(0, height - heightClearances * thickness),
   };
 }
 

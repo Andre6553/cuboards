@@ -3,6 +3,7 @@ import {
   EDGING_LABELS,
   isFloorCorner,
   isSpiceCupboard,
+  isTallFloor,
   isWallCorner,
   plinthHasKickplate,
   showsKickplate,
@@ -851,15 +852,27 @@ function calcCarcass(
 
   if (backingType === 'melamine') {
     const backMatId = c.backingMaterialId || c.bottomMaterialId;
-    const { width: backW, height: backH } = melamineBackingSize(W, H, T);
+    const tallFloorBack = isTallFloor(unit);
+    const { width: backW, height: backH } = melamineBackingSize(W, H, T, {
+      heightClearances: tallFloorBack ? 2 : 1,
+    });
+    const backHasGrain = materialHasGrain(job.materials, backMatId);
     addPiece(
       'Carcass back (melamine)',
       backMatId,
       backW,
       backH,
       1,
+      tallFloorBack && backHasGrain ? 'vertical' : 'none',
+      tallFloorBack
+        ? joinNotes(
+            `Inside carcass · W−2×${T} × H−2×${T} mm`,
+            backHasGrain ? 'Grain along height' : undefined,
+          )
+        : `Inside carcass · W−2×${T} × H−${T} mm`,
       'none',
-      `Inside carcass · W−2×${T} × H−${T} mm`,
+      undefined,
+      'length',
     );
   } else if (backingType === 'masonite') {
     const { width: backW, height: backH } = masoniteBackingSize(W, H);

@@ -3,6 +3,7 @@ import type { Unit } from '../types';
 import {
   bedroomWallFillerPieces,
   carcassShelfSize,
+  melamineBackingSize,
   resolveBedroomWallSideFillerEdging,
   topFillerCount,
 } from './carcassRules';
@@ -76,5 +77,15 @@ describe('carcassShelfSize', () => {
     expect(carcassShelfSize(550, 568, 16, 'masonite')).toEqual({ depth: 550, width: 568 });
     expect(carcassShelfSize(550, 568, 16, 'none')).toEqual({ depth: 550, width: 568 });
     expect(carcassShelfSize(550, 568, 16, 'melamine')).toEqual({ depth: 534, width: 568 });
+  });
+});
+
+describe('melamineBackingSize', () => {
+  it('uses H−T by default and H−2T for tall floor', () => {
+    expect(melamineBackingSize(600, 2315, 16)).toEqual({ width: 568, height: 2299 });
+    expect(melamineBackingSize(600, 2315, 16, { heightClearances: 2 })).toEqual({
+      width: 568,
+      height: 2283,
+    });
   });
 });
