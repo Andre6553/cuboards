@@ -1,6 +1,10 @@
 import jsPDF from 'jspdf';
 import type { CutListResult, CutPiece, Job } from '../types';
-import { filterPiecesForOrderSupplier } from './orderSupplier';
+import {
+  filterPiecesForOrderSupplier,
+  filterSheetMapGroupsForOrderSupplier,
+} from './orderSupplier';
+import { appendSheetMapsToPdf } from './sheetMapPdf';
 import {
   buildTimbercityFormPages,
   timbercityPageLabel,
@@ -232,6 +236,16 @@ export async function exportTimbercityCutListPdf(
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   pages.forEach((page, i) => drawTimbercityPage(doc, page, i === 0));
+
+  // Cut preview (sheet maps) after the filled Timbercity forms — same filter as the forms.
+  const sheetMaps = supplier
+    ? filterSheetMapGroupsForOrderSupplier(job, result.sheetMaps, supplier, result.pieces)
+    : result.sheetMaps;
+  if (sheetMaps.length > 0) {
+    const margin = 12;
+    doc.addPage();
+    await appendSheetMapsToPdf(doc, margin, margin, sheetMaps);
+  }
 
   const slug = slugify(job.client.ref || job.client.name || 'job') || 'job';
   const supplierSlug = supplier ? `-${slugify(supplier)}` : '';

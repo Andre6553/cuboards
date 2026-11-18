@@ -30,6 +30,7 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-11-18:** Timbercity PDF appends **visual sheet maps** (cut preview) after the form pages; same cut-house filter as the forms. Page No on forms is `n/total` across form pages only.
 - **2026-11-18:** Client details → **Installer / business** (name, phone, email). Timbercity form Customer Name / Phone use installer (not client). Included in My default prices. Delivery address / job ref stay the client’s. No tape → Edging Type **NO EDGING**.
 - **2026-11-18:** Factory cut list format switch: **Cuboards** (existing table/PDF) or **Timbercity** (Client Cutting List view + PDF). Timbercity: Finished Size, one form per board + edging, Grain Y/N, Length = grain axis, Edge Length/Width as `1 Long` / `2 Short`, 23 rows per page.
 - **2026-11-18:** Plastic kickplate **buy rounding**: quote / cost / PDF bill **whole 3 m strips** only (`ceil(needed÷3)×3`). Unit table shows needed metres; **Buy (3 m strips)** groups by height and rounds up (e.g. 0.90 m → 1×3 m; 17.89 m → 6×3 m; 3.5 m → 2×3 m — not 1.5 strips).
