@@ -9,6 +9,8 @@ interface Props extends GraphicProps {
 
 function altForVariant(view: string, shelfVariant: ShelfVariant): string {
   switch (shelfVariant) {
+    case 'bedroom':
+      return 'Bedroom cupboard';
     case 'spice':
       return 'Spice cupboard 3D';
     case 'tall':
@@ -27,6 +29,7 @@ function altForVariant(view: string, shelfVariant: ShelfVariant): string {
 /** Displays the installer's reference photo for the selected view and shelf / mount variant. */
 export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Props) {
   const src = getReferenceImage(view, shelfVariant);
+  const bedroom = shelfVariant === 'bedroom';
   const spice = shelfVariant === 'spice';
   const wall = shelfVariant === 'wall';
   const tall = shelfVariant === 'tall';
@@ -56,6 +59,7 @@ export function ReferenceGraphicView({ view, shelfVariant, unit, thickness }: Pr
         </div>
       )}
       <div className="reference-meta">
+        {bedroom && <span>Bedroom cupboard</span>}
         {spice && view === '3d' && (
           <span>Spice mount — carcass without shelf; spice panels on cut list</span>
         )}

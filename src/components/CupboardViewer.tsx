@@ -10,6 +10,7 @@ import {
 import type { Material, Unit } from '../types';
 import { ReferenceGraphicView } from './graphics/ReferenceGraphicView';
 import {
+  BEDROOM_VIEW_HINT,
   FLOOR_CORNER_VIEW_HINT,
   GRAPHIC_VIEWS,
   SHELF_VARIANTS,
@@ -35,6 +36,7 @@ function isWallMountSelected(unit: Unit): boolean {
 }
 
 function resolvePreviewVariant(unit: Unit): ShelfVariant {
+  if (unit.type === 'bedroom') return 'bedroom';
   if (isSpiceCupboard(unit)) return 'spice';
   if (isFloorCorner(unit)) return 'floor-corner';
   if (isWallCorner(unit)) return 'wall-corner';
@@ -44,6 +46,7 @@ function resolvePreviewVariant(unit: Unit): ShelfVariant {
 }
 
 function previewHint(unit: Unit, view: GraphicView, spiceOn3d: boolean): string {
+  if (unit.type === 'bedroom') return BEDROOM_VIEW_HINT;
   if (spiceOn3d) return SPICE_VIEW_HINT;
   if (isFloorCorner(unit)) return FLOOR_CORNER_VIEW_HINT;
   if (isWallCorner(unit)) return WALL_CORNER_VIEW_HINT;
@@ -57,6 +60,7 @@ export function CupboardViewer({ unit, thickness, onShelfQtyChange }: Props) {
   const previewVariant = resolvePreviewVariant(unit);
   const shelfVariant: ShelfVariant = (unit.carcass.shelfQty ?? 0) > 0 ? 'with-shelf' : 'no-shelf';
   const fixedMountPhoto =
+    previewVariant === 'bedroom' ||
     previewVariant === 'spice' ||
     previewVariant === 'wall' ||
     previewVariant === 'tall' ||
