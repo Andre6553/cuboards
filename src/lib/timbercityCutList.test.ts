@@ -95,6 +95,7 @@ describe('buildTimbercityFormPages', () => {
     expect(first.header.cuttingSize).toBe(false);
     expect(first.header.customerName).toBe('Arline Cupboards');
     expect(first.header.phoneNo).toBe('0831112222');
+    expect(first.header.email).toBe('andre@example.com');
     expect(first.header.deliveryAddress).toBe('1 Main Rd');
     expect(first.header.jobNoName).toBe('TC-1');
     expect(first.rows).toHaveLength(TIMBERCITY_ROWS_PER_PAGE);

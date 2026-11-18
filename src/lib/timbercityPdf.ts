@@ -106,8 +106,7 @@ function drawTimbercityPage(doc: jsPDF, page: TimbercityFormPage, isFirst: boole
   drawFieldLine(doc, 'Phone No:', h.phoneNo, margin, y, 28, leftValueW);
   drawFieldLine(doc, 'Job No/Name:', h.jobNoName, col2, y, 30, rightValueW);
   y += 6;
-  drawFieldLine(doc, 'Board Type:', h.boardType, margin, y, 28, leftValueW);
-
+  drawFieldLine(doc, 'Email:', h.email, margin, y, 28, leftValueW);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   drawTick(doc, col2, y, 3.5, false);
@@ -115,6 +114,9 @@ function drawTimbercityPage(doc: jsPDF, page: TimbercityFormPage, isFirst: boole
   doc.text('Cutting Size', col2 + 5, y);
   drawTick(doc, col2 + 38, y, 3.5, true);
   doc.text('Finished Size', col2 + 43, y);
+  y += 6;
+  drawFieldLine(doc, 'Board Type:', h.boardType, margin, y, 28, leftValueW);
+  drawFieldLine(doc, 'Edging Type:', h.edgingType, col2, y, 26, rightValueW + 4);
   y += 6;
 
   doc.setFont('helvetica', 'bold');
@@ -124,9 +126,6 @@ function drawTimbercityPage(doc: jsPDF, page: TimbercityFormPage, isFirst: boole
   doc.text('Y', margin + 21, y);
   drawTick(doc, margin + 28, y, 3.5, !h.grainYes);
   doc.text('N', margin + 33, y);
-
-  drawFieldLine(doc, 'Edging Type:', h.edgingType, col2, y, 26, rightValueW + 4);
-  y += 6;
   drawFieldLine(doc, 'Sales Person:', h.salesPerson, col2, y, 26, rightValueW + 4);
   y += 8;
 

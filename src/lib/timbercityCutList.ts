@@ -18,6 +18,8 @@ export interface TimbercityFormHeader {
   totalPages: number;
   customerName: string;
   phoneNo: string;
+  /** Installer business email. */
+  email: string;
   deliveryAddress: string;
   jobNoName: string;
   boardType: string;
@@ -154,6 +156,7 @@ function paginateGroup(
         // Timbercity “Customer” fields are the installer’s trade account at the cut house.
         customerName: installer.businessName,
         phoneNo: installer.phone,
+        email: installer.email,
         deliveryAddress: job.client.address?.trim() || '',
         jobNoName: job.client.ref?.trim() || job.client.name?.trim() || '',
         boardType,

@@ -53,6 +53,10 @@ function TimbercitySheet({ page }: { page: TimbercityFormPage }) {
               <span className="timbercity-value timbercity-value-fill">{h.phoneNo}</span>
             </div>
             <div className="timbercity-field-row">
+              <span className="timbercity-label">Email:</span>
+              <span className="timbercity-value timbercity-value-fill">{h.email}</span>
+            </div>
+            <div className="timbercity-field-row">
               <span className="timbercity-label">Board Type:</span>
               <span className="timbercity-value timbercity-value-fill">{h.boardType}</span>
             </div>
