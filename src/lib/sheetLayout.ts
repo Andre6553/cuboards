@@ -20,6 +20,13 @@ export function resolveSawKerfMm(settings: { sawKerfMm?: number } | undefined): 
 /** Smallest usable offcut (both dimensions) to list on the cut list. */
 export const MIN_OFFCUT_MM = 50;
 
+/**
+ * Prefer tucking a slightly shorter part into an existing rip-strip remnant
+ * (e.g. 284 shelf into a 296 door strip) instead of opening a new strip.
+ * Large mismatches (e.g. 100 filler into 300) still open their own strip.
+ */
+export const MAX_STRIP_HEIGHT_SLACK_MM = 25;
+
 export interface LayoutPiece {
   /** Along the part's grain when `grainLocked` (e.g. door height). */
   length: number;
@@ -155,12 +162,34 @@ interface PlacementPlan {
   rank: number;
 }
 
+/** Buy-as steps needed for the nest bounding box after placing at x,y (1 = first ¼/⅓/½). */
+function purchaseStepsAfter(
+  sheet: GuillotineSheet | undefined,
+  x: number,
+  y: number,
+  iw: number,
+  ih: number,
+  grainLen: number,
+  crossLen: number,
+  purchaseFraction: number,
+): number {
+  const step = purchaseFraction > 0 && purchaseFraction < 0.999 ? purchaseFraction : 1;
+  if (step >= 0.999) return 1;
+  const maxX = Math.min(grainLen, Math.max(sheet?.maxX ?? 0, x + iw));
+  const maxY = Math.min(crossLen, Math.max(sheet?.maxY ?? 0, y + ih));
+  const usedFrac = (maxX * maxY) / (grainLen * crossLen);
+  return Math.max(1, Math.ceil(usedFrac / step - 1e-9));
+}
+
 function planPlacement(
   sheets: GuillotineSheet[],
   iw: number,
   ih: number,
   binW: number,
   binH: number,
+  grainLen: number,
+  crossLen: number,
+  purchaseFraction: number,
 ): PlacementPlan | null {
   let best: PlacementPlan | null = null;
 
@@ -168,10 +197,9 @@ function planPlacement(
     if (!best || plan.rank < best.rank) best = plan;
   };
 
-  // Rank = sheet*1000 + local preference so earlier sheets always win over later ones.
-  // On one sheet: exact rip height → new matching strip → short-in-tall remnant.
-  // That fills leftover ends on sheet 8/9 before opening sheet 10, without stuffing
-  // short fillers into tall strips when a new strip still fits on the same sheet.
+  // Rank = sheet*1000 + Buy-as step*80 + local strip preference.
+  // Fill the first ¼ / ⅓ / ½ (board Buy as) before spilling into the next step.
+  // Within a step: exact rip height → near-height remnant → new strip → large short-in-tall.
   for (let si = 0; si < sheets.length; si++) {
     const sheet = sheets[si];
     const sheetBase = si * 1000;
@@ -179,38 +207,54 @@ function planPlacement(
       const strip = sheet.strips[ti];
       if (ih > strip.height) continue;
       if (strip.cursorX + iw > binW) continue;
-      const heightMismatch = ih < strip.height;
+      const slack = strip.height - ih;
+      let local: number;
+      if (slack === 0) local = ti;
+      else if (slack <= MAX_STRIP_HEIGHT_SLACK_MM) local = 100 + ti;
+      else local = 700 + ti;
+      const steps = purchaseStepsAfter(
+        sheet,
+        strip.cursorX,
+        strip.y,
+        iw,
+        ih,
+        grainLen,
+        crossLen,
+        purchaseFraction,
+      );
       consider({
         sheetIndex: si,
         x: strip.cursorX,
         y: strip.y,
         iw,
         ih,
-        rank: sheetBase + (heightMismatch ? 700 + ti : ti),
+        rank: sheetBase + (steps - 1) * 80 + local,
       });
     }
 
     const newY = sheetUsedHeight(sheet);
     if (newY + ih <= binH && iw <= binW) {
+      const steps = purchaseStepsAfter(sheet, 0, newY, iw, ih, grainLen, crossLen, purchaseFraction);
       consider({
         sheetIndex: si,
         x: 0,
         y: newY,
         iw,
         ih,
-        rank: sheetBase + 500,
+        rank: sheetBase + (steps - 1) * 80 + 500,
       });
     }
   }
 
   if (ih <= binH && iw <= binW) {
+    const steps = purchaseStepsAfter(undefined, 0, 0, iw, ih, grainLen, crossLen, purchaseFraction);
     consider({
       sheetIndex: sheets.length,
       x: 0,
       y: 0,
       iw,
       ih,
-      rank: sheets.length * 1000 + 500,
+      rank: sheets.length * 1000 + (steps - 1) * 80 + 500,
     });
   }
 
@@ -283,6 +327,9 @@ function compactIntoEarlierSheets(
   binW: number,
   binH: number,
   kerf: number,
+  grainLen: number,
+  crossLen: number,
+  purchaseFraction: number,
 ): void {
   let moved = true;
   let guard = 0;
@@ -312,7 +359,7 @@ function compactIntoEarlierSheets(
 
         let bestPlan: PlacementPlan | null = null;
         for (const [iw, ih] of itemOrientations(item)) {
-          const plan = planPlacement(sheets, iw, ih, binW, binH);
+          const plan = planPlacement(sheets, iw, ih, binW, binH, grainLen, crossLen, purchaseFraction);
           if (!plan || plan.sheetIndex >= si) continue;
           if (!bestPlan || plan.rank < bestPlan.rank) bestPlan = { ...plan, iw, ih };
         }
@@ -487,7 +534,7 @@ export function layoutSheets(
   for (const item of items) {
     let bestPlan: PlacementPlan | null = null;
     for (const [iw, ih] of itemOrientations(item)) {
-      const plan = planPlacement(sheets, iw, ih, binW, binH);
+      const plan = planPlacement(sheets, iw, ih, binW, binH, grainLen, crossLen, purchaseFraction);
       if (!plan) continue;
       if (!bestPlan || plan.rank < bestPlan.rank) {
         bestPlan = { ...plan, iw, ih };
@@ -506,7 +553,16 @@ export function layoutSheets(
     applyPlan(sheets, bestPlan, item, kerf, placementsBySheet);
   }
 
-  compactIntoEarlierSheets(sheets, placementsBySheet, binW, binH, kerf);
+  compactIntoEarlierSheets(
+    sheets,
+    placementsBySheet,
+    binW,
+    binH,
+    kerf,
+    grainLen,
+    crossLen,
+    purchaseFraction,
+  );
 
   if (sheets.length === 0) {
     return { sheetsUsed: 0, sheetsToOrder: 0, unplaced, offcuts: [], sheetDetails: [] };

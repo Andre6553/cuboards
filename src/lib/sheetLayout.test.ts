@@ -1,6 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { billedFractionLabel, layoutSheets, paidRegionForSheet, type LayoutPiece } from './sheetLayout';
 
+describe('layoutSheets Buy as packing', () => {
+  it('packs into the first purchase step before spilling further across the sheet', () => {
+    // ¼ of 2750×1830 ≈ 1.26e6 mm². Four 600×400 panels ≈ 0.96e6 — fit in first ¼
+    // if packed compactly toward the origin (not spread down the full sheet).
+    const pieces: LayoutPiece[] = [
+      { length: 600, width: 400, qty: 4, grainLocked: true, label: 'Panel' },
+    ];
+    const quarter = layoutSheets(pieces, 2750, 1830, 4, 0.25);
+    expect(quarter.unplaced).toHaveLength(0);
+    expect(quarter.sheetsUsed).toBe(1);
+    expect(quarter.sheetsToOrder).toBe(0.25);
+    expect(quarter.sheetDetails[0].paidRegion.billedFraction).toBe(0.25);
+
+    const half = layoutSheets(pieces, 2750, 1830, 4, 0.5);
+    expect(half.sheetsToOrder).toBe(0.5);
+    expect(half.sheetDetails[0].paidRegion.billedFraction).toBe(0.5);
+  });
+});
+
 describe('paidRegionForSheet / Buy as overlay', () => {
   it('labels common Buy as fractions', () => {
     expect(billedFractionLabel(1)).toBe('Paying · full sheet');
@@ -57,6 +76,30 @@ describe('layoutSheets strip packing', () => {
     for (const s of onSheet1) {
       // Grain along length: 568 wide (or rotated 284) — never break grain-locked doors above.
       expect(s.heightMm === 284 || s.widthMm === 284).toBe(true);
+    }
+  });
+
+  it('tucks a near-height shelf into a door-strip remnant instead of a new row', () => {
+    // Nordic Ice sheet 10: two 1010×296 doors leave ~722×296; shelves are 568×284.
+    const pieces: LayoutPiece[] = [
+      { length: 1010, width: 296, qty: 2, grainLocked: true, label: 'Door 300' },
+      { length: 568, width: 284, qty: 5, grainLocked: true, label: 'Shelf' },
+    ];
+    const result = layoutSheets(pieces, 2750, 1830, 4, 1);
+    expect(result.unplaced).toHaveLength(0);
+    expect(result.sheetsUsed).toBe(1);
+
+    const doors = result.sheetDetails[0].placements.filter((p) => p.label === 'Door 300');
+    const shelves = result.sheetDetails[0].placements.filter((p) => p.label === 'Shelf');
+    expect(doors).toHaveLength(2);
+    expect(shelves).toHaveLength(5);
+
+    const doorY = doors[0].y;
+    const shelvesInDoorStrip = shelves.filter((p) => p.y === doorY);
+    expect(shelvesInDoorStrip.length).toBeGreaterThanOrEqual(1);
+    for (const s of shelvesInDoorStrip) {
+      expect(s.widthMm).toBe(568);
+      expect(s.heightMm).toBe(284);
     }
   });
 

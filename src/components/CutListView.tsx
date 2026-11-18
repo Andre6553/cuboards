@@ -505,8 +505,9 @@ export function CutListView({ job }: Props) {
               <p className="hint">
                 Panel-saw style layout: rip strips across the sheet, then crosscut along the grain. Each part shows{' '}
                 <strong>Length × Height (mm)</strong> — on grain boards Length stays along sheet grain (→), matching the cut
-                list. Non-grain boards may rotate parts. Tap a sheet for full screen. See the <strong>colour key</strong>{' '}
-                under the maps. Included on <strong>Factory</strong> and <strong>Full</strong> PDF downloads.
+                list. Nest tries to fill the first <strong>Buy as</strong> step (¼ / ⅓ / ½) before using more of the sheet.
+                Non-grain boards may rotate parts. Tap a sheet for full screen. See the <strong>colour key</strong> under the
+                maps. Included on <strong>Factory</strong> and <strong>Full</strong> PDF downloads.
               </p>
               <SheetMapView groups={factory ? factorySheetMaps : result.sheetMaps} />
             </>
