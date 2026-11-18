@@ -830,7 +830,8 @@ export function MaterialsForm({
                   checked={ch.onlyWhenOrderFromSet !== false}
                   onChange={(e) => patchCh({ onlyWhenOrderFromSet: e.target.checked })}
                 />
-                Only add SMEL / SHB / BOOR when <strong>Order from</strong> is set (per board or default cut house)
+                Only add SMEL / SHB / BOOR when a cut house is set (job default, any board, or masonite). SMEL then
+                charges <strong>every</strong> melamine sheet on the quote.
               </label>
               <label className="checkbox-label">
                 <input

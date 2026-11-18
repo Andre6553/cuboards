@@ -10,6 +10,26 @@ export function resolveCutHouseCharges(job: Job): Required<CutHouseChargeSetting
   return { ...DEFAULT_CUT_HOUSE_CHARGES, ...job.settings.cutHouseCharges };
 }
 
+/**
+ * True when this job is ordered from a cut house at all (job default, any board
+ * Order from, or masonite Order from — including masonite’s inherited dominant board).
+ * Used so SMEL can bill every melamine sheet once the job is clearly a cut-house job.
+ */
+export function jobHasCutHouseOrdering(job: Job): boolean {
+  const jobDefault = job.settings.defaultOrderSupplier?.trim() ?? '';
+  if (jobDefault && isCompleteSupplierName(jobDefault)) return true;
+  for (const m of job.materials) {
+    const name = m.orderFromSupplier?.trim() ?? '';
+    if (name && isCompleteSupplierName(name)) return true;
+  }
+  const small = job.masonite.orderFromSupplier?.trim() ?? '';
+  if (small && isCompleteSupplierName(small)) return true;
+  const large = job.masonite.largeOrderFromSupplier?.trim() ?? '';
+  if (large && isCompleteSupplierName(large)) return true;
+  const masoniteResolved = resolveOrderSupplierForMaterialId(job, MASONITE_MATERIAL_ID);
+  return Boolean(masoniteResolved && isCompleteSupplierName(masoniteResolved));
+}
+
 export function materialUsesCutHouse(job: Job, materialId: string, onlyWhenOrderFromSet: boolean): boolean {
   if (!onlyWhenOrderFromSet) return true;
   if (materialId === MASONITE_MATERIAL_ID) {
@@ -21,6 +41,9 @@ export function materialUsesCutHouse(job: Job, materialId: string, onlyWhenOrder
     const name = resolveOrderSupplierForMaterialId(job, materialId);
     return Boolean(name && isCompleteSupplierName(name));
   }
+  // Melamine: once the job has any cut-house Order from / default, all boards count for SMEL
+  // (avoids missing White/Nordic cuts when only a spare material row has Order from set).
+  if (jobHasCutHouseOrdering(job)) return true;
   const name = resolveOrderSupplierForMaterialId(job, materialId);
   return Boolean(name && isCompleteSupplierName(name));
 }
@@ -90,7 +113,7 @@ export function appendCutHouseCosts(
       costs.push({
         category: 'cutHouse',
         name: 'Melamine cutting (SMEL)',
-        detail: `${ops} sheet cut(s) at cut house — boards only`,
+        detail: `${ops} melamine sheet cut(s) at cut house`,
         quantity: ops,
         unitPrice: melPrice,
         subtotal: quoteLineSubtotal(ops, ch.melamineCutPricePerSheet, job.settings),
