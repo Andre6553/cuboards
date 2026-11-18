@@ -109,6 +109,7 @@ export const DEFAULT_PLASTIC_KICKPLATE: PlasticKickplateConfig = {
   stripHeight: 100,
   stripWidth: 18,
   pricePerMetre: 45,
+  gelmarCornerPriceEachByHeight: { 100: 8, 150: 11 },
 };
 
 export { CUT_SIZE_MODE_LABELS };

@@ -294,6 +294,11 @@ export interface PlasticKickplateConfig {
    * kickplate from plinth height while Gelmar catalog is on.
    */
   gelmarPricePerMetreByHeight?: { 100?: number; 150?: number };
+  /**
+   * Flexible aluminium plinth corner R each by height (100 / 150).
+   * Used when plastic kickplate coverage includes side returns.
+   */
+  gelmarCornerPriceEachByHeight?: { 100?: number; 150?: number };
   name: string;
   /** Strip profile height (mm) — e.g. 120 */
   stripHeight: number;

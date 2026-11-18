@@ -6,10 +6,24 @@ import type {
   PlasticKickplateLine,
   PlasticKickplatePurchase,
 } from '../types';
+import { GELMAR_PLINTH_CORNER_PRODUCTS } from './gelmarKickplateCatalog';
 
 /** Gelmar / plastic strip heights offered on the unit plinth dropdown. */
 export const PLASTIC_KICKPLATE_HEIGHTS = [100, 150] as const;
 export type PlasticKickplateHeight = (typeof PLASTIC_KICKPLATE_HEIGHTS)[number];
+
+/** Default R each for flexible aluminium plinth corners (Gelmar). */
+export const DEFAULT_PLINTH_CORNER_PRICE_EACH: Record<PlasticKickplateHeight, number> = {
+  100: GELMAR_PLINTH_CORNER_PRODUCTS[100].defaultPriceEach,
+  150: GELMAR_PLINTH_CORNER_PRODUCTS[150].defaultPriceEach,
+};
+
+/** Corners needed for one cupboard from kickplate coverage (plastic strip only). */
+export function plinthCornerQtyPerCupboard(coverage: KickplateCoverage): number {
+  if (coverage === 'front-one-side') return 1;
+  if (coverage === 'front-both-sides') return 2;
+  return 0;
+}
 
 /** Sold length of one PVC/Gelmar plinth strip (users buy whole strips only). */
 export const PLASTIC_KICKPLATE_STRIP_LENGTH_M = 3;
@@ -110,11 +124,46 @@ export function normalizePlasticKickplate(config: PlasticKickplateConfig): Plast
     typeof map[stripHeight] === 'number' && Number.isFinite(map[stripHeight])
       ? map[stripHeight]!
       : config.pricePerMetre;
+  const cornerMap: { 100?: number; 150?: number } = { ...config.gelmarCornerPriceEachByHeight };
+  for (const h of PLASTIC_KICKPLATE_HEIGHTS) {
+    if (cornerMap[h] == null || !Number.isFinite(cornerMap[h])) {
+      cornerMap[h] = DEFAULT_PLINTH_CORNER_PRICE_EACH[h];
+    }
+  }
   return {
     ...config,
     stripHeight,
     pricePerMetre,
     gelmarPricePerMetreByHeight: map,
+    gelmarCornerPriceEachByHeight: cornerMap,
+  };
+}
+
+/** R each for a plastic kickplate height’s flexible aluminium plinth corner. */
+export function resolvePlinthCornerPriceEach(
+  config: PlasticKickplateConfig,
+  heightMm: number,
+): { stripHeight: PlasticKickplateHeight; priceEach: number } {
+  const normalized = normalizePlasticKickplate(config);
+  const stripHeight = snapPlasticKickplateHeight(heightMm);
+  const cached = normalized.gelmarCornerPriceEachByHeight?.[stripHeight];
+  if (typeof cached === 'number' && Number.isFinite(cached) && cached >= 0) {
+    return { stripHeight, priceEach: cached };
+  }
+  return { stripHeight, priceEach: DEFAULT_PLINTH_CORNER_PRICE_EACH[stripHeight] };
+}
+
+export function withGelmarCornerPrice(
+  config: PlasticKickplateConfig,
+  height: PlasticKickplateHeight,
+  priceEach: number,
+): PlasticKickplateConfig {
+  return {
+    ...config,
+    gelmarCornerPriceEachByHeight: {
+      ...config.gelmarCornerPriceEachByHeight,
+      [height]: priceEach,
+    },
   };
 }
 

@@ -5,7 +5,13 @@ import { RUNNER_CATALOG } from './runnerCatalog';
 import { getConnectingFittingById } from './connectingFittingCatalog';
 import { getScrewById } from './screwCatalog';
 import { gelmarCatalogSearchUrl } from './gelmarProductImage';
+import { GELMAR_PLINTH_CORNER_PRODUCTS, gelmarKickplateProduct } from './gelmarKickplateCatalog';
 import { requireUserDataScope, userStorageKeys } from './userDataScope';
+
+function plinthCornerBySku(sku: string) {
+  if (!sku) return undefined;
+  return Object.values(GELMAR_PLINTH_CORNER_PRODUCTS).find((p) => p.sku === sku);
+}
 
 export type HardwareShoppingQtyUnit = 'each' | 'pair' | 'pack';
 
@@ -17,6 +23,8 @@ export interface HardwareShoppingItem {
   qty: number;
   qtyUnit: HardwareShoppingQtyUnit;
   notes: string;
+  /** Job quote money for this consolidated shopping line. */
+  subtotal: number;
   url?: string;
   imageUrl?: string;
 }
@@ -51,6 +59,21 @@ function supplierForHardware(
       imageUrl: GELMAR_CABINET_FOOT.imageUrl,
     };
   }
+  const corner =
+    plinthCornerBySku(sku) ||
+    (desc.includes('plinth corner')
+      ? Object.values(GELMAR_PLINTH_CORNER_PRODUCTS).find((p) =>
+          h.description.includes(`${p.heightMm}mm`) || h.description.includes(`${p.heightMm} mm`),
+        )
+      : undefined);
+  if (corner) {
+    return {
+      supplier: 'Gelmar',
+      sku: corner.sku,
+      url: corner.url,
+      imageUrl: corner.imageUrl,
+    };
+  }
   const hinge = hingeBySku(sku);
   if (hinge) {
     return { supplier: 'Gelmar', sku: hinge.sku ?? sku, url: hinge.url, imageUrl: hinge.imageUrl };
@@ -82,6 +105,7 @@ function addOrMerge(map: Map<string, HardwareShoppingItem>, item: Omit<HardwareS
   const existing = map.get(id);
   if (existing) {
     existing.qty += item.qty;
+    existing.subtotal += item.subtotal;
     if (!existing.imageUrl && item.imageUrl) existing.imageUrl = item.imageUrl;
     return;
   }
@@ -102,6 +126,7 @@ function fromHardwareLine(h: HardwareItem): Omit<HardwareShoppingItem, 'id'> | n
     qty: h.qty,
     qtyUnit: isPair ? 'pair' : 'each',
     notes,
+    subtotal: h.subtotal,
     url,
     imageUrl,
   };
@@ -124,6 +149,7 @@ function fromScrewLine(s: ScrewLine, kind: 'screw' | 'fitting'): Omit<HardwareSh
     qty: s.packsNeeded,
     qtyUnit: 'pack',
     notes,
+    subtotal: s.subtotal,
     url,
     imageUrl: screw?.imageUrl || fitting?.imageUrl,
   };
@@ -144,13 +170,19 @@ export function buildHardwareShoppingList(job: Job, result: CutListResult): Hard
   // Whole 3 m PVC/Gelmar strips (same rounding as quote costs).
   for (const p of result.plasticKickplatePurchases ?? []) {
     if (p.stripsToBuy <= 0) continue;
+    const gelmarOn = job.plasticKickplate.useGelmarCatalog !== false;
+    const gelmar = gelmarOn ? gelmarKickplateProduct(p.stripHeight) : null;
+    const sku = gelmar?.sku ?? '';
     addOrMerge(map, {
       description: `${p.productName} · ${p.stripHeight}×${p.stripWidth} mm`,
-      sku: '',
-      supplier: job.plasticKickplate.useGelmarCatalog !== false ? 'Gelmar' : 'Hardware store',
+      sku,
+      supplier: gelmarOn ? 'Gelmar' : 'Hardware store',
       qty: p.stripsToBuy,
       qtyUnit: 'each',
       notes: `${p.neededMetres.toFixed(2)} m needed · buy ${p.stripsToBuy} × 3 m strip${p.stripsToBuy === 1 ? '' : 's'}`,
+      subtotal: p.subtotal,
+      url: gelmar?.url,
+      imageUrl: gelmar?.imageUrl,
     });
   }
   const items = [...map.values()].sort((a, b) => {
@@ -159,6 +191,10 @@ export function buildHardwareShoppingList(job: Job, result: CutListResult): Hard
     return a.description.localeCompare(b.description);
   });
   return items;
+}
+
+export function hardwareShoppingGrandTotal(items: HardwareShoppingItem[]): number {
+  return items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
 }
 
 export function formatShoppingQty(item: HardwareShoppingItem): string {

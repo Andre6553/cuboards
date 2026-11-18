@@ -2,7 +2,7 @@
 
 _Date: 2026-11-18_  
 _Project: cuboards_  
-_Status: approved in chat; awaiting final review of this written spec_
+_Status: implemented 2026-11-18_
 
 ## Goal
 

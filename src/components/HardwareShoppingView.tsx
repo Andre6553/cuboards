@@ -4,11 +4,13 @@ import {
   buildHardwareShoppingList,
   formatShoppingQty,
   groupShoppingBySupplier,
+  hardwareShoppingGrandTotal,
   loadHardwareShoppingTicks,
   remainingShoppingItems,
   saveHardwareShoppingTicks,
   type HardwareShoppingItem,
 } from '../lib/hardwareShopping';
+import { formatMoney } from '../lib/currency';
 import { HardwareProductThumb } from './HardwareProductThumb';
 
 interface Props {
@@ -19,6 +21,8 @@ interface Props {
 export function HardwareShoppingView({ job, result }: Props) {
   const items = useMemo(() => buildHardwareShoppingList(job, result), [job, result]);
   const groups = useMemo(() => groupShoppingBySupplier(items), [items]);
+  const grandTotal = useMemo(() => hardwareShoppingGrandTotal(items), [items]);
+  const fmt = (n: number) => formatMoney(n, job.settings);
   const [ticks, setTicks] = useState<Record<string, boolean>>(() => loadHardwareShoppingTicks(job.id));
   const [reminder, setReminder] = useState<'idle' | 'done' | 'left'>('idle');
 
@@ -82,6 +86,7 @@ export function HardwareShoppingView({ job, result }: Props) {
               <ShoppingRow
                 key={item.id}
                 item={item}
+                priceLabel={fmt(item.subtotal)}
                 ticked={Boolean(ticks[item.id])}
                 highlight={reminder === 'left' && !ticks[item.id]}
                 onToggle={(on) => setTicked(item.id, on)}
@@ -90,6 +95,11 @@ export function HardwareShoppingView({ job, result }: Props) {
           </ul>
         </div>
       ))}
+
+      <div className="hw-shop-grand-total" role="status">
+        <span>Grand Total</span>
+        <strong>{fmt(grandTotal)}</strong>
+      </div>
 
       <div className="hw-shop-footer">
         <button type="button" className="btn btn-primary" onClick={checkForgotten}>
@@ -120,11 +130,13 @@ export function HardwareShoppingView({ job, result }: Props) {
 
 function ShoppingRow({
   item,
+  priceLabel,
   ticked,
   highlight,
   onToggle,
 }: {
   item: HardwareShoppingItem;
+  priceLabel: string;
   ticked: boolean;
   highlight: boolean;
   onToggle: (on: boolean) => void;
@@ -156,6 +168,7 @@ function ShoppingRow({
             </a>
           )}
         </span>
+        <span className="hw-shop-price">{priceLabel}</span>
       </label>
     </li>
   );

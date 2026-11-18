@@ -3403,6 +3403,35 @@ a.hw-shop-thumb-link {
   font-size: 0.95rem;
 }
 
+.hw-shop-price {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 5.5rem;
+  font-weight: 700;
+  font-size: 1rem;
+  text-align: right;
+  color: #111;
+  padding-top: 0.2rem;
+  align-self: flex-start;
+}
+
+.hw-shop-grand-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 10px;
+  background: var(--card, #fff);
+  font-size: 1rem;
+}
+
+.hw-shop-grand-total strong {
+  font-size: 1.1rem;
+}
+
 .hw-shop-body {
   display: flex;
   flex-direction: column;

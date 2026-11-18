@@ -56,10 +56,12 @@ import type {
 } from '../types';
 
 import { schedulePushUserPrefs } from '../lib/cloudPrefsPush';
+import { GELMAR_PLINTH_CORNER_PRODUCTS } from '../lib/gelmarKickplateCatalog';
 import {
   isPlasticKickplateHeight,
   normalizePlasticKickplate,
   PLASTIC_KICKPLATE_HEIGHTS,
+  withGelmarCornerPrice,
   withGelmarKickplatePrice,
   type PlasticKickplateHeight,
 } from '../lib/kickplateRules';
@@ -249,15 +251,24 @@ export function MaterialsForm({
     return () => { latestKickplate.current = null; };
   }, [plasticKickplate, onPlasticKickplateChange]);
 
-  // Seed active height into the per-height map once so unit dropdown pricing has a rate.
+  // Seed strip R/m + corner R each maps once so unit pricing has rates.
   useEffect(() => {
     const normalized = normalizePlasticKickplate(plasticKickplate);
-    const before = JSON.stringify(plasticKickplate.gelmarPricePerMetreByHeight ?? {});
-    const after = JSON.stringify(normalized.gelmarPricePerMetreByHeight ?? {});
-    if (before !== after || normalized.pricePerMetre !== plasticKickplate.pricePerMetre) {
+    const beforeStrip = JSON.stringify(plasticKickplate.gelmarPricePerMetreByHeight ?? {});
+    const afterStrip = JSON.stringify(normalized.gelmarPricePerMetreByHeight ?? {});
+    const beforeCorner = JSON.stringify(plasticKickplate.gelmarCornerPriceEachByHeight ?? {});
+    const afterCorner = JSON.stringify(normalized.gelmarCornerPriceEachByHeight ?? {});
+    if (
+      beforeStrip !== afterStrip ||
+      beforeCorner !== afterCorner ||
+      normalized.pricePerMetre !== plasticKickplate.pricePerMetre
+    ) {
       onPlasticKickplateChange(normalized);
     }
   }, [plasticKickplate, onPlasticKickplateChange]);
+
+  const [refreshingCorners, setRefreshingCorners] = useState(false);
+  const [cornerRefresh, setCornerRefresh] = useState<GelmarRefreshUiState>(emptyGelmarRefreshUi);
 
   const [refreshingRunners, setRefreshingRunners] = useState(false);
   const [runnerRefresh, setRunnerRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
@@ -423,6 +434,63 @@ export function MaterialsForm({
     if (latestKickplate.current) {
       latestKickplate.current = { ...latestKickplate.current, config: next };
     }
+  };
+
+  const setCornerHeightPrice = (height: PlasticKickplateHeight, priceEach: number) => {
+    const next = withGelmarCornerPrice(plasticKickplate, height, priceEach);
+    onPlasticKickplateChange(next);
+    if (latestKickplate.current) {
+      latestKickplate.current = { ...latestKickplate.current, config: next };
+    }
+  };
+
+  const refreshGelmarPlinthCorners = () => {
+    setRefreshingCorners(true);
+    setCornerRefresh(emptyGelmarRefreshUi());
+    const baseline = { ...plasticKickplate };
+    void Promise.all(
+      PLASTIC_KICKPLATE_HEIGHTS.map(async (h) => {
+        const { scrapedAt, prices } = await fetchGelmarLivePrices(`/api/gelmar-plinth-corner?height=${h}`);
+        return { h, priceEach: prices.priceEach, scrapedAt };
+      }),
+    )
+      .then((rows) => {
+        let next = latestKickplate.current?.config ?? baseline;
+        const changes: { id: string; label: string; oldPrice: number; newPrice: number }[] = [];
+        const checked: { id: string; label: string; price: number }[] = [];
+        for (const { h, priceEach } of rows) {
+          if (typeof priceEach !== 'number' || !Number.isFinite(priceEach)) continue;
+          const oldPrice = baseline.gelmarCornerPriceEachByHeight?.[h] ?? (h === 150 ? 11 : 8);
+          checked.push({ id: String(h), label: `Plinth corner ${h} mm each`, price: priceEach });
+          if (oldPrice !== priceEach) {
+            changes.push({
+              id: String(h),
+              label: `Plinth corner ${h} mm each`,
+              oldPrice,
+              newPrice: priceEach,
+            });
+          }
+          next = withGelmarCornerPrice(next, h, priceEach);
+        }
+        onPlasticKickplateChange(next);
+        if (latestKickplate.current) {
+          latestKickplate.current = { ...latestKickplate.current, config: next };
+        }
+        setCornerRefresh({
+          note: gelmarRefreshNote(changes, checked.length, rows[0]?.scrapedAt),
+          error: null,
+          changes,
+          checked,
+          liveAt: rows[0]?.scrapedAt ?? new Date().toISOString().slice(0, 10),
+        });
+      })
+      .catch((err) => {
+        setCornerRefresh({
+          ...emptyGelmarRefreshUi(),
+          error: notifyGelmarRefreshFailure(err),
+        });
+      })
+      .finally(() => setRefreshingCorners(false));
   };
 
   // When Gelmar is on, fill any missing 100/150 rate once (quote needs both).
@@ -1847,6 +1915,61 @@ export function MaterialsForm({
             ))}
           </div>
         )}
+
+        <div style={{ marginTop: '1rem' }}>
+          <p className="hint" style={{ marginBottom: '0.5rem' }}>
+            Flexible aluminium plinth corners — auto-added on the cut list when plastic kickplate coverage is front + one/both sides (1 or 2 each, matching kickplate height).
+          </p>
+          {plasticKickplate.useGelmarCatalog !== false && (
+            <GelmarPriceRefreshPanel
+              {...cornerRefresh}
+              refreshing={refreshingCorners}
+              onRefresh={refreshGelmarPlinthCorners}
+              hint="Pulls Gelmar’s R each for 100 mm and 150 mm corners. You can override below."
+            />
+          )}
+          <div className="table-wrap" style={{ marginTop: '0.5rem' }}>
+            <table className="data-table materials-price-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Height</th>
+                  <th>{priceInputLabel(settings, 'Price each')}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {PLASTIC_KICKPLATE_HEIGHTS.map((height) => {
+                  const product = GELMAR_PLINTH_CORNER_PRODUCTS[height];
+                  return (
+                    <tr key={height}>
+                      <td data-label="Product">
+                        <strong>{product.name}</strong>
+                        <div className="hint">SKU {product.sku}</div>
+                      </td>
+                      <td data-label="Height">{height} mm</td>
+                      <td data-label="Price each">
+                        <NumberInput
+                          aria-label={`${height} mm corner price each`}
+                          className="table-input"
+                          min={0}
+                          disabled={refreshingCorners}
+                          value={plasticKickplate.gelmarCornerPriceEachByHeight?.[height] ?? product.defaultPriceEach}
+                          onChange={(n) => setCornerHeightPrice(height, n)}
+                        />
+                      </td>
+                      <td data-label="">
+                        <a href={product.url} target="_blank" rel="noreferrer">
+                          Gelmar
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
       </CollapsibleSection>
 

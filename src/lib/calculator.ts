@@ -96,11 +96,14 @@ import {
   normalizePlasticKickplate,
   PLASTIC_KICKPLATE_STRIP_LENGTH_M,
   plasticKickplatePurchaseDetail,
+  plinthCornerQtyPerCupboard,
   resolveGelmarPlasticKickplatePricePerMetre,
   resolvePlasticKickplateProductForUnit,
+  resolvePlinthCornerPriceEach,
   summarizePlasticKickplatePurchases,
   woodKickplatePieces,
 } from './kickplateRules';
+import { gelmarPlinthCornerProduct } from './gelmarKickplateCatalog';
 import {
   extraBoardCuts,
   extraLayoutUnit,
@@ -1126,6 +1129,24 @@ function calcKitchenPlinth(
       pricePerPair: pricePerMetre,
       subtotal: totalMetres * pricePerMetre,
     });
+
+    const cornersPerCupboard = plinthCornerQtyPerCupboard(coverage);
+    if (cornersPerCupboard > 0) {
+      const { stripHeight: cornerHeight, priceEach } = resolvePlinthCornerPriceEach(
+        config,
+        plinth.kickplateHeight,
+      );
+      const corner = gelmarPlinthCornerProduct(cornerHeight);
+      const cornerQty = cornersPerCupboard * mult;
+      hardware.push({
+        description: corner.name,
+        qty: cornerQty,
+        unitName: unit.name,
+        detail: `${coverageLabel(coverage)} · ${cornerHeight} mm · SKU ${corner.sku}`,
+        pricePerPair: priceEach,
+        subtotal: priceEach * cornerQty,
+      });
+    }
   }
 
   if (plinth.feetRequired !== false) {
