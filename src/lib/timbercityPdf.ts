@@ -3,6 +3,7 @@ import type { CutListResult, CutPiece, Job } from '../types';
 import { filterPiecesForOrderSupplier } from './orderSupplier';
 import {
   buildTimbercityFormPages,
+  timbercityPageLabel,
   TIMBERCITY_ROWS_PER_PAGE,
   type TimbercityFormPage,
 } from './timbercityCutList';
@@ -83,10 +84,12 @@ function drawTimbercityPage(doc: jsPDF, page: TimbercityFormPage, isFirst: boole
   drawFieldLine(doc, 'Date:', h.date, margin, y, 12, 40);
   doc.setFont('helvetica', 'bold');
   doc.text('Page No:', margin + 60, y);
+  const pageLabel = timbercityPageLabel(h.pageNo, h.totalPages);
   doc.setDrawColor(30);
-  doc.rect(margin + 78, y - 4, 14, 5.5);
+  const pageBoxW = Math.max(14, doc.getTextWidth(pageLabel) + 4);
+  doc.rect(margin + 78, y - 4, pageBoxW, 5.5);
   doc.setFont('helvetica', 'normal');
-  doc.text(String(h.pageNo), margin + 81, y);
+  doc.text(pageLabel, margin + 78 + pageBoxW / 2, y, { align: 'center' });
   y += 7;
 
   const col2 = margin + 98;

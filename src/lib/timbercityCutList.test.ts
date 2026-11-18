@@ -19,6 +19,7 @@ import {
   edgeLongLabel,
   edgeShortLabel,
   formatTimbercityEdgingType,
+  timbercityPageLabel,
   TIMBERCITY_ROWS_PER_PAGE,
 } from './timbercityCutList';
 
@@ -68,6 +69,11 @@ describe('timbercity edge labels', () => {
     expect(formatTimbercityEdgingType(null, null)).toBe('NO EDGING');
     expect(formatTimbercityEdgingType('White PVC', 1)).toBe('White PVC 1 mm');
   });
+
+  it('formats Page No as n/total', () => {
+    expect(timbercityPageLabel(1, 5)).toBe('1/5');
+    expect(timbercityPageLabel(2, 5)).toBe('2/5');
+  });
 });
 
 describe('buildTimbercityFormPages', () => {
@@ -116,15 +122,15 @@ describe('buildTimbercityFormPages', () => {
     const pages = buildTimbercityFormPages(job, pieces);
     const keys = pages.map((p) => `${p.header.boardType}|${p.header.edgingType}`);
     // At least board-only and edged groups when doors/edging exist.
-    expect(new Set(keys).size).toBe(pages.filter((p) => p.header.pageNo === 1).length);
+    // One page per form start is not required — page numbers run across the whole document.
+    expect(new Set(keys).size).toBeGreaterThan(0);
   });
 
-  it('paginates a form at 23 rows', () => {
+  it('numbers pages across the whole document as 1/N … N/N', () => {
     const job = testJob();
-    // Many identical small units → many merged factory rows still capped; force via qty on wide parts.
     const units = Array.from({ length: 30 }, (_, i) => {
       const u = createDefaultUnit(job, i);
-      u.width = 400 + i; // unique widths → unique rows after merge
+      u.width = 400 + i;
       u.height = 700;
       u.depth = 500;
       u.unitQty = 1;
@@ -137,21 +143,11 @@ describe('buildTimbercityFormPages', () => {
 
     const { pieces } = generateCutList(job);
     const pages = buildTimbercityFormPages(job, pieces);
-    const formPages = pages.filter((p) => p.header.boardType.includes(job.materials[0]?.name ?? ''));
-    // Find any form that needed more than one page.
-    const multi = pages.filter((p) => p.header.pagesInForm > 1);
-    if (multi.length === 0) {
-      // Still assert page structure is correct for single-page forms.
-      expect(pages.every((p) => p.rows.length === TIMBERCITY_ROWS_PER_PAGE)).toBe(true);
-      expect(formPages.length).toBeGreaterThan(0);
-      return;
-    }
-    const formKey = `${multi[0]!.header.boardType}|${multi[0]!.header.edgingType}`;
-    const sameForm = pages.filter(
-      (p) => `${p.header.boardType}|${p.header.edgingType}` === formKey,
-    );
-    expect(sameForm.map((p) => p.header.pageNo)).toEqual(
-      Array.from({ length: sameForm[0]!.header.pagesInForm }, (_, i) => i + 1),
+    expect(pages.length).toBeGreaterThan(0);
+    expect(pages.every((p) => p.rows.length === TIMBERCITY_ROWS_PER_PAGE)).toBe(true);
+    expect(pages.every((p) => p.header.totalPages === pages.length)).toBe(true);
+    expect(pages.map((p) => timbercityPageLabel(p.header.pageNo, p.header.totalPages))).toEqual(
+      pages.map((_, i) => `${i + 1}/${pages.length}`),
     );
   });
 });

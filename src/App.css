@@ -3548,8 +3548,8 @@ a.hw-shop-thumb-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  padding: 0.1rem 0.35rem;
+  min-width: 2.75rem;
+  padding: 0.1rem 0.4rem;
   border: 1px solid #333;
   font-size: 0.85rem;
   font-weight: 600;

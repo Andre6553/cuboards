@@ -1,5 +1,9 @@
 import type { CutPiece, Job } from '../types';
-import { buildTimbercityFormPages, type TimbercityFormPage } from '../lib/timbercityCutList';
+import {
+  buildTimbercityFormPages,
+  timbercityPageLabel,
+  type TimbercityFormPage,
+} from '../lib/timbercityCutList';
 
 interface Props {
   job: Job;
@@ -29,10 +33,7 @@ function TimbercitySheet({ page }: { page: TimbercityFormPage }) {
               <span className="timbercity-label">Date:</span>
               <span className="timbercity-value">{h.date}</span>
               <span className="timbercity-label timbercity-page-label">Page No:</span>
-              <span className="timbercity-page-box">
-                {h.pageNo}
-                {h.pagesInForm > 1 ? ` / ${h.pagesInForm}` : ''}
-              </span>
+              <span className="timbercity-page-box">{timbercityPageLabel(h.pageNo, h.totalPages)}</span>
             </div>
           </div>
           <div className="timbercity-brand">

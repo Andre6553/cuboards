@@ -12,8 +12,10 @@ export const TIMBERCITY_ROWS_PER_PAGE = 23;
 
 export interface TimbercityFormHeader {
   date: string;
+  /** 1-based page index across the whole Timbercity document (all board+edging forms). */
   pageNo: number;
-  pagesInForm: number;
+  /** Total pages in this Timbercity document (shown as Page No `1/5`). */
+  totalPages: number;
   customerName: string;
   phoneNo: string;
   deliveryAddress: string;
@@ -120,7 +122,7 @@ function paginateGroup(
   group: FactoryCutListGroup,
 ): TimbercityFormPage[] {
   const dataRows = group.rows.map(factoryRowToTimbercityRow);
-  const pagesInForm = Math.max(1, Math.ceil(dataRows.length / TIMBERCITY_ROWS_PER_PAGE));
+  const pageCount = Math.max(1, Math.ceil(dataRows.length / TIMBERCITY_ROWS_PER_PAGE));
   const grainYes = groupHasGrain(group, job);
   const edgingType = formatTimbercityEdgingType(
     group.groupHeading.edgingType,
@@ -133,7 +135,7 @@ function paginateGroup(
       : group.groupHeading.boardType;
 
   const pages: TimbercityFormPage[] = [];
-  for (let pageIndex = 0; pageIndex < pagesInForm; pageIndex++) {
+  for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
     const slice = dataRows.slice(
       pageIndex * TIMBERCITY_ROWS_PER_PAGE,
       (pageIndex + 1) * TIMBERCITY_ROWS_PER_PAGE,
@@ -146,8 +148,9 @@ function paginateGroup(
     pages.push({
       header: {
         date: todayDisplayDate(),
-        pageNo: pageIndex + 1,
-        pagesInForm,
+        // Filled in by buildTimbercityFormPages once the full document length is known.
+        pageNo: 0,
+        totalPages: 0,
         // Timbercity “Customer” fields are the installer’s trade account at the cut house.
         customerName: installer.businessName,
         phoneNo: installer.phone,
@@ -167,11 +170,28 @@ function paginateGroup(
   return pages;
 }
 
+/** Page No label for the Timbercity blank, e.g. `1/5`. */
+export function timbercityPageLabel(pageNo: number, totalPages: number): string {
+  const total = Math.max(1, totalPages);
+  const n = Math.max(1, pageNo);
+  return `${n}/${total}`;
+}
+
 /**
  * One Timbercity form (possibly multi-page) per board type + edging tape.
  * Different edging never shares a form with the same board.
+ * Page numbers run across the whole document (`1/5`, `2/5`, …).
  */
 export function buildTimbercityFormPages(job: Job, pieces: CutPiece[]): TimbercityFormPage[] {
   const groups = buildFactoryCutListGroups(job, pieces);
-  return groups.flatMap((g) => paginateGroup(job, g));
+  const pages = groups.flatMap((g) => paginateGroup(job, g));
+  const totalPages = Math.max(1, pages.length);
+  return pages.map((page, index) => ({
+    ...page,
+    header: {
+      ...page.header,
+      pageNo: index + 1,
+      totalPages,
+    },
+  }));
 }
