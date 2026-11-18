@@ -77,7 +77,11 @@ function SheetThumbnail({
       <figcaption className="sheet-map-caption">
         Sheet {sheet.sheetIndex}
         <span className="sheet-map-dims">
-          {w} × {h} mm <span className="sheet-map-grain-hint">(tap to enlarge)</span>
+          {w} × {h} mm
+          {sheet.paidRegion ? (
+            <span className="sheet-map-paid-hint"> · {sheet.paidRegion.label.replace(/^Paying · /, '')}</span>
+          ) : null}{' '}
+          <span className="sheet-map-grain-hint">(tap to enlarge)</span>
         </span>
       </figcaption>
       <button
@@ -288,8 +292,8 @@ function SheetMapLightbox({
               {slide.materialName}
             </h3>
             <p className="sheet-map-lightbox-meta">
-              Sheet {slide.sheet.sheetIndex} · {slide.sheet.grainLengthMm} × {slide.sheet.crossLengthMm} mm · View{' '}
-              {index + 1} of {total}
+              Sheet {slide.sheet.sheetIndex} · {slide.sheet.grainLengthMm} × {slide.sheet.crossLengthMm} mm
+              {slide.sheet.paidRegion ? ` · ${slide.sheet.paidRegion.label}` : ''} · View {index + 1} of {total}
             </p>
           </div>
           <button type="button" className="btn btn-ghost sheet-map-lightbox-close" onClick={onClose}>

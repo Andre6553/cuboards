@@ -736,12 +736,25 @@ export interface SheetMapOffcutRect {
   label?: string;
 }
 
+export interface SheetMapPaidRegion {
+  xMm: number;
+  yMm: number;
+  widthMm: number;
+  heightMm: number;
+  /** 0–1 of full sheet area billed for this sheet (Buy as step). */
+  billedFraction: number;
+  /** e.g. "Paying · ¼ sheet" */
+  label: string;
+}
+
 export interface SheetMapSheet {
   sheetIndex: number;
   grainLengthMm: number;
   crossLengthMm: number;
   placements: SheetMapPlacement[];
   offcutRects: SheetMapOffcutRect[];
+  /** Area you pay for on this sheet (Buy as ¼ / ⅓ / ½ / full). */
+  paidRegion?: SheetMapPaidRegion;
 }
 
 export interface SheetMapGroup {

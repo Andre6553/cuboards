@@ -39,6 +39,14 @@ function layoutToSheets(
       heightMm: r.heightMm,
       label: r.label,
     })),
+    paidRegion: {
+      xMm: sd.paidRegion.x,
+      yMm: sd.paidRegion.y,
+      widthMm: sd.paidRegion.widthMm,
+      heightMm: sd.paidRegion.heightMm,
+      billedFraction: sd.paidRegion.billedFraction,
+      label: sd.paidRegion.label,
+    },
   }));
 }
 

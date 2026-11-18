@@ -2552,6 +2552,11 @@ fieldset.sub-card:disabled {
   stroke-dasharray: 5 3;
 }
 
+.sheet-map-paid-hint {
+  color: #047857;
+  font-weight: 600;
+}
+
 .sheet-map-cut-line {
   stroke: #dc2626;
   opacity: 0.55;

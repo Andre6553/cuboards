@@ -1,5 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { layoutSheets, type LayoutPiece } from './sheetLayout';
+import { billedFractionLabel, layoutSheets, paidRegionForSheet, type LayoutPiece } from './sheetLayout';
+
+describe('paidRegionForSheet / Buy as overlay', () => {
+  it('labels common Buy as fractions', () => {
+    expect(billedFractionLabel(1)).toBe('Paying · full sheet');
+    expect(billedFractionLabel(0.25)).toBe('Paying · ¼ sheet');
+    expect(billedFractionLabel(0.5)).toBe('Paying · ½ sheet');
+    expect(billedFractionLabel(1 / 3)).toBe('Paying · ⅓ sheet');
+  });
+
+  it('grows the used box to the billed fraction and covers full sheets', () => {
+    const quarter = paidRegionForSheet(2750, 1830, 800, 400, 0.25);
+    expect(quarter.label).toBe('Paying · ¼ sheet');
+    expect(quarter.widthMm * quarter.heightMm).toBeGreaterThanOrEqual(0.25 * 2750 * 1830 - 1);
+    expect(quarter.widthMm).toBeGreaterThanOrEqual(800);
+    expect(quarter.heightMm).toBeGreaterThanOrEqual(400);
+
+    const full = paidRegionForSheet(2750, 1830, 500, 500, 1);
+    expect(full.widthMm).toBe(2750);
+    expect(full.heightMm).toBe(1830);
+  });
+
+  it('attaches a paid region on every nested sheet', () => {
+    const result = layoutSheets(
+      [{ length: 500, width: 300, qty: 1, grainLocked: false, label: 'Panel' }],
+      2750,
+      1830,
+      4,
+      0.25,
+    );
+    expect(result.sheetDetails).toHaveLength(1);
+    expect(result.sheetDetails[0].paidRegion.billedFraction).toBe(0.25);
+    expect(result.sheetDetails[0].paidRegion.label).toMatch(/¼ sheet/);
+  });
+});
 
 describe('layoutSheets strip packing', () => {
   it('fills earlier-sheet strip remnants before opening a new sheet (grain kept)', () => {

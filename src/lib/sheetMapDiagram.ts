@@ -101,6 +101,18 @@ export function buildSheetMapSvg(sheet: SheetMapSheet, patternId: string, option
 
   body += `<rect x="${pad}" y="${pad + grainBand}" width="${w}" height="${h}" fill="#fafafa" stroke="#334155" stroke-width="1.2" rx="1"/>`;
 
+  if (sheet.paidRegion) {
+    const pay = sheet.paidRegion;
+    const payLabel = pay.label || 'Paying';
+    const payFont = fitFontSize(payLabel, pay.widthMm, Math.min(pay.heightMm, 80), expanded ? 1.4 : 0.95, forPdf);
+    body += `<g>`;
+    body += `<rect x="${pad + pay.xMm}" y="${pad + grainBand + pay.yMm}" width="${pay.widthMm}" height="${pay.heightMm}" fill="#d1fae5" stroke="#059669" stroke-width="1.1" stroke-dasharray="7 4" opacity="0.95"/>`;
+    if (pay.widthMm > (forPdf ? 80 : 90) && pay.heightMm > (forPdf ? 36 : 28)) {
+      body += `<text x="${pad + pay.xMm + 8}" y="${pad + grainBand + pay.yMm + Math.min(18, pay.heightMm / 2)}" fill="#065f46" font-family="Segoe UI, system-ui, sans-serif" font-weight="700" font-size="${payFont}">${escapeXml(payLabel)}</text>`;
+    }
+    body += `</g>`;
+  }
+
   for (let i = 0; i < sheet.offcutRects.length; i++) {
     const r = sheet.offcutRects[i];
     const label =

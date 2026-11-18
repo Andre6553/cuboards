@@ -505,8 +505,9 @@ export function CutListView({ job }: Props) {
                 Panel-saw style layout: rip strips across the sheet, then crosscut parts along the grain (straight cuts
                 only). Each part shows <strong>Length × Height (mm)</strong> like the cut list. Tap a sheet for full
                 screen; wheel zoom, drag pan. Grain runs along the long side (→). Hatched parts are grain-locked;
-                amber labelled areas are keeper offcuts ({MIN_OFFCUT_MM} mm+). Included on <strong>Factory</strong> and{' '}
-                <strong>Full</strong> PDF downloads.
+                amber labelled areas are keeper offcuts ({MIN_OFFCUT_MM} mm+). Green dashed area is what you{' '}
+                <strong>pay for</strong> on that sheet (Buy as ¼ / ⅓ / ½ / full). Included on <strong>Factory</strong>{' '}
+                and <strong>Full</strong> PDF downloads.
               </p>
               <SheetMapView groups={factory ? factorySheetMaps : result.sheetMaps} />
             </>

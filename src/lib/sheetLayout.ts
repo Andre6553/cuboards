@@ -58,6 +58,15 @@ export interface LayoutOffcutRect {
   label: string;
 }
 
+export interface LayoutPaidRegion {
+  x: number;
+  y: number;
+  widthMm: number;
+  heightMm: number;
+  billedFraction: number;
+  label: string;
+}
+
 export interface LayoutSheetDetail {
   sheetIndex: number;
   /** Grain runs along this axis (mm). */
@@ -66,6 +75,8 @@ export interface LayoutSheetDetail {
   placements: LayoutPlacement[];
   /** Usable free rectangles (both sides ≥ MIN_OFFCUT_MM), for diagrams. */
   offcutRects: LayoutOffcutRect[];
+  /** Buy-as billed area on this sheet (geometry for the map overlay). */
+  paidRegion: LayoutPaidRegion;
 }
 
 export interface SheetLayoutResult {
@@ -337,6 +348,55 @@ function offcutLabel(index: number, widthMm: number, heightMm: number): string {
   return `Offcut ${index} · ${a} × ${b}`;
 }
 
+/** Human label for a billed sheet fraction (Buy as step). */
+export function billedFractionLabel(fraction: number): string {
+  const f = Math.min(1, Math.max(0, fraction));
+  if (f >= 0.999) return 'Paying · full sheet';
+  if (Math.abs(f - 0.5) < 0.02) return 'Paying · ½ sheet';
+  if (Math.abs(f - 1 / 3) < 0.02) return 'Paying · ⅓ sheet';
+  if (Math.abs(f - 0.25) < 0.02) return 'Paying · ¼ sheet';
+  if (Math.abs(f - 0.75) < 0.02) return 'Paying · ¾ sheet';
+  if (Math.abs(f - 2 / 3) < 0.02) return 'Paying · ⅔ sheet';
+  const pct = Math.round(f * 100);
+  return `Paying · ${pct}% sheet`;
+}
+
+/**
+ * Rectangle from the origin covering the billed Buy-as area, grown from the used nest box
+ * so parts stay inside the paid overlay.
+ */
+export function paidRegionForSheet(
+  grainLen: number,
+  crossLen: number,
+  usedMaxX: number,
+  usedMaxY: number,
+  billedFraction: number,
+): LayoutPaidRegion {
+  const frac = Math.min(1, Math.max(0, billedFraction));
+  const target = frac * grainLen * crossLen;
+  let w = Math.min(grainLen, Math.max(1, usedMaxX));
+  let h = Math.min(crossLen, Math.max(1, usedMaxY));
+  if (w * h < target) {
+    // Grow along grain first (typical rip), then across.
+    w = Math.min(grainLen, Math.max(w, target / h));
+    if (w * h < target) {
+      h = Math.min(crossLen, Math.max(h, target / w));
+    }
+  }
+  if (frac >= 0.999) {
+    w = grainLen;
+    h = crossLen;
+  }
+  return {
+    x: 0,
+    y: 0,
+    widthMm: Math.round(w * 10) / 10,
+    heightMm: Math.round(h * 10) / 10,
+    billedFraction: frac,
+    label: billedFractionLabel(frac),
+  };
+}
+
 function guillotineOffcutRects(
   sheet: GuillotineSheet,
   binW: number,
@@ -456,7 +516,7 @@ export function layoutSheets(
   const usedFraction =
     (Math.min(last.maxX, grainLen) * Math.min(last.maxY, crossLen)) / (grainLen * crossLen);
   const step = purchaseFraction > 0 ? purchaseFraction : 0.25;
-  const lastSheet = Math.max(step, Math.ceil(usedFraction / step - 1e-9) * step);
+  const lastSheetFrac = Math.max(step, Math.ceil(usedFraction / step - 1e-9) * step);
 
   const offcuts: LayoutOffcut[] = [];
   sheets.forEach((sheet, idx) => {
@@ -468,17 +528,24 @@ export function layoutSheets(
   });
   offcuts.sort((a, b) => b.areaMm2 - a.areaMm2 || b.lengthMm - a.lengthMm);
 
-  const sheetDetails: LayoutSheetDetail[] = sheets.map((sheet, idx) => ({
-    sheetIndex: idx + 1,
-    grainLengthMm: grainLen,
-    crossLengthMm: crossLen,
-    placements: placementsBySheet[idx] ?? [],
-    offcutRects: guillotineOffcutRects(sheet, binW, binH, kerf),
-  }));
+  const sheetDetails: LayoutSheetDetail[] = sheets.map((sheet, idx) => {
+    const isLast = idx === sheets.length - 1;
+    const billedFraction = isLast ? Math.min(1, lastSheetFrac) : 1;
+    const usedX = Math.min(sheet.maxX, grainLen);
+    const usedY = Math.min(sheet.maxY, crossLen);
+    return {
+      sheetIndex: idx + 1,
+      grainLengthMm: grainLen,
+      crossLengthMm: crossLen,
+      placements: placementsBySheet[idx] ?? [],
+      offcutRects: guillotineOffcutRects(sheet, binW, binH, kerf),
+      paidRegion: paidRegionForSheet(grainLen, crossLen, usedX, usedY, billedFraction),
+    };
+  });
 
   return {
     sheetsUsed: sheets.length,
-    sheetsToOrder: sheets.length - 1 + Math.min(1, lastSheet),
+    sheetsToOrder: sheets.length - 1 + Math.min(1, lastSheetFrac),
     unplaced,
     offcuts,
     sheetDetails,
