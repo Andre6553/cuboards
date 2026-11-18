@@ -106,7 +106,7 @@ export const KICKPLATE_COVERAGE_LABELS = {
 
 export const DEFAULT_PLASTIC_KICKPLATE: PlasticKickplateConfig = {
   name: 'PVC kickplate strip',
-  stripHeight: 120,
+  stripHeight: 100,
   stripWidth: 18,
   pricePerMetre: 45,
 };

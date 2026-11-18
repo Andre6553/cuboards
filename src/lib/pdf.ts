@@ -416,15 +416,15 @@ export async function exportCutListPdf(
     autoTable(doc, {
       startY: y,
       head: factory
-        ? [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)']]
-        : [['Unit', 'Coverage', 'Run (mm)', 'Strip H×W', 'Cupboards', 'Total (m)', `${curSym}/m`, 'Subtotal']],
+        ? [['Unit', 'Coverage', 'Run (mm)', 'Product · H×W', 'Cupboards', 'Total (m)']]
+        : [['Unit', 'Coverage', 'Run (mm)', 'Product · H×W', 'Cupboards', 'Total (m)', `${curSym}/m`, 'Subtotal']],
       body: factory
         ? [
             ...result.plasticKickplates.map((p) => [
               p.unitName,
               p.coverageLabel,
               p.lengthMm.toString(),
-              `${p.stripHeight}×${p.stripWidth}`,
+              `${p.productName} · ${p.stripHeight}×${p.stripWidth}`,
               p.cupboardQty.toString(),
               p.totalMetres.toFixed(2),
             ]),
@@ -435,13 +435,13 @@ export async function exportCutListPdf(
               p.unitName,
               p.coverageLabel,
               p.lengthMm.toString(),
-              `${p.stripHeight}×${p.stripWidth}`,
+              `${p.productName} · ${p.stripHeight}×${p.stripWidth}`,
               p.cupboardQty.toString(),
               p.totalMetres.toFixed(2),
               fmt(p.pricePerMetre),
               fmt(p.subtotal),
             ]),
-            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), '', fmt(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre)],
+            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), '', fmt(result.plasticKickplates.reduce((sum, line) => sum + line.subtotal, 0))],
           ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },

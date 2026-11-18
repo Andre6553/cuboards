@@ -63,3 +63,32 @@ describe('carcass shelf with melamine backing', () => {
     expect(cutListSize).toBe(`${internalW} × ${shelfDepth}`);
   });
 });
+describe('custom plastic kickplate pricing', () => {
+  it('costs each unit at its selected rate and falls back when its product is removed or Gelmar is enabled', () => {
+    const job = testJob();
+    job.plasticKickplate = {
+      ...job.plasticKickplate,
+      name: 'Default strip',
+      pricePerMetre: 25,
+      useGelmarCatalog: false,
+      customProducts: [{ id: 'tall', name: 'Tall strip', stripHeight: 150, stripWidth: 12, pricePerMetre: 60 }],
+    };
+    job.units = [undefined, 'tall', 'removed'].map((plasticKickplateProductId, index) => {
+      const unit = createDefaultUnit(job, index);
+      return {
+        ...unit,
+        width: 1000,
+        plinth: { ...unit.plinth!, kickplateType: 'plastic', plasticKickplateProductId },
+      };
+    });
+
+    const result = generateCutList(job);
+    expect(result.plasticKickplates.map(({ productName, subtotal }) => [productName, subtotal])).toEqual([
+      ['Default strip', 25], ['Tall strip', 60], ['Default strip', 25],
+    ]);
+    expect(result.costs.filter(({ name }) => name.endsWith('strip')).map(({ subtotal }) => subtotal)).toEqual([50, 60]);
+
+    job.plasticKickplate.useGelmarCatalog = true;
+    expect(generateCutList(job).plasticKickplates.map(({ subtotal }) => subtotal)).toEqual([25, 25, 25]);
+  });
+});

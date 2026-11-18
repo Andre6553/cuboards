@@ -1079,8 +1079,13 @@ function calcKitchenPlinth(
   } else if (plinthHasKickplate(plinth) && kickType === 'plastic') {
     const runMm = kickplateRunLengthMm(W, D, coverage, plinth, job.settings);
     const totalMetres = (runMm * mult) / 1000;
-    const pk = job.plasticKickplate;
+    const config = job.plasticKickplate;
+    const customProduct = config.useGelmarCatalog === false
+      ? config.customProducts?.find((product) => product.id === plinth.plasticKickplateProductId)
+      : undefined;
+    const pk = customProduct ?? config;
     plasticLines.push({
+      productName: pk.name || 'Plastic kickplate strip',
       unitName: unit.name,
       coverageLabel: coverageLabel(coverage),
       lengthMm: runMm,
@@ -1743,7 +1748,7 @@ function calcCosts(
   pieces: CutPiece[],
   edging: EdgingLine[],
   hardware: HardwareItem[],
-  plasticKickplateTotalMetres: number,
+  plasticKickplates: PlasticKickplateLine[],
   screws: ScrewLine[],
   sheetWarnings: string[],
 ): CostLine[] {
@@ -1912,15 +1917,26 @@ function calcCosts(
     });
   }
 
-  if (plasticKickplateTotalMetres > 0) {
-    const pk = job.plasticKickplate;
+  const kickplateCosts = new Map<string, PlasticKickplateLine>();
+  for (const line of plasticKickplates) {
+    if (line.totalMetres <= 0) continue;
+    const key = JSON.stringify([line.productName, line.stripHeight, line.stripWidth, line.pricePerMetre]);
+    const grouped = kickplateCosts.get(key);
+    if (grouped) {
+      grouped.totalMetres += line.totalMetres;
+      grouped.subtotal += line.subtotal;
+    } else {
+      kickplateCosts.set(key, { ...line });
+    }
+  }
+  for (const line of kickplateCosts.values()) {
     costs.push({
       category: 'hardware',
-      name: pk.name,
-      detail: `${plasticKickplateTotalMetres.toFixed(2)} m · ${pk.stripHeight}×${pk.stripWidth} mm @ R${pk.pricePerMetre}/m — see Plastic kickplate table`,
-      quantity: Math.round(plasticKickplateTotalMetres * 100) / 100,
-      unitPrice: pk.pricePerMetre,
-      subtotal: plasticKickplateTotalMetres * pk.pricePerMetre,
+      name: line.productName,
+      detail: `${line.totalMetres.toFixed(2)} m · ${line.stripHeight}×${line.stripWidth} mm — see Plastic kickplate table`,
+      quantity: Math.round(line.totalMetres * 100) / 100,
+      unitPrice: line.pricePerMetre,
+      subtotal: line.subtotal,
     });
   }
 
@@ -1974,7 +1990,7 @@ export function generateCutList(job: Job): CutListResult {
   const sheetWarnings: string[] = [];
   const boardOffcuts = calcBoardOffcuts(job, pieces);
   const sheetMaps = calcSheetMaps(job, pieces);
-  const materialCosts = calcCosts(job, pieces, edging, hardware, plasticKickplateTotalMetres, screws, sheetWarnings);
+  const materialCosts = calcCosts(job, pieces, edging, hardware, plasticKickplates, screws, sheetWarnings);
   const install = calcJobInstall(job);
   const { woodMaterialTotal, hardwareTotal } = splitQuoteCostLines(materialCosts);
   const materialsTotal = woodMaterialTotal + hardwareTotal;

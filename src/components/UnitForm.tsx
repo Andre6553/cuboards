@@ -733,6 +733,10 @@ export function UnitForm({
         const plinth = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
         const kickplateActive = plinthHasKickplate(plinth);
         const kickplateWood = plinth.kickplateType === 'wood';
+        const kickplateProducts = job.plasticKickplate.useGelmarCatalog === false
+          ? job.plasticKickplate.customProducts ?? []
+          : [];
+        const selectedKickplate = kickplateProducts.find((product) => product.id === plinth.plasticKickplateProductId);
         return (
         <CollapsibleSection title="Kitchen plinth — kickplate & feet" variant="nested">
           <div className="form-grid form-grid-4">
@@ -744,6 +748,20 @@ export function UnitForm({
                 ))}
               </select>
             </label>
+            {plinth.kickplateType === 'plastic' && kickplateProducts.length > 0 && (
+              <label>
+                Plastic kickplate product
+                <select
+                  value={selectedKickplate?.id ?? ''}
+                  onChange={(e) => setPlinth('plasticKickplateProductId', e.target.value || undefined)}
+                >
+                  <option value="">Job default · {job.plasticKickplate.name}</option>
+                  {kickplateProducts.map((product) => (
+                    <option key={product.id} value={product.id}>{product.name || 'Unnamed product'}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label>
               Kickplate coverage
               <select

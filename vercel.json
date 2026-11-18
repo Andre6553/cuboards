@@ -7,6 +7,7 @@
   ],
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "functions": {
+    "api/gelmar-kickplate.js": { "maxDuration": 30 },
     "api/gelmar-runners.js": { "maxDuration": 60 },
     "api/gelmar-hinges.js": { "maxDuration": 60 },
     "api/gelmar-screws.js": { "maxDuration": 60 },

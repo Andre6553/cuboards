@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CONNECTING_FITTING_CATALOG,
   CUT_SIZE_MODE_LABELS,
@@ -49,6 +49,7 @@ import type {
   MasoniteConfig,
   Material,
   PlasticKickplateConfig,
+  PlasticKickplateProduct,
   QuoteTerms,
   RunnerPrices,
   ScrewPrices,
@@ -232,6 +233,14 @@ export function MaterialsForm({
 
   const patchInstall = (patch: Partial<InstallRates>) => onInstallRatesChange({ ...install, ...patch });
 
+  const [refreshingKickplate, setRefreshingKickplate] = useState(false);
+  const [kickplateRefresh, setKickplateRefresh] = useState<GelmarRefreshUiState>(emptyGelmarRefreshUi);
+  const latestKickplate = useRef<{ config: PlasticKickplateConfig; onChange: Props['onPlasticKickplateChange'] } | null>(null);
+  useEffect(() => {
+    latestKickplate.current = { config: plasticKickplate, onChange: onPlasticKickplateChange };
+    return () => { latestKickplate.current = null; };
+  }, [plasticKickplate, onPlasticKickplateChange]);
+
   const [refreshingRunners, setRefreshingRunners] = useState(false);
   const [runnerRefresh, setRunnerRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
   const [refreshingHinges, setRefreshingHinges] = useState(false);
@@ -282,7 +291,7 @@ export function MaterialsForm({
 
   const runGelmarRefresh = async (options: {
     apiPath: string;
-    gelmarCategory: GelmarPriceCategory;
+    gelmarCategory?: GelmarPriceCategory;
     setRefreshing: (v: boolean) => void;
     setUi: (ui: GelmarRefreshUiState) => void;
     currentPrices: Record<string, number>;
@@ -301,7 +310,9 @@ export function MaterialsForm({
         options.formatLabel,
       );
       options.onPricesChange(nextPrices);
-      patchGelmarCategoryPrices(options.gelmarCategory, nextPrices, data.scrapedAt);
+      if (options.gelmarCategory) {
+        patchGelmarCategoryPrices(options.gelmarCategory, nextPrices, data.scrapedAt);
+      }
       options.setUi({
         note: gelmarRefreshNote(changes, checked.length, data.scrapedAt),
         error: null,
@@ -318,6 +329,40 @@ export function MaterialsForm({
       options.setRefreshing(false);
     }
   };
+
+  const refreshGelmarKickplate = (height: number) =>
+    void runGelmarRefresh({
+      apiPath: `/api/gelmar-kickplate?height=${height}`,
+      setRefreshing: setRefreshingKickplate,
+      setUi: setKickplateRefresh,
+      currentPrices: { pricePerMetre: plasticKickplate.pricePerMetre },
+      getDefault: () => undefined,
+      formatLabel: () => `White ${height} mm plinth per metre`,
+      onPricesChange: ({ pricePerMetre }) => {
+        const latest = latestKickplate.current;
+        if (latest && latest.config.useGelmarCatalog !== false &&
+            latest.config.stripHeight === height &&
+            latest.config.pricePerMetre === plasticKickplate.pricePerMetre &&
+            pricePerMetre !== latest.config.pricePerMetre) {
+          latest.onChange({ ...latest.config, pricePerMetre });
+        }
+      },
+    });
+
+  const canRefreshKickplate = plasticKickplate.stripHeight === 100 || plasticKickplate.stripHeight === 150;
+
+  const changeKickplateHeight = (stripHeight: number) => {
+    onPlasticKickplateChange({ ...plasticKickplate, stripHeight });
+    setKickplateRefresh(emptyGelmarRefreshUi());
+    if (plasticKickplate.useGelmarCatalog !== false) refreshGelmarKickplate(stripHeight);
+  };
+
+  const kickplateProducts = plasticKickplate.customProducts ?? [];
+  const setKickplateProducts = (customProducts: PlasticKickplateProduct[]) =>
+    onPlasticKickplateChange({ ...plasticKickplate, customProducts });
+
+  const patchKickplateProduct = (id: string, patch: Partial<PlasticKickplateProduct>) =>
+    setKickplateProducts(kickplateProducts.map((product) => product.id === id ? { ...product, ...patch } : product));
 
   const refreshGelmarRunners = () =>
     void runGelmarRefresh({
@@ -1561,18 +1606,117 @@ export function MaterialsForm({
 
 
       <CollapsibleSection title="Plastic kickplate strip">
+        <label className="checkbox-label hardware-source-toggle">
+          <input
+            type="checkbox"
+            checked={plasticKickplate.useGelmarCatalog !== false}
+            disabled={refreshingKickplate}
+            onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, useGelmarCatalog: e.target.checked })}
+          />
+          Use Gelmar catalog &amp; live price refresh for plastic kickplates
+        </label>
+        {plasticKickplate.useGelmarCatalog !== false && !canRefreshKickplate && (
+          <p className="hint">Choose 100 mm or 150 mm to use Gelmar pricing.</p>
+        )}
+        {plasticKickplate.useGelmarCatalog !== false && canRefreshKickplate && (
+          <GelmarPriceRefreshPanel
+            {...kickplateRefresh}
+            refreshing={refreshingKickplate}
+            onRefresh={() => refreshGelmarKickplate(plasticKickplate.stripHeight)}
+            hint={`Gelmar’s white ${plasticKickplate.stripHeight} mm × 3 m plinth price is converted to a price per metre. You can override it below.`}
+          />
+        )}
 
-        <p className="hint">Used when a unit has plastic kickplate. Price is per linear metre; set strip height and width to match your supplier profile.</p>
+        {plasticKickplate.useGelmarCatalog === false && (
+          <>
+            <p className="hint">Add supplier products and pick one on each unit under Kitchen plinth. Products are saved with the job and in My default prices.</p>
+            <div className="table-wrap">
+              <table className="data-table materials-price-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Height (mm)</th>
+                    <th>Width (mm)</th>
+                    <th>{priceInputLabel(settings, 'Price / metre')}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kickplateProducts.length === 0 && (
+                    <tr><td colSpan={5}><span className="hint">No products yet — add one below.</span></td></tr>
+                  )}
+                  {kickplateProducts.map((product) => (
+                    <tr key={product.id}>
+                      <td data-label="Description">
+                        <input
+                          aria-label="Product description"
+                          className="table-input"
+                          value={product.name}
+                          onChange={(e) => patchKickplateProduct(product.id, { name: e.target.value })}
+                        />
+                      </td>
+                      <td data-label="Height (mm)">
+                        <NumberInput aria-label="Product height (mm)" className="table-input" min={1}
+                          value={product.stripHeight} onChange={(stripHeight) => patchKickplateProduct(product.id, { stripHeight })} />
+                      </td>
+                      <td data-label="Width (mm)">
+                        <NumberInput aria-label="Product width (mm)" className="table-input" min={1}
+                          value={product.stripWidth} onChange={(stripWidth) => patchKickplateProduct(product.id, { stripWidth })} />
+                      </td>
+                      <td data-label="Price / metre">
+                        <NumberInput aria-label="Product price per metre" className="table-input" min={0}
+                          value={product.pricePerMetre} onChange={(pricePerMetre) => patchKickplateProduct(product.id, { pricePerMetre })} />
+                      </td>
+                      <td data-label="">
+                        <button type="button" className="btn btn-ghost btn-sm danger"
+                          onClick={() => setKickplateProducts(kickplateProducts.filter(({ id }) => id !== product.id))}>
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setKickplateProducts([
+              ...kickplateProducts,
+              {
+                id: crypto.randomUUID(),
+                name: 'New kickplate',
+                stripHeight: plasticKickplate.stripHeight,
+                stripWidth: plasticKickplate.stripWidth,
+                pricePerMetre: 0,
+              },
+            ])}>
+              + Add product
+            </button>
+          </>
+        )}
+
+        <p className="hint">Job default for units without a selected product. Price is per linear metre.</p>
 
         <div className="form-grid form-grid-4">
 
           <label>Name<input value={plasticKickplate.name} onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, name: e.target.value })} /></label>
 
-          <label>Strip height (mm)<NumberInput  value={plasticKickplate.stripHeight} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, stripHeight: n })} /></label>
+          <label>
+            Strip height (mm)
+            <select
+              value={plasticKickplate.stripHeight}
+              disabled={refreshingKickplate}
+              onChange={(e) => changeKickplateHeight(Number(e.target.value))}
+            >
+              {!canRefreshKickplate && (
+                <option value={plasticKickplate.stripHeight} disabled>{plasticKickplate.stripHeight} mm (saved)</option>
+              )}
+              <option value={100}>100 mm</option>
+              <option value={150}>150 mm</option>
+            </select>
+          </label>
 
           <label>Strip width (mm)<NumberInput  value={plasticKickplate.stripWidth} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, stripWidth: n })} /></label>
 
-          <label>{priceInputLabel(settings, 'Price / metre')}<NumberInput  value={plasticKickplate.pricePerMetre} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: n })} /></label>
+          <label>{priceInputLabel(settings, 'Price / metre')}<NumberInput disabled={refreshingKickplate} value={plasticKickplate.pricePerMetre} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: n })} /></label>
 
         </div>
 

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { GelmarPriceChange, GelmarPriceChecked } from '../lib/gelmarPriceRefresh';
 
 interface Props {
-  snapshotScrapedAt: string;
+  snapshotScrapedAt?: string;
   liveAt: string | null;
   refreshing: boolean;
   onRefresh: () => void;
@@ -33,9 +33,8 @@ export function GelmarPriceRefreshPanel({
       <div className="gelmar-refresh-row">
         <p className="hint">
           {hint}
-          {' '}
-          (snapshot {snapshotScrapedAt}
-          {liveAt ? `; last live check ${liveAt}` : ''}).
+          {snapshotScrapedAt && ` (snapshot ${snapshotScrapedAt}${liveAt ? `; last live check ${liveAt}` : ''}).`}
+          {!snapshotScrapedAt && liveAt && ` (last live check ${liveAt}).`}
         </p>
         <button
           type="button"

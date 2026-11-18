@@ -271,7 +271,17 @@ export interface QuoteTerms {
   extraNotes: string;
 }
 
+export interface PlasticKickplateProduct {
+  id: string;
+  name: string;
+  stripHeight: number;
+  stripWidth: number;
+  pricePerMetre: number;
+}
+
 export interface PlasticKickplateConfig {
+  useGelmarCatalog?: boolean;
+  customProducts?: PlasticKickplateProduct[];
   name: string;
   /** Strip profile height (mm) — e.g. 120 */
   stripHeight: number;
@@ -282,6 +292,7 @@ export interface PlasticKickplateConfig {
 
 export interface KitchenPlinthConfig {
   kickplateType: KickplateType;
+  plasticKickplateProductId?: string;
   kickplateCoverage: KickplateCoverage;
   kickplateSide: KickplateSide;
   kickplateMaterialId: string;
@@ -609,6 +620,7 @@ export interface UnitPreset {
 }
 
 export interface PlasticKickplateLine {
+  productName: string;
   unitName: string;
   coverageLabel: string;
   lengthMm: number;

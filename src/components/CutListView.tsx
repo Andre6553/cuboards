@@ -579,7 +579,7 @@ export function CutListView({ job }: Props) {
                       <th>Unit</th>
                       <th>Coverage</th>
                       <th>Run (mm)</th>
-                      <th>Strip H×W (mm)</th>
+                      <th>Product · H×W (mm)</th>
                       <th>Cupboards</th>
                       <th>Total (m)</th>
                       {!factory && <th>{currencySymbol}/m</th>}
@@ -592,7 +592,7 @@ export function CutListView({ job }: Props) {
                         <td>{p.unitName}</td>
                         <td>{p.coverageLabel}</td>
                         <td>{p.lengthMm}</td>
-                        <td>{p.stripHeight} × {p.stripWidth}</td>
+                        <td>{p.productName} · {p.stripHeight} × {p.stripWidth}</td>
                         <td>{p.cupboardQty}</td>
                         <td>{p.totalMetres.toFixed(2)}</td>
                         {!factory && <td>{fmt(p.pricePerMetre)}</td>}
@@ -603,7 +603,7 @@ export function CutListView({ job }: Props) {
                       <td colSpan={5}><strong>Job total</strong></td>
                       <td><strong>{result.plasticKickplateTotalMetres.toFixed(2)}</strong></td>
                       {!factory && <td></td>}
-                      {!factory && <td><strong>{fmt(result.plasticKickplateTotalMetres * job.plasticKickplate.pricePerMetre)}</strong></td>}
+                      {!factory && <td><strong>{fmt(result.plasticKickplates.reduce((sum, line) => sum + line.subtotal, 0))}</strong></td>}
                     </tr>
                   </tbody>
                 </table>
