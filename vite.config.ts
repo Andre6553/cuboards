@@ -16,6 +16,8 @@ function json(res: ServerResponse, status: number, body: unknown) {
 const GELMAR_API_ROUTES: Record<string, (requestUrl?: string) => Promise<{ scrapedAt: string; prices: object; warnings?: string[] }>> = {
   '/api/gelmar-kickplate': (requestUrl) =>
     import('./scripts/gelmar-kickplate-lib.mjs').then((mod) => mod.scrapeGelmarKickplate(requestUrl)),
+  '/api/gelmar-plinth-corner': (requestUrl) =>
+    import('./scripts/gelmar-plinth-corner-lib.mjs').then((mod) => mod.scrapeGelmarPlinthCorner(requestUrl)),
   '/api/gelmar-runners': () =>
     import('./scripts/gelmar-runners-lib.mjs').then((mod) => mod.scrapeGelmarRunners()),
   '/api/gelmar-hinges': () =>
