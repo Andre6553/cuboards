@@ -404,8 +404,9 @@ export function CutListView({ job }: Props) {
       )}
       {showTechnical && hasGrainParts && (
         <p className="hint">
-          Grain: sides, doors, drawer fronts and wood kickplates on grain boards are marked <strong>Top to bottom</strong> — grain runs
-          along the first size (Length). Sheet counts keep these parts with the grain on the sheet's long side.
+          Grain: sides, doors, drawer fronts and wood kickplates on grain boards are marked <strong>Top to bottom</strong> — grain
+          runs along the first size (Length). On grain boards the sheet maps nest every part with that Length along the sheet
+          grain (no free rotate). Non-grain boards can still rotate parts to pack tighter.
         </p>
       )}
 
@@ -503,9 +504,9 @@ export function CutListView({ job }: Props) {
               <h3 className="section-title">Visual sheet maps</h3>
               <p className="hint">
                 Panel-saw style layout: rip strips across the sheet, then crosscut along the grain. Each part shows{' '}
-                <strong>Length × Height (mm)</strong>. Tap a sheet for full screen (wheel zoom, drag pan). Grain runs
-                along the long side (→). See the <strong>colour key</strong> under the maps. Included on{' '}
-                <strong>Factory</strong> and <strong>Full</strong> PDF downloads.
+                <strong>Length × Height (mm)</strong> — on grain boards Length stays along sheet grain (→), matching the cut
+                list. Non-grain boards may rotate parts. Tap a sheet for full screen. See the <strong>colour key</strong>{' '}
+                under the maps. Included on <strong>Factory</strong> and <strong>Full</strong> PDF downloads.
               </p>
               <SheetMapView groups={factory ? factorySheetMaps : result.sheetMaps} />
             </>

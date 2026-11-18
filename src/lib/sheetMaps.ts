@@ -12,9 +12,10 @@ function layoutToSheets(
   sheetHeight: number,
   purchaseFraction: number,
   sawKerfMm: number,
+  materialHasGrain = false,
 ): SheetMapSheet[] {
   const layout = layoutSheets(
-    cutPiecesToLayout(pieces),
+    cutPiecesToLayout(pieces, { materialHasGrain }),
     sheetWidth,
     sheetHeight,
     sawKerfMm,
@@ -68,7 +69,14 @@ export function calcSheetMaps(job: Job, pieces: CutPiece[]): SheetMapGroup[] {
   for (const m of job.materials) {
     const matPieces = byMaterial.get(m.id);
     if (!matPieces?.length) continue;
-    const sheets = layoutToSheets(matPieces, sheetWidth, sheetHeight, sheetPurchaseFraction(m), sawKerfMm);
+    const sheets = layoutToSheets(
+      matPieces,
+      sheetWidth,
+      sheetHeight,
+      sheetPurchaseFraction(m),
+      sawKerfMm,
+      m.hasGrain,
+    );
     if (sheets.length === 0) continue;
     groups.push({
       materialId: m.id,

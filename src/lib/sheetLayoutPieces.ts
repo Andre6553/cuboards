@@ -7,12 +7,21 @@ function mapLabel(partName: string, unitName: string): string {
   return raw.length <= max ? raw : `${raw.slice(0, max - 1)}…`;
 }
 
-export function cutPiecesToLayout(pieces: CutPiece[]): LayoutPiece[] {
+/**
+ * Map cut-list pieces into nest inputs.
+ * Grain boards: every part keeps cut-list Length along the sheet grain (no rotate).
+ * Non-grain boards: only pieces marked with a grain direction are locked; others may rotate.
+ */
+export function cutPiecesToLayout(
+  pieces: CutPiece[],
+  options?: { materialHasGrain?: boolean },
+): LayoutPiece[] {
+  const lockAllToLength = options?.materialHasGrain === true;
   return pieces.map((p) => ({
     length: p.length,
     width: p.width,
     qty: p.qty,
-    grainLocked: p.grain !== 'none',
+    grainLocked: lockAllToLength || p.grain !== 'none',
     label: mapLabel(p.partName, p.unitName),
   }));
 }

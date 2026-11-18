@@ -393,8 +393,8 @@ function SheetMapColourLegend() {
         <li>
           <span className="sheet-map-swatch sheet-map-swatch--part" aria-hidden="true" />
           <span>
-            <strong>Blue parts</strong> — panels you cut. Solid = no grain lock (can rotate). Hatched = grain locked
-            (must stay along sheet length →).
+            <strong>Blue parts</strong> — panels you cut. Hatched = Length locked along sheet grain → (grain boards lock
+            every part). Solid = free to rotate (non-grain boards).
           </span>
         </li>
         <li>

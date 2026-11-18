@@ -26,7 +26,7 @@ export function calcBoardOffcuts(job: Job, pieces: CutPiece[]): BoardOffcut[] {
     if (!matPieces?.length) continue;
     const purchaseFrac = sheetPurchaseFraction(m);
     const layout = layoutSheets(
-      cutPiecesToLayout(matPieces),
+      cutPiecesToLayout(matPieces, { materialHasGrain: m.hasGrain }),
       sheetWidth,
       sheetHeight,
       sawKerfMm,

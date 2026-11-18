@@ -1720,9 +1720,10 @@ function sheetCountFromNesting(
   sawKerfMm: number,
   purchaseFrac: number,
   sheetArea: number,
+  materialHasGrain = false,
 ): { sheetsFromLayout: number; unplaced: LayoutPiece[] } {
   const layout = layoutSheets(
-    cutPiecesToLayout(matPieces),
+    cutPiecesToLayout(matPieces, { materialHasGrain }),
     sheetWidth,
     sheetHeight,
     sawKerfMm,
@@ -1785,10 +1786,11 @@ function calcCosts(
       sawKerfMm,
       purchaseFrac,
       sheetArea,
+      m.hasGrain,
     );
     sheetsNeeded = Math.max(sheetsNeeded, sheetsFromLayout);
     const layoutNote = m.hasGrain
-      ? `grain layout (${purchaseLabel}; sides, doors & drawer fronts grain top to bottom, ${sawKerfMm} mm saw cut)`
+      ? `grain layout (${purchaseLabel}; cut-list Length along sheet grain, ${sawKerfMm} mm saw cut)`
       : `panel layout (${purchaseLabel}; parts can rotate, ${sawKerfMm} mm saw cut)`;
     let detail = `${formatSheetCount(sheetsNeeded)} @ ${sheetWidth}×${sheetHeight} · ${layoutNote}${wastageNote}`;
     pushUnplacedSheetWarnings(m.name, sheetWidth, sheetHeight, unplaced, sheetWarnings);

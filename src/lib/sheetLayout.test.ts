@@ -102,6 +102,23 @@ describe('layoutSheets strip packing', () => {
 });
 
 describe('layoutSheets orientation', () => {
+  it('keeps Length along sheet grain when every part is grain-locked', () => {
+    const pieces: LayoutPiece[] = [
+      { length: 568, width: 284, qty: 4, grainLocked: true, label: 'Shelf' },
+      { length: 780, width: 1810, qty: 1, grainLocked: true, label: 'Tall panel' },
+    ];
+    const result = layoutSheets(pieces, 2750, 1830, 4, 1);
+    expect(result.unplaced).toHaveLength(0);
+    const tall = result.sheetDetails.flatMap((s) => s.placements).find((p) => p.label === 'Tall panel');
+    expect(tall).toBeDefined();
+    expect(tall!.widthMm).toBe(780);
+    expect(tall!.heightMm).toBe(1810);
+    for (const s of result.sheetDetails.flatMap((s) => s.placements).filter((p) => p.label === 'Shelf')) {
+      expect(s.widthMm).toBe(568);
+      expect(s.heightMm).toBe(284);
+    }
+  });
+
   it('prefers flatter orientation for rotatable tall panels so leftovers pack on fewer sheets', () => {
     // Mimics Esperanza: one non-grain 780×1810 panel plus a thin filler.
     // Old tie-break kept the panel standing (1810 cross) and opened a 3rd sheet
