@@ -136,9 +136,15 @@ function drawTimbercityPage(doc: jsPDF, page: TimbercityFormPage, isFirst: boole
   doc.setFontSize(7);
   doc.setDrawColor(40);
   doc.setLineWidth(0.2);
+  // Centre all columns except Remarks (last).
+  const centerCol = (i: number) => i < headers.length - 1;
   for (let i = 0; i < headers.length; i++) {
     doc.rect(x, tableTop, colWidths[i]!, headerH);
-    doc.text(headers[i]!, x + 1.2, tableTop + 4.5);
+    if (centerCol(i)) {
+      doc.text(headers[i]!, x + colWidths[i]! / 2, tableTop + 4.5, { align: 'center' });
+    } else {
+      doc.text(headers[i]!, x + 1.2, tableTop + 4.5);
+    }
     x += colWidths[i]!;
   }
 
@@ -162,8 +168,17 @@ function drawTimbercityPage(doc: jsPDF, page: TimbercityFormPage, isFirst: boole
     x = margin;
     for (let i = 0; i < cells.length; i++) {
       doc.rect(x, rowY, colWidths[i]!, rowH);
-      const cellText = doc.splitTextToSize(cells[i] || '', colWidths[i]! - 2);
-      doc.text(cellText[0] || '', x + 1, rowY + 4.2);
+      const raw = cells[i] || '';
+      if (!raw) {
+        x += colWidths[i]!;
+        continue;
+      }
+      if (centerCol(i)) {
+        doc.text(raw, x + colWidths[i]! / 2, rowY + 4.2, { align: 'center' });
+      } else {
+        const cellText = doc.splitTextToSize(raw, colWidths[i]! - 2);
+        doc.text(cellText[0] || '', x + 1, rowY + 4.2);
+      }
       x += colWidths[i]!;
     }
   }

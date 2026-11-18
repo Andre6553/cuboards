@@ -95,7 +95,9 @@ export function JobEditor({
           <ClientForm
             key={job.id}
             client={job.client}
+            installer={job.installer ?? { businessName: '', phone: '', email: '' }}
             onChange={(client) => onChange({ ...job, client })}
+            onInstallerChange={(installer) => onChange({ ...job, installer })}
           />
 
           <section className="card units-card">

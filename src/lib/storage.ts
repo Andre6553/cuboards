@@ -20,6 +20,7 @@ import { syncFloorCornerDoors } from './floorCornerRules';
 import { syncWallCornerDoors } from './wallCornerRules';
 import { kickplateEdgingFromLegacyPattern } from './kickplateEdging';
 import { normalizePlasticKickplate } from './kickplateRules';
+import { EMPTY_INSTALLER, normalizeInstallerDetails } from './installerDetails';
 import { getDefaultRunnerPrices, getRunnerClearances } from './runnerCatalog';
 import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
 import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
@@ -162,6 +163,7 @@ export function createNewJob(): Job {
     createdAt: now,
     updatedAt: now,
     client: emptyClient(),
+    installer: { ...EMPTY_INSTALLER },
     settings: { ...DEFAULT_SETTINGS },
     materials: catalog.materials.map((m) => ({ ...m })),
     edgingMaterials: catalog.edgingMaterials.map((e) => ({ ...e })),
@@ -226,6 +228,7 @@ export function migrateJob(job: Job): Job {
 
   return {
     ...job,
+    installer: normalizeInstallerDetails(job.installer),
     edgingMaterials,
     masonite: { ...DEFAULT_MASONITE, ...job.masonite },
     plasticKickplate: normalizePlasticKickplate(job.plasticKickplate ?? { ...DEFAULT_PLASTIC_KICKPLATE }),

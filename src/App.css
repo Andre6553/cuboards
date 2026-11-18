@@ -3607,9 +3607,13 @@ a.hw-shop-thumb-link {
   height: 1.55rem;
 }
 
+.timbercity-table .timbercity-num,
+.timbercity-table .timbercity-row-num {
+  text-align: center;
+}
+
 .timbercity-row-num {
   width: 2rem;
-  text-align: center !important;
   color: #555;
   font-size: 0.72rem;
 }

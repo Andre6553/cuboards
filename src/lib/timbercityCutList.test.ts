@@ -18,6 +18,7 @@ import {
   buildTimbercityFormPages,
   edgeLongLabel,
   edgeShortLabel,
+  formatTimbercityEdgingType,
   TIMBERCITY_ROWS_PER_PAGE,
 } from './timbercityCutList';
 
@@ -32,6 +33,11 @@ function testJob(): Job {
       address: '1 Main Rd',
       phone: '0820000000',
       notes: 'Leave at gate',
+    },
+    installer: {
+      businessName: 'Arline Cupboards',
+      phone: '0831112222',
+      email: 'andre@example.com',
     },
     settings: { ...DEFAULT_SETTINGS },
     materials: DEFAULT_MATERIALS.map((m) => ({ ...m })),
@@ -57,6 +63,11 @@ describe('timbercity edge labels', () => {
     expect(edgeLongLabel({ l1: false, l2: false, b1: true, b2: true })).toBe('');
     expect(edgeShortLabel({ l1: true, l2: true, b1: false, b2: false })).toBe('');
   });
+
+  it('writes NO EDGING when the form has no tape', () => {
+    expect(formatTimbercityEdgingType(null, null)).toBe('NO EDGING');
+    expect(formatTimbercityEdgingType('White PVC', 1)).toBe('White PVC 1 mm');
+  });
 });
 
 describe('buildTimbercityFormPages', () => {
@@ -76,7 +87,9 @@ describe('buildTimbercityFormPages', () => {
     const first = pages[0]!;
     expect(first.header.finishedSize).toBe(true);
     expect(first.header.cuttingSize).toBe(false);
-    expect(first.header.customerName).toBe('Test Client');
+    expect(first.header.customerName).toBe('Arline Cupboards');
+    expect(first.header.phoneNo).toBe('0831112222');
+    expect(first.header.deliveryAddress).toBe('1 Main Rd');
     expect(first.header.jobNoName).toBe('TC-1');
     expect(first.rows).toHaveLength(TIMBERCITY_ROWS_PER_PAGE);
 

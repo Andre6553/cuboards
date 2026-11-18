@@ -5,6 +5,7 @@ import {
   type FactoryCutListRow,
   type FactoryEdgingTicks,
 } from './factoryCutList';
+import { normalizeInstallerDetails } from './installerDetails';
 
 /** Timbercity Client Cutting List — rows per printed page. */
 export const TIMBERCITY_ROWS_PER_PAGE = 23;
@@ -69,7 +70,7 @@ export function formatTimbercityEdgingType(
   edgingType: string | null,
   thicknessMm: number | null,
 ): string {
-  if (!edgingType) return '';
+  if (!edgingType) return 'NO EDGING';
   if (thicknessMm != null && Number.isFinite(thicknessMm)) {
     return `${edgingType} ${thicknessMm} mm`;
   }
@@ -141,13 +142,15 @@ function paginateGroup(
       { length: TIMBERCITY_ROWS_PER_PAGE },
       (_, i) => slice[i] ?? null,
     );
+    const installer = normalizeInstallerDetails(job.installer);
     pages.push({
       header: {
         date: todayDisplayDate(),
         pageNo: pageIndex + 1,
         pagesInForm,
-        customerName: job.client.name?.trim() || '',
-        phoneNo: job.client.phone?.trim() || '',
+        // Timbercity “Customer” fields are the installer’s trade account at the cut house.
+        customerName: installer.businessName,
+        phoneNo: installer.phone,
         deliveryAddress: job.client.address?.trim() || '',
         jobNoName: job.client.ref?.trim() || job.client.name?.trim() || '',
         boardType,

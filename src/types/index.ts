@@ -200,6 +200,13 @@ export interface Client {
   notes: string;
 }
 
+/** Installer / trade business — used on Timbercity cut-list header (not the client). */
+export interface InstallerDetails {
+  businessName: string;
+  phone: string;
+  email: string;
+}
+
 export interface JobSettings {
   thickness: BoardThickness;
   sheetWidth: number;
@@ -659,6 +666,8 @@ export interface Job {
   createdAt: string;
   updatedAt: string;
   client: Client;
+  /** Installer business — Timbercity form Customer Name / Phone use these. */
+  installer?: InstallerDetails;
   settings: JobSettings;
   materials: Material[];
   edgingMaterials: EdgingMaterial[];

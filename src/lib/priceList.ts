@@ -8,6 +8,7 @@ import {
   upsertMaterialCatalogFromJob,
 } from './materialCatalog';
 import type { Job, JobSettings } from '../types';
+import { normalizeInstallerDetails } from './installerDetails';
 import { requireUserDataScope, userStorageKeys } from './userDataScope';
 
 /**
@@ -30,6 +31,7 @@ export type PriceList = Pick<
   | 'installRates'
   | 'hardwarePricing'
   | 'quoteTerms'
+  | 'installer'
 > & { savedAt: string };
 
 function normalizeSettingsForSave(settings: JobSettings): JobSettings {
@@ -73,6 +75,7 @@ function writePriceListFromJob(job: Job): PriceList {
     installRates: job.installRates,
     hardwarePricing: job.hardwarePricing,
     quoteTerms: { ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms },
+    installer: normalizeInstallerDetails(job.installer),
     savedAt: new Date().toISOString(),
   });
   requireUserDataScope();
@@ -164,5 +167,6 @@ export function applyPriceListToJob(job: Job, list: PriceList): Job {
     installRates: { ...list.installRates },
     hardwarePricing: list.hardwarePricing ? structuredClone(list.hardwarePricing) : job.hardwarePricing,
     quoteTerms,
+    installer: normalizeInstallerDetails(list.installer ?? job.installer),
   };
 }

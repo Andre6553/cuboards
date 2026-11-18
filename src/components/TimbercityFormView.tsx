@@ -91,12 +91,12 @@ function TimbercitySheet({ page }: { page: TimbercityFormPage }) {
           <thead>
             <tr>
               <th className="timbercity-row-num">#</th>
-              <th>Length</th>
-              <th>Width</th>
-              <th>Quantity</th>
-              <th>Edge Length</th>
-              <th>Edge Width</th>
-              <th>Holes</th>
+              <th className="timbercity-num">Length</th>
+              <th className="timbercity-num">Width</th>
+              <th className="timbercity-num">Quantity</th>
+              <th className="timbercity-num">Edge Length</th>
+              <th className="timbercity-num">Edge Width</th>
+              <th className="timbercity-num">Holes</th>
               <th>Remarks/Notes/Cut Outs</th>
             </tr>
           </thead>
@@ -104,12 +104,12 @@ function TimbercitySheet({ page }: { page: TimbercityFormPage }) {
             {page.rows.map((row, i) => (
               <tr key={i}>
                 <td className="timbercity-row-num">{i + 1}</td>
-                <td>{row ? row.lengthMm : ''}</td>
-                <td>{row ? row.widthMm : ''}</td>
-                <td>{row ? row.qty : ''}</td>
-                <td>{row?.edgeLength ?? ''}</td>
-                <td>{row?.edgeWidth ?? ''}</td>
-                <td>{row?.holes ?? ''}</td>
+                <td className="timbercity-num">{row ? row.lengthMm : ''}</td>
+                <td className="timbercity-num">{row ? row.widthMm : ''}</td>
+                <td className="timbercity-num">{row ? row.qty : ''}</td>
+                <td className="timbercity-num">{row?.edgeLength ?? ''}</td>
+                <td className="timbercity-num">{row?.edgeWidth ?? ''}</td>
+                <td className="timbercity-num">{row?.holes ?? ''}</td>
                 <td className="timbercity-remarks">{row?.remarks ?? ''}</td>
               </tr>
             ))}
