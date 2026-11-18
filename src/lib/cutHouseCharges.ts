@@ -100,14 +100,18 @@ export function appendCutHouseCosts(
 
   const hbPrice = quoteUnitPrice(ch.hardboardCutPricePerSheet, job.settings);
   if (ch.hardboardCutPricePerSheet > 0 && masoniteSheets > 0 && materialUsesCutHouse(job, MASONITE_MATERIAL_ID, onlyWhen)) {
-    costs.push({
-      category: 'cutHouse',
-      name: 'Hardboard / masonite cutting (SHB)',
-      detail: '1 cut batch for masonite backs',
-      quantity: 1,
-      unitPrice: hbPrice,
-      subtotal: quoteLineSubtotal(1, ch.hardboardCutPricePerSheet, job.settings),
-    });
+    // Charge per masonite sheet (same ceil rule as SMEL board cuts).
+    const sheetCuts = Math.ceil(masoniteSheets - 1e-9);
+    if (sheetCuts > 0) {
+      costs.push({
+        category: 'cutHouse',
+        name: 'Hardboard / masonite cutting (SHB)',
+        detail: `${sheetCuts} masonite sheet cut(s) at cut house`,
+        quantity: sheetCuts,
+        unitPrice: hbPrice,
+        subtotal: quoteLineSubtotal(sheetCuts, ch.hardboardCutPricePerSheet, job.settings),
+      });
+    }
   }
 
   const drillPrice = quoteUnitPrice(ch.factoryDrillPricePerHole, job.settings);

@@ -233,7 +233,7 @@ export interface JobSettings {
 export interface CutHouseChargeSettings {
   /** SMEL — per melamine sheet sent for cutting (0 = off). */
   melamineCutPricePerSheet?: number;
-  /** SHB — one charge per job when masonite backs are ordered from cut house. */
+  /** SHB — R per masonite sheet cut when masonite is ordered from cut house. */
   hardboardCutPricePerSheet?: number;
   /** BOOR — per hinge cup hole drilled at factory. */
   factoryDrillPricePerHole?: number;

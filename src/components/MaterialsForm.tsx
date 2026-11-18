@@ -763,8 +763,8 @@ export function MaterialsForm({
 
         <h4 className="subsection-title">Cut house quote lines (boards · edging · drill)</h4>
         <p className="hint">
-          Matches a cut-house PDF like Mossel Bay Board Cut and Edge: <strong>SMEL</strong> (melamine cutting per sheet line),{' '}
-          <strong>SHB</strong> (masonite cut batch), <strong>BOOR</strong> (hinge cup holes on doors).{' '}
+          Matches a cut-house PDF like Mossel Bay Board Cut and Edge: <strong>SMEL</strong> (melamine cutting per sheet),{' '}
+          <strong>SHB</strong> (masonite cutting per sheet), <strong>BOOR</strong> (hinge cup holes on doors).{' '}
           <strong>Gelmar hardware</strong> (hinges, runners, screws) stays in the Hardware tables — not here.
         </p>
         {(() => {
@@ -786,7 +786,7 @@ export function MaterialsForm({
                 />
               </label>
               <label>
-                Masonite / hardboard cut (SHB) — R per job
+                Masonite / hardboard cut (SHB) — R per sheet
                 <NumberInput
                   min={0}
                   step={0.01}
