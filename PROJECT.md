@@ -36,6 +36,7 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 - **2026-11-17:** **Customize drawer / front sizes** (unit tick): manual **front height** (+ box height); opening height is display-only (front + gaps); front width from L/R gaps; grain top→bottom; warn if drawers+doors > carcass H; warn + warning chime if front height < box height (`warningChime.ts`).
 - **2026-11-17:** Drawer clearances default **front 0 / back 25** mm. **Top filler** material is always selectable.
 - **2026-11-17:** Kitchen base mount **Tall Floor unit** (`tall_floor`): same carcass as wall (Bottom + Top + 2 fillers, no countertop) plus **Kitchen plinth — kickplate & feet**.
+- **2026-11-18:** Wall unit / tall floor + **melamine backing**: Top filler material gains **No Filler** (auto-selected when melamine is chosen); cut list omits top fillers only while No Filler is selected — user can still pick a board to include them.
 - **2026-11-18:** Tall floor / floor / **wall** + **solid melamine backing**: panel **W−2T × H−2T**, grain along height (length). Other mounts keep W−2T × H−T.
 - **2026-11-18:** Floor unit + **solid melamine backing**: same back size/grain as tall floor (**W−2T × H−2T**). Fillers: **granite → 1** (front only); **non-granite → 2** (front + back, no centre).
 - **2026-11-18:** Job settings **Default materials for new units** (visible side, carcass board/edging, door board/edging, drawer front board/edging). Applies only to **+ Add unit** / new doors & drawers on that job; drawer boxes follow carcass. Not in Save defaults / price list.

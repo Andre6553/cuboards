@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
 import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorCorner, isFloorUnit, isKitchenBase, isSpiceCupboard, isTallFloor, isWallCorner, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS, usesWallStyleCarcass } from '../lib/constants';
 import { resolveJobMaterialDefaults } from '../lib/jobMaterialDefaults';
@@ -62,7 +62,17 @@ import {
 } from '../lib/drawerRules';
 import { drawerBoxFrontBackWidthNote, drawerBoxSideDepthNote, DRAWER_BOX_FRONT_BACK_EDGING, DRAWER_BOX_SIDE_EDGING } from '../lib/drawerBoxRules';
 import { defaultDrawerOpeningHeight, resolveFrontLayout, syncFrontLayoutToUnit, totalDrawerOpeningHeight, totalDoorOpeningHeight } from '../lib/frontLayout';
-import { resolveBedroomWallSideFiller, resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFiller, resolveBedroomWallTopFillerEdging, resolveFillerMaterial } from '../lib/carcassRules';
+import {
+  allowsWallStyleNoFiller,
+  isNoFillerMaterialId,
+  NO_FILLER_MATERIAL_ID,
+  resolveBedroomWallSideFiller,
+  resolveBedroomWallSideFillerEdging,
+  resolveBedroomWallTopFiller,
+  resolveBedroomWallTopFillerEdging,
+  resolveFillerMaterial,
+  shouldAutoSelectNoFiller,
+} from '../lib/carcassRules';
 import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
 import { defaultBedroomWallExtra } from '../lib/extrasRules';
 import { usesBedroomExtrasForm, usesCustomExtrasForm } from '../lib/customExtrasRules';
@@ -123,14 +133,20 @@ function MaterialSelect({
   materials,
   onChange,
   disabled,
+  extraOptions,
 }: {
   value: string;
   materials: Material[];
   onChange: (id: string) => void;
   disabled?: boolean;
+  /** Options shown above board materials (e.g. No Filler). */
+  extraOptions?: { id: string; label: string }[];
 }) {
   return (
     <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+      {extraOptions?.map((opt) => (
+        <option key={opt.id} value={opt.id}>{opt.label}</option>
+      ))}
       {materials.map((m) => (
         <option key={m.id} value={m.id}>{m.name}</option>
       ))}
@@ -177,6 +193,34 @@ export function UnitForm({
   useEffect(() => {
     setSettingsOpen(false);
   }, [unitsCollapseGeneration]);
+
+  /**
+   * When a unit *becomes* wall/tall-floor + melamine (backing change or mount/type change),
+   * jump Top filler material to No Filler. Staying eligible while the user picks a board
+   * must not force No Filler again.
+   */
+  const wasNoFillerEligibleRef = useRef(shouldAutoSelectNoFiller(unit));
+  const noFillerUnitIdRef = useRef(unit.id);
+  useEffect(() => {
+    if (noFillerUnitIdRef.current !== unit.id) {
+      noFillerUnitIdRef.current = unit.id;
+      wasNoFillerEligibleRef.current = shouldAutoSelectNoFiller(unit);
+      return;
+    }
+    const eligible = shouldAutoSelectNoFiller(unit);
+    const becameEligible = eligible && !wasNoFillerEligibleRef.current;
+    wasNoFillerEligibleRef.current = eligible;
+    if (!becameEligible) return;
+    if (isNoFillerMaterialId(unit.carcass.fillerMaterialId)) return;
+    onChange({
+      ...unit,
+      carcass: {
+        ...unit.carcass,
+        fillerMaterialId: NO_FILLER_MATERIAL_ID,
+      },
+    });
+  }, [unit, onChange]);
+
   const layoutUnit = resolveFrontLayout(unit);
   const activeDrawerRows = activeDrawers(layoutUnit.drawers);
   const hasActiveDrawers = activeDrawerRows.length > 0;
@@ -270,11 +314,25 @@ export function UnitForm({
 
   const handleTypeChange = (type: Unit['type']) => {
     const mountType = normalizeMountType(type, unit.carcass.mountType);
+    let carcass = { ...unit.carcass, mountType };
+    const nextProbe = { type, carcass };
+    if (
+      isNoFillerMaterialId(carcass.fillerMaterialId) &&
+      !allowsWallStyleNoFiller(nextProbe)
+    ) {
+      const restored = carcass.leftMaterialId || carcass.rightMaterialId || materials[0]?.id || '';
+      carcass = {
+        ...carcass,
+        fillerMaterialId: restored,
+        fillerEdgingMaterialId:
+          materials.find((m) => m.id === restored)?.edgingMaterialId ?? edgingMaterials[0]?.id ?? '',
+      };
+    }
     if (isKitchenBase(type) || type === 'bedroom') {
       onChange({
         ...unit,
         type,
-        carcass: { ...unit.carcass, mountType },
+        carcass,
         plinth: unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId),
       });
     } else {
@@ -282,7 +340,7 @@ export function UnitForm({
       onChange({
         ...rest,
         type,
-        carcass: { ...unit.carcass, mountType },
+        carcass,
       });
     }
   };
@@ -326,6 +384,23 @@ export function UnitForm({
     if (((isFloorUnit(next) && isKitchenBase(unit.type)) || unit.type === 'bedroom') && !next.plinth) {
       next.plinth = defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
     }
+    // No Filler only applies to wall-style + melamine; restore a board when leaving that mode.
+    if (
+      isNoFillerMaterialId(next.carcass.fillerMaterialId) &&
+      !allowsWallStyleNoFiller(next)
+    ) {
+      const restored =
+        next.carcass.leftMaterialId || next.carcass.rightMaterialId || materials[0]?.id || '';
+      next = {
+        ...next,
+        carcass: {
+          ...next.carcass,
+          fillerMaterialId: restored,
+          fillerEdgingMaterialId:
+            materials.find((m) => m.id === restored)?.edgingMaterialId ?? edgingMaterials[0]?.id ?? '',
+        },
+      };
+    }
     onChange(next);
   };
 
@@ -364,10 +439,17 @@ export function UnitForm({
   const wallTopFillers = !isFloor && isKitchenBase(unit.type);
   const showTopFillers = !cornerMount && (isFloor || wallTopFillers);
   const showCountertopType = showTopFillers && !tallFloorMount;
+  const showNoFillerOption = allowsWallStyleNoFiller(unit);
+  const noFillerSelected = showNoFillerOption && isNoFillerMaterialId(unit.carcass.fillerMaterialId);
 
   const jobMats = resolveJobMaterialDefaults({ materials, edgingMaterials, settings });
   const defaultMat = jobMats.carcassMaterialId || materials[0]?.id || '';
   const effectiveFillerId = resolveFillerMaterial(unit.carcass, materials);
+  const fillerSelectValue = noFillerSelected
+    ? NO_FILLER_MATERIAL_ID
+    : isNoFillerMaterialId(unit.carcass.fillerMaterialId)
+      ? (unit.carcass.leftMaterialId || defaultMat)
+      : (unit.carcass.fillerMaterialId || effectiveFillerId);
 
   const handleSavePreset = () => {
     const name = prompt('Preset name (e.g. 600 Base with 1 shelf):', unit.name);
@@ -898,8 +980,11 @@ export function UnitForm({
           {wallStyleCarcass ? (
             <>
               {tallFloorMount ? 'Tall Floor' : 'Wall unit'}: bottom + top panel (
-              {unit.depth} × {unit.width - 2 * settings.thickness} mm) plus 2 top fillers (front + back, filler width ×
-              internal W).{tallFloorMount ? ' Includes kitchen plinth (kickplate & feet).' : ' No kickplate or feet.'}
+              {unit.depth} × {unit.width - 2 * settings.thickness} mm)
+              {noFillerSelected
+                ? '; no top fillers (No Filler selected).'
+                : '; plus 2 top fillers (front + back, filler width × internal W).'}
+              {tallFloorMount ? ' Includes kitchen plinth (kickplate & feet).' : ' No kickplate or feet.'}
             </>
           ) : wallTopFillers ? (
             <>
@@ -1146,6 +1231,17 @@ export function UnitForm({
                 if (backingType !== 'none' && carcass.visibleBackPanel?.enabled) {
                   carcass.visibleBackPanel = { ...carcass.visibleBackPanel, enabled: false };
                 }
+                const nextUnit = { ...unit, carcass };
+                // Wall / tall floor + melamine → auto Top filler = No Filler (user can still pick a board).
+                // Also mirrored by the became-eligible effect above.
+                if (shouldAutoSelectNoFiller(nextUnit)) {
+                  carcass.fillerMaterialId = NO_FILLER_MATERIAL_ID;
+                } else if (isNoFillerMaterialId(carcass.fillerMaterialId)) {
+                  // Leaving melamine / wall-style while No Filler was set — restore a real board.
+                  carcass.fillerMaterialId =
+                    unit.carcass.leftMaterialId || unit.carcass.rightMaterialId || defaultMat;
+                  carcass.fillerEdgingMaterialId = defaultEdgingForMaterial(carcass.fillerMaterialId);
+                }
                 onChange({ ...unit, carcass });
               }}
             >
@@ -1269,23 +1365,44 @@ export function UnitForm({
         <label>
           {cornerMount ? 'Filler material' : 'Top filler material'}
           <MaterialSelect
-            value={unit.carcass.fillerMaterialId || effectiveFillerId}
+            value={fillerSelectValue}
             materials={materials}
-            onChange={(v) => onChange({
-              ...unit,
-              carcass: {
-                ...unit.carcass,
-                fillerMaterialId: v,
-                fillerEdgingMaterialId: defaultEdgingForMaterial(v),
-              },
-            })}
+            extraOptions={
+              showNoFillerOption
+                ? [{ id: NO_FILLER_MATERIAL_ID, label: 'No Filler' }]
+                : undefined
+            }
+            onChange={(v) => {
+              if (isNoFillerMaterialId(v)) {
+                onChange({
+                  ...unit,
+                  carcass: {
+                    ...unit.carcass,
+                    fillerMaterialId: NO_FILLER_MATERIAL_ID,
+                  },
+                });
+                return;
+              }
+              onChange({
+                ...unit,
+                carcass: {
+                  ...unit.carcass,
+                  fillerMaterialId: v,
+                  fillerEdgingMaterialId: defaultEdgingForMaterial(v),
+                },
+              });
+            }}
           />
           <span className="hint-inline">
             {floorCornerMount
               ? '2 × 748 × 100 mm'
               : wallCornerMount
                 ? 'Filler 1/2/3 (same board)'
-                : 'Choose any board — independent of visible sides'}
+                : noFillerSelected
+                  ? 'No top fillers on the cut list — pick a board to add them'
+                  : showNoFillerOption
+                    ? 'No Filler excludes top fillers from the cut list; pick a board to include them'
+                    : 'Choose any board — independent of visible sides'}
           </span>
         </label>
         {wallCornerMount && (
@@ -1318,27 +1435,37 @@ export function UnitForm({
             </select>
           </label>
         )}
-        <label>
-          Filler edging type
-          <EdgingTypeSelect
-            value={unit.carcass.fillerEdgingMaterialId}
-            fallbackMaterialId={unit.carcass.fillerMaterialId || effectiveFillerId}
-            materials={materials}
-            edgingMaterials={edgingMaterials}
-            onChange={(v) => setCarcass('fillerEdgingMaterialId', v)}
-          />
-          <span className="hint-inline">
-            {unit.type === 'bedroom' && !isFloor
-              ? 'Used when side or top fillers are ticked'
-              : unit.carcass.countertopType === 'wooden'
-                ? '3 top fillers (front, back, centre) — same width × internal W as granite'
-                : 'Front & back top fillers (granite / stone top)'}
-          </span>
-        </label>
-        <label>
-          Filler width (mm)
-          <NumberInput  value={unit.carcass.fillerWidth} onChange={(n) => setCarcass('fillerWidth', n)} />
-        </label>
+        {!noFillerSelected && (
+          <label>
+            Filler edging type
+            <EdgingTypeSelect
+              value={unit.carcass.fillerEdgingMaterialId}
+              fallbackMaterialId={
+                isNoFillerMaterialId(unit.carcass.fillerMaterialId)
+                  ? (unit.carcass.leftMaterialId || defaultMat)
+                  : (unit.carcass.fillerMaterialId || effectiveFillerId)
+              }
+              materials={materials}
+              edgingMaterials={edgingMaterials}
+              onChange={(v) => setCarcass('fillerEdgingMaterialId', v)}
+            />
+            <span className="hint-inline">
+              {unit.type === 'bedroom' && !isFloor
+                ? 'Used when side or top fillers are ticked'
+                : wallStyleCarcass
+                  ? 'Front & back top fillers'
+                  : unit.carcass.countertopType === 'wooden'
+                    ? '3 top fillers (front, back, centre) — same width × internal W as granite'
+                    : 'Front & back top fillers (granite / stone top)'}
+            </span>
+          </label>
+        )}
+        {!noFillerSelected && (
+          <label>
+            Filler width (mm)
+            <NumberInput value={unit.carcass.fillerWidth} onChange={(n) => setCarcass('fillerWidth', n)} />
+          </label>
+        )}
         {unit.type === 'bedroom' && !isFloor && (
           <>
             <label className="checkbox-label">
@@ -1479,7 +1606,11 @@ export function UnitForm({
                   ? (unit.carcass.countertopType ?? 'granite') === 'granite'
                     ? ' Granite top + solid back: 1 front filler only.'
                     : ' Non-granite top + solid back: 2 fillers (front + back).'
-                  : ''}
+                  : wallStyleCarcass
+                    ? noFillerSelected
+                      ? ' Top fillers off (No Filler). Pick a board under Top filler material to add them.'
+                      : ' Melamine back: Top filler defaults to No Filler; pick a board if you still want fillers.'
+                    : ''}
               </>
             );
           })()}

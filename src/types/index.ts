@@ -328,6 +328,10 @@ export interface CarcassConfig {
   topEdgingMaterialId?: string;
   shelfMaterialId: string;
   shelfEdgingMaterialId: string;
+  /**
+   * Top/side filler board. On wall / tall floor with melamine backing may be
+   * `NO_FILLER_MATERIAL_ID` (`__no_filler__`) to omit top fillers from the cut list.
+   */
   fillerMaterialId: string;
   fillerEdgingMaterialId: string;
   /** Floor/wall-corner fillers. Empty = 1 long. */

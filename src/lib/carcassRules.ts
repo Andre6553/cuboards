@@ -7,6 +7,26 @@ export {
   resolveFillerEdgeCounts,
 } from './kickplateEdging';
 
+/** Sentinel for Top filler material → exclude top fillers from the cut list. */
+export const NO_FILLER_MATERIAL_ID = '__no_filler__';
+
+export function isNoFillerMaterialId(materialId: string | undefined | null): boolean {
+  return materialId === NO_FILLER_MATERIAL_ID;
+}
+
+/**
+ * Wall unit / tall floor + melamine backing: Top filler material may be "No Filler".
+ * Only those mounts get the option; other mounts keep their normal filler rules.
+ */
+export function allowsWallStyleNoFiller(unit: Pick<Unit, 'type' | 'carcass'>): boolean {
+  return usesWallStyleCarcass(unit) && (unit.carcass.backingType ?? 'none') === 'melamine';
+}
+
+/** True when Top filler should jump to No Filler (wall / tall floor + melamine). */
+export function shouldAutoSelectNoFiller(unit: Pick<Unit, 'type' | 'carcass'>): boolean {
+  return allowsWallStyleNoFiller(unit);
+}
+
 /** White melamine board (internal white carcass). */
 export function isWhiteMelamine(materials: Material[], materialId: string): boolean {
   const m = materials.find((mat) => mat.id === materialId);
@@ -21,8 +41,10 @@ export function isWhiteMelamine(materials: Material[], materialId: string): bool
 /**
  * Filler board is always the user-selected `fillerMaterialId`.
  * Falls back to left side (then right) if unset — e.g. older jobs.
+ * "No Filler" is kept as-is (not replaced by a side board).
  */
 export function resolveFillerMaterial(carcass: CarcassConfig, _materials?: Material[]): string {
+  if (isNoFillerMaterialId(carcass.fillerMaterialId)) return NO_FILLER_MATERIAL_ID;
   return carcass.fillerMaterialId || carcass.leftMaterialId || carcass.rightMaterialId || '';
 }
 
@@ -35,13 +57,18 @@ export function fillersFollowSideMaterial(_carcass: CarcassConfig, _materials: M
  * Top filler strips, same rule as a floor unit.
  * Granite / stone → 2 (front + back). Wooden top → 3 (plus centre).
  * Floor + solid melamine backing: granite → 1 (front only); non-granite → 2 (front + back, no centre).
- * Wall-style carcass (pure wall + kitchen tall floor): always 2 fillers (no countertop type).
+ * Wall-style carcass (pure wall + kitchen tall floor): 2 fillers, or 0 when melamine backing + No Filler.
  * Kitchen base on wall mount uses fillers like a floor unit. Bedroom wall uses optional ticks.
  */
 export function topFillerCount(unit: Pick<Unit, 'type' | 'carcass'>): number {
   const mount = unit.carcass.mountType ?? 'floor';
   if (mount === 'floor_corner' || mount === 'wall_corner') return 0;
-  if (usesWallStyleCarcass(unit)) return 2;
+  if (usesWallStyleCarcass(unit)) {
+    if (allowsWallStyleNoFiller(unit) && isNoFillerMaterialId(unit.carcass.fillerMaterialId)) {
+      return 0;
+    }
+    return 2;
+  }
   if (mount === 'wall' && unit.type !== 'kitchen_base') return 0;
   if (mount === 'floor' && (unit.carcass.backingType ?? 'none') === 'melamine') {
     return (unit.carcass.countertopType ?? 'granite') === 'granite' ? 1 : 2;

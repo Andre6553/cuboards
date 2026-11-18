@@ -740,7 +740,7 @@ function calcCarcass(
 
   addEdgedPiece('Bottom', c.bottomMaterialId, D, internalW, 1, 'none', '', '1_long', c.bottomEdgingMaterialId);
 
-  // Wall-style carcass (pure wall + kitchen tall floor): full top panel + 2 fillers via topFillerCount.
+  // Wall-style carcass (pure wall + kitchen tall floor): full top panel + fillers via topFillerCount (0 if No Filler).
   if (usesWallStyleCarcass(unit)) {
     const topMat = c.topMaterialId || c.bottomMaterialId;
     const topEdge = c.topEdgingMaterialId || c.bottomEdgingMaterialId;

@@ -199,8 +199,8 @@ export function isTallFloor(unit: { type?: UnitType; carcass?: { mountType?: Mou
 }
 
 /**
- * Wall-style carcass: full Top panel + always 2 top fillers (no countertop type).
- * Pure wall units and kitchen tall floor.
+ * Wall-style carcass: full Top panel + 2 top fillers by default (no countertop type).
+ * Pure wall units and kitchen tall floor. With melamine backing, Top filler may be "No Filler".
  */
 export function usesWallStyleCarcass(unit: { type?: UnitType; carcass?: { mountType?: MountType } }): boolean {
   if (isTallFloor(unit)) return true;

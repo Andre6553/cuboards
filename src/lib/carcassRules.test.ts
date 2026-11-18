@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Unit } from '../types';
 import {
+  allowsWallStyleNoFiller,
   bedroomWallFillerPieces,
   carcassShelfSize,
   melamineBackingSize,
+  NO_FILLER_MATERIAL_ID,
   resolveBedroomWallSideFillerEdging,
+  shouldAutoSelectNoFiller,
   topFillerCount,
   usesFullHeightMelamineBack,
 } from './carcassRules';
@@ -14,8 +17,17 @@ function unit(
   mount: Unit['carcass']['mountType'],
   top: Unit['carcass']['countertopType'] = 'granite',
   backing: Unit['carcass']['backingType'] = 'none',
+  fillerMaterialId?: string,
 ): Pick<Unit, 'type' | 'carcass'> {
-  return { type, carcass: { mountType: mount, countertopType: top, backingType: backing } as Unit['carcass'] };
+  return {
+    type,
+    carcass: {
+      mountType: mount,
+      countertopType: top,
+      backingType: backing,
+      ...(fillerMaterialId ? { fillerMaterialId } : {}),
+    } as Unit['carcass'],
+  };
 }
 
 describe('topFillerCount', () => {
@@ -28,6 +40,25 @@ describe('topFillerCount', () => {
     expect(topFillerCount(unit('kitchen_base', 'wall', 'wooden'))).toBe(3);
     expect(topFillerCount(unit('kitchen_base', 'floor'))).toBe(2);
     expect(topFillerCount(unit('kitchen_base', 'floor', 'wooden'))).toBe(3);
+  });
+
+  it('wall / tall floor + melamine + No Filler → 0 fillers; board still allows 2', () => {
+    expect(
+      topFillerCount(unit('wall', 'wall', 'granite', 'melamine', NO_FILLER_MATERIAL_ID)),
+    ).toBe(0);
+    expect(
+      topFillerCount(unit('kitchen_base', 'tall_floor', 'granite', 'melamine', NO_FILLER_MATERIAL_ID)),
+    ).toBe(0);
+    expect(topFillerCount(unit('wall', 'wall', 'granite', 'melamine', 'mat-white'))).toBe(2);
+    expect(topFillerCount(unit('kitchen_base', 'tall_floor', 'granite', 'melamine', 'mat-white'))).toBe(2);
+    // No Filler without melamine does not zero fillers (option only with melamine).
+    expect(topFillerCount(unit('wall', 'wall', 'granite', 'none', NO_FILLER_MATERIAL_ID))).toBe(2);
+    expect(allowsWallStyleNoFiller(unit('wall', 'wall', 'granite', 'melamine'))).toBe(true);
+    expect(allowsWallStyleNoFiller(unit('kitchen_base', 'tall_floor', 'granite', 'melamine'))).toBe(true);
+    expect(allowsWallStyleNoFiller(unit('kitchen_base', 'floor', 'granite', 'melamine'))).toBe(false);
+    expect(allowsWallStyleNoFiller(unit('wall', 'wall', 'granite', 'masonite'))).toBe(false);
+    expect(shouldAutoSelectNoFiller(unit('wall', 'wall', 'granite', 'melamine'))).toBe(true);
+    expect(shouldAutoSelectNoFiller(unit('wall', 'wall', 'granite', 'masonite'))).toBe(false);
   });
 
   it('floor + solid melamine: 1 filler for granite, 2 for non-granite tops', () => {
