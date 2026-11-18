@@ -96,7 +96,6 @@ export function JobEditor({
             key={job.id}
             client={job.client}
             onChange={(client) => onChange({ ...job, client })}
-            defaultOpen
           />
 
           <section className="card units-card">
