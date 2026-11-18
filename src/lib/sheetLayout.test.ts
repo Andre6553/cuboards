@@ -2,6 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { layoutSheets, type LayoutPiece } from './sheetLayout';
 
 describe('layoutSheets strip packing', () => {
+  it('fills earlier-sheet strip remnants before opening a new sheet (grain kept)', () => {
+    // Mimics Nordic ice: tall doors open sheet 2; shelves must use sheet-1 remnant, not sheet 3.
+    const pieces: LayoutPiece[] = [
+      { length: 770, width: 446, qty: 1, grainLocked: true, label: 'Door tall' },
+      { length: 1010, width: 372, qty: 2, grainLocked: true, label: 'Door mid' },
+      { length: 1010, width: 296, qty: 1, grainLocked: true, label: 'Door 300' },
+      { length: 568, width: 284, qty: 5, grainLocked: false, label: 'Shelf' },
+    ];
+    // Narrow cross so sheet 1 leftover end can take shelves but bottom free height cannot.
+    const result = layoutSheets(pieces, 2750, 900, 4, 1);
+    expect(result.unplaced).toHaveLength(0);
+    const shelves = result.sheetDetails.flatMap((s) =>
+      s.placements.filter((p) => p.label === 'Shelf').map((p) => ({ sheet: s.sheetIndex, ...p })),
+    );
+    expect(shelves.length).toBe(5);
+    // At least some shelves should sit on sheet 1 remnant beside the tall door, not all on a late sheet.
+    const onSheet1 = shelves.filter((p) => p.sheet === 1);
+    expect(onSheet1.length).toBeGreaterThan(0);
+    for (const s of onSheet1) {
+      // Grain along length: 568 wide (or rotated 284) — never break grain-locked doors above.
+      expect(s.heightMm === 284 || s.widthMm === 284).toBe(true);
+    }
+  });
+
   it('keeps short fillers in their own rip strips so tall strips are not wasted', () => {
     const pieces: LayoutPiece[] = [
       { length: 700, width: 300, qty: 3, grainLocked: false, label: 'Panel 300' },

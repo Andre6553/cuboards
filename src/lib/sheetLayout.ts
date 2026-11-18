@@ -157,15 +157,17 @@ function planPlacement(
     if (!best || plan.rank < best.rank) best = plan;
   };
 
+  // Rank = sheet*1000 + local preference so earlier sheets always win over later ones.
+  // On one sheet: exact rip height → new matching strip → short-in-tall remnant.
+  // That fills leftover ends on sheet 8/9 before opening sheet 10, without stuffing
+  // short fillers into tall strips when a new strip still fits on the same sheet.
   for (let si = 0; si < sheets.length; si++) {
     const sheet = sheets[si];
+    const sheetBase = si * 1000;
     for (let ti = 0; ti < sheet.strips.length; ti++) {
       const strip = sheet.strips[ti];
       if (ih > strip.height) continue;
       if (strip.cursorX + iw > binW) continue;
-      // Same rip height first. Putting a short part in a taller strip leaves a big
-      // unused band (looked like gaps between fillers) — rank that worse than opening
-      // a new matching strip on this sheet (rank 100+si).
       const heightMismatch = ih < strip.height;
       consider({
         sheetIndex: si,
@@ -173,7 +175,7 @@ function planPlacement(
         y: strip.y,
         iw,
         ih,
-        rank: heightMismatch ? 250 + si * 10 + ti : si * 10 + ti,
+        rank: sheetBase + (heightMismatch ? 700 + ti : ti),
       });
     }
 
@@ -185,12 +187,11 @@ function planPlacement(
         y: newY,
         iw,
         ih,
-        rank: 100 + si,
+        rank: sheetBase + 500,
       });
     }
   }
 
-  const newSheetRank = 1000 + sheets.length;
   if (ih <= binH && iw <= binW) {
     consider({
       sheetIndex: sheets.length,
@@ -198,7 +199,7 @@ function planPlacement(
       y: 0,
       iw,
       ih,
-      rank: newSheetRank,
+      rank: sheets.length * 1000 + 500,
     });
   }
 
@@ -238,6 +239,96 @@ function applyPlan(
   strip.height = Math.max(strip.height, plan.ih);
   sheet.maxX = Math.max(sheet.maxX, plan.x + plan.iw);
   sheet.maxY = Math.max(sheet.maxY, plan.y + plan.ih);
+}
+
+/** Rebuild guillotine strips from placements (sizes are finished mm; kerf sits between parts). */
+function rebuildSheetFromPlacements(placements: LayoutPlacement[], kerf: number): GuillotineSheet {
+  const byY = new Map<number, LayoutPlacement[]>();
+  for (const p of placements) {
+    const list = byY.get(p.y) ?? [];
+    list.push(p);
+    byY.set(p.y, list);
+  }
+  const strips: GuillotineStrip[] = [];
+  let maxX = 0;
+  let maxY = 0;
+  for (const [y, parts] of [...byY.entries()].sort((a, b) => a[0] - b[0])) {
+    const height = Math.max(...parts.map((p) => p.heightMm + kerf));
+    const cursorX = Math.max(...parts.map((p) => p.x + p.widthMm + kerf), 0);
+    strips.push({ y, height, cursorX });
+    maxX = Math.max(maxX, cursorX);
+    maxY = Math.max(maxY, y + height);
+  }
+  return { strips, maxX, maxY };
+}
+
+/**
+ * Move parts from later sheets into free space on earlier sheets when grain + kerf allow.
+ * Board wastage % is not used here (quote sheet-count only).
+ */
+function compactIntoEarlierSheets(
+  sheets: GuillotineSheet[],
+  placementsBySheet: LayoutPlacement[][],
+  binW: number,
+  binH: number,
+  kerf: number,
+): void {
+  let moved = true;
+  let guard = 0;
+  while (moved && guard++ < 500) {
+    moved = false;
+    for (let si = sheets.length - 1; si >= 1; si--) {
+      const placements = placementsBySheet[si] ?? [];
+      if (placements.length === 0) continue;
+      // Smallest first — tuck leftovers into earlier remnants.
+      const order = [...placements.keys()].sort(
+        (a, b) => placements[a].widthMm * placements[a].heightMm - placements[b].widthMm * placements[b].heightMm,
+      );
+      for (const pi of order) {
+        const p = placementsBySheet[si][pi];
+        if (!p) continue;
+        const item: Item = {
+          w: p.widthMm + kerf,
+          h: p.heightMm + kerf,
+          canRotate: !p.grainLocked,
+          label: p.label,
+          grainLocked: p.grainLocked,
+        };
+
+        const remaining = placementsBySheet[si].filter((_, idx) => idx !== pi);
+        const savedSheet = sheets[si];
+        sheets[si] = rebuildSheetFromPlacements(remaining, kerf);
+
+        let bestPlan: PlacementPlan | null = null;
+        for (const [iw, ih] of itemOrientations(item)) {
+          const plan = planPlacement(sheets, iw, ih, binW, binH);
+          if (!plan || plan.sheetIndex >= si) continue;
+          if (!bestPlan || plan.rank < bestPlan.rank) bestPlan = { ...plan, iw, ih };
+        }
+
+        if (!bestPlan) {
+          sheets[si] = savedSheet;
+          continue;
+        }
+
+        placementsBySheet[si] = remaining;
+        applyPlan(sheets, bestPlan, item, kerf, placementsBySheet);
+        // Refresh source sheet strips after removal.
+        sheets[si] = rebuildSheetFromPlacements(placementsBySheet[si], kerf);
+        moved = true;
+        break;
+      }
+      if (moved) break;
+    }
+  }
+
+  // Drop trailing empty sheets.
+  while (sheets.length > 0) {
+    const last = sheets.length - 1;
+    if ((placementsBySheet[last] ?? []).length > 0) break;
+    sheets.pop();
+    placementsBySheet.pop();
+  }
 }
 
 function offcutLabel(index: number, widthMm: number, heightMm: number): string {
@@ -320,7 +411,15 @@ export function layoutSheets(
     }
   }
 
-  items.sort((a, b) => b.h - a.h || b.w - a.w || b.w * b.h - a.w * a.h);
+  // Grain-locked first (doors/sides), then rotatable — so free ends of locked
+  // strips can take shelves/fillers before a new sheet is opened. Still height-major.
+  items.sort(
+    (a, b) =>
+      Number(b.grainLocked) - Number(a.grainLocked) ||
+      b.h - a.h ||
+      b.w - a.w ||
+      b.w * b.h - a.w * a.h,
+  );
 
   const sheets: GuillotineSheet[] = [];
   const placementsBySheet: LayoutPlacement[][] = [];
@@ -346,6 +445,8 @@ export function layoutSheets(
     }
     applyPlan(sheets, bestPlan, item, kerf, placementsBySheet);
   }
+
+  compactIntoEarlierSheets(sheets, placementsBySheet, binW, binH, kerf);
 
   if (sheets.length === 0) {
     return { sheetsUsed: 0, sheetsToOrder: 0, unplaced, offcuts: [], sheetDetails: [] };
