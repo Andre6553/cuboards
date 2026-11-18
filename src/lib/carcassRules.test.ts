@@ -6,10 +6,16 @@ import {
   melamineBackingSize,
   resolveBedroomWallSideFillerEdging,
   topFillerCount,
+  usesFullHeightMelamineBack,
 } from './carcassRules';
 
-function unit(type: Unit['type'], mount: Unit['carcass']['mountType'], top: Unit['carcass']['countertopType'] = 'granite'): Pick<Unit, 'type' | 'carcass'> {
-  return { type, carcass: { mountType: mount, countertopType: top } as Unit['carcass'] };
+function unit(
+  type: Unit['type'],
+  mount: Unit['carcass']['mountType'],
+  top: Unit['carcass']['countertopType'] = 'granite',
+  backing: Unit['carcass']['backingType'] = 'none',
+): Pick<Unit, 'type' | 'carcass'> {
+  return { type, carcass: { mountType: mount, countertopType: top, backingType: backing } as Unit['carcass'] };
 }
 
 describe('topFillerCount', () => {
@@ -22,6 +28,13 @@ describe('topFillerCount', () => {
     expect(topFillerCount(unit('kitchen_base', 'wall', 'wooden'))).toBe(3);
     expect(topFillerCount(unit('kitchen_base', 'floor'))).toBe(2);
     expect(topFillerCount(unit('kitchen_base', 'floor', 'wooden'))).toBe(3);
+  });
+
+  it('floor + solid melamine: 1 filler for granite, 2 for non-granite tops', () => {
+    expect(topFillerCount(unit('kitchen_base', 'floor', 'granite', 'melamine'))).toBe(1);
+    expect(topFillerCount(unit('kitchen_base', 'floor', 'wooden', 'melamine'))).toBe(2);
+    expect(topFillerCount(unit('bedroom', 'floor', 'granite', 'melamine'))).toBe(1);
+    expect(topFillerCount(unit('bedroom', 'floor', 'wooden', 'melamine'))).toBe(2);
   });
 
   it('does not add floor fillers on a bedroom wall unit', () => {
@@ -81,11 +94,22 @@ describe('carcassShelfSize', () => {
 });
 
 describe('melamineBackingSize', () => {
-  it('uses H−T by default and H−2T for tall floor', () => {
+  it('uses H−T by default and H−2T for tall floor / floor solid back', () => {
     expect(melamineBackingSize(600, 2315, 16)).toEqual({ width: 568, height: 2299 });
     expect(melamineBackingSize(600, 2315, 16, { heightClearances: 2 })).toEqual({
       width: 568,
       height: 2283,
     });
+  });
+});
+
+describe('usesFullHeightMelamineBack', () => {
+  it('is true for floor, tall floor, and wall mounts with melamine backing', () => {
+    expect(usesFullHeightMelamineBack(unit('kitchen_base', 'floor', 'granite', 'melamine'))).toBe(true);
+    expect(usesFullHeightMelamineBack(unit('kitchen_base', 'tall_floor', 'granite', 'melamine'))).toBe(true);
+    expect(usesFullHeightMelamineBack(unit('kitchen_base', 'wall', 'granite', 'melamine'))).toBe(true);
+    expect(usesFullHeightMelamineBack(unit('wall', 'wall', 'granite', 'melamine'))).toBe(true);
+    expect(usesFullHeightMelamineBack(unit('bedroom', 'wall', 'granite', 'melamine'))).toBe(true);
+    expect(usesFullHeightMelamineBack(unit('kitchen_base', 'floor', 'granite', 'masonite'))).toBe(false);
   });
 });

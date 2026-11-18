@@ -1463,12 +1463,28 @@ export function UnitForm({
       )}
       {showTopFillers && (unit.carcass.backingType === 'melamine' || unit.carcass.countertopType === 'wooden') && (
         <p className="hint">
-          {unit.carcass.backingType === 'melamine' && (
-            <>Melamine back: {unit.width - 2 * settings.thickness} × {unit.height - settings.thickness} mm (inside carcass).</>
-          )}
-          {unit.carcass.backingType === 'melamine' && unit.carcass.countertopType === 'wooden' && ' '}
-          {unit.carcass.countertopType === 'wooden' && (
+          {unit.carcass.backingType === 'melamine' && (() => {
+            const mount = unit.carcass.mountType ?? 'floor';
+            const fullHeightBack = mount === 'floor' || mount === 'tall_floor' || mount === 'wall';
+            const backH = fullHeightBack
+              ? unit.height - 2 * settings.thickness
+              : unit.height - settings.thickness;
+            return (
+              <>
+                Melamine back: {unit.width - 2 * settings.thickness} × {backH} mm (inside carcass
+                {fullHeightBack ? '; grain along height' : ''}).
+                {mount === 'floor'
+                  ? (unit.carcass.countertopType ?? 'granite') === 'granite'
+                    ? ' Granite top + solid back: 1 front filler only.'
+                    : ' Non-granite top + solid back: 2 fillers (front + back).'
+                  : ''}
+              </>
+            );
+          })()}
+          {unit.carcass.countertopType === 'wooden' &&
+            !((unit.carcass.mountType ?? 'floor') === 'floor' && unit.carcass.backingType === 'melamine') && (
             <>
+              {unit.carcass.backingType === 'melamine' ? ' ' : ''}
               Wooden / laminate top: 3 top fillers — each {unit.carcass.fillerWidth} × {unit.width - 2 * settings.thickness} mm
               (same as granite rails, plus one centre rail).
             </>

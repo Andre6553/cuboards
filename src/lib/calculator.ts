@@ -3,7 +3,6 @@ import {
   EDGING_LABELS,
   isFloorCorner,
   isSpiceCupboard,
-  isTallFloor,
   isWallCorner,
   plinthHasKickplate,
   showsKickplate,
@@ -80,6 +79,7 @@ import {
   melamineBackingSize,
   resolveFillerMaterial,
   topFillerCount,
+  usesFullHeightMelamineBack,
   bedroomWallFillerPieces,
 } from './carcassRules';
 import { resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFillerEdging } from './kickplateEdging';
@@ -770,12 +770,26 @@ function calcCarcass(
     : '';
 
   const fillerCount = topFillerCount(unit);
-  if (fillerCount >= 2) {
-    addEdgedPiece('Top filler (front)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
-    addEdgedPiece('Top filler (back)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
-  }
-  if (fillerCount >= 3) {
-    addEdgedPiece('Top filler (centre)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+  if (fillerCount === 1) {
+    addEdgedPiece(
+      'Top filler (front)',
+      fillerMatId,
+      c.fillerWidth,
+      internalW,
+      1,
+      'none',
+      joinNotes(fillerNote, 'Solid melamine back — front filler only'),
+      '1_long',
+      c.fillerEdgingMaterialId,
+    );
+  } else {
+    if (fillerCount >= 2) {
+      addEdgedPiece('Top filler (front)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+      addEdgedPiece('Top filler (back)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+    }
+    if (fillerCount >= 3) {
+      addEdgedPiece('Top filler (centre)', fillerMatId, c.fillerWidth, internalW, 1, 'none', fillerNote, '1_long', c.fillerEdgingMaterialId);
+    }
   }
 
   const bedroomFillers = bedroomWallFillerPieces(unit);
@@ -852,9 +866,9 @@ function calcCarcass(
 
   if (backingType === 'melamine') {
     const backMatId = c.backingMaterialId || c.bottomMaterialId;
-    const tallFloorBack = isTallFloor(unit);
+    const fullHeightBack = usesFullHeightMelamineBack(unit);
     const { width: backW, height: backH } = melamineBackingSize(W, H, T, {
-      heightClearances: tallFloorBack ? 2 : 1,
+      heightClearances: fullHeightBack ? 2 : 1,
     });
     const backHasGrain = materialHasGrain(job.materials, backMatId);
     addPiece(
@@ -863,8 +877,8 @@ function calcCarcass(
       backW,
       backH,
       1,
-      tallFloorBack && backHasGrain ? 'vertical' : 'none',
-      tallFloorBack
+      fullHeightBack && backHasGrain ? 'vertical' : 'none',
+      fullHeightBack
         ? joinNotes(
             `Inside carcass · W−2×${T} × H−2×${T} mm`,
             backHasGrain ? 'Grain along height' : undefined,

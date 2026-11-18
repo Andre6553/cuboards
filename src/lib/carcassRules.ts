@@ -34,6 +34,7 @@ export function fillersFollowSideMaterial(_carcass: CarcassConfig, _materials: M
 /**
  * Top filler strips, same rule as a floor unit.
  * Granite / stone → 2 (front + back). Wooden top → 3 (plus centre).
+ * Floor + solid melamine backing: granite → 1 (front only); non-granite → 2 (front + back, no centre).
  * Wall-style carcass (pure wall + kitchen tall floor): always 2 fillers (no countertop type).
  * Kitchen base on wall mount uses fillers like a floor unit. Bedroom wall uses optional ticks.
  */
@@ -42,7 +43,20 @@ export function topFillerCount(unit: Pick<Unit, 'type' | 'carcass'>): number {
   if (mount === 'floor_corner' || mount === 'wall_corner') return 0;
   if (usesWallStyleCarcass(unit)) return 2;
   if (mount === 'wall' && unit.type !== 'kitchen_base') return 0;
+  if (mount === 'floor' && (unit.carcass.backingType ?? 'none') === 'melamine') {
+    return (unit.carcass.countertopType ?? 'granite') === 'granite' ? 1 : 2;
+  }
   return unit.carcass.countertopType === 'wooden' ? 3 : 2;
+}
+
+/**
+ * Solid melamine back W−2T × H−2T with grain along height.
+ * Floor, tall floor, and all wall mounts (pure wall, kitchen/bedroom wall).
+ */
+export function usesFullHeightMelamineBack(unit: Pick<Unit, 'type' | 'carcass'>): boolean {
+  if ((unit.carcass.backingType ?? 'none') !== 'melamine') return false;
+  const mount = unit.carcass.mountType ?? 'floor';
+  return mount === 'floor' || mount === 'tall_floor' || mount === 'wall';
 }
 
 export function isBedroomWallUnit(unit: Pick<Unit, 'type' | 'carcass'>): boolean {
@@ -89,8 +103,8 @@ export function bedroomWallFillerPieces(unit: Pick<Unit, 'type' | 'width' | 'hei
 
 /**
  * Melamine back panel sits inside carcass.
- * Default floor/wall: W−2T × (H−T).
- * Tall floor: W−2T × (H−2T) — grain runs along height (length).
+ * Default (other mounts): W−2T × (H−T).
+ * Floor, tall floor, wall: W−2T × (H−2T) — grain runs along height (length).
  */
 export function melamineBackingSize(
   width: number,
