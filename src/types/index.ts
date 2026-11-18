@@ -732,6 +732,8 @@ export interface SheetMapOffcutRect {
   yMm: number;
   widthMm: number;
   heightMm: number;
+  /** e.g. "Offcut 1 · 1200 × 450" */
+  label?: string;
 }
 
 export interface SheetMapSheet {

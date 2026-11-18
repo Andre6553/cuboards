@@ -54,6 +54,8 @@ export interface LayoutOffcutRect {
   y: number;
   widthMm: number;
   heightMm: number;
+  /** Display label, e.g. "Offcut 1 · 450 × 1200". */
+  label: string;
 }
 
 export interface LayoutSheetDetail {
@@ -161,13 +163,17 @@ function planPlacement(
       const strip = sheet.strips[ti];
       if (ih > strip.height) continue;
       if (strip.cursorX + iw > binW) continue;
+      // Same rip height first. Putting a short part in a taller strip leaves a big
+      // unused band (looked like gaps between fillers) — rank that worse than opening
+      // a new matching strip on this sheet (rank 100+si).
+      const heightMismatch = ih < strip.height;
       consider({
         sheetIndex: si,
         x: strip.cursorX,
         y: strip.y,
         iw,
         ih,
-        rank: si * 10 + ti,
+        rank: heightMismatch ? 250 + si * 10 + ti : si * 10 + ti,
       });
     }
 
@@ -234,20 +240,26 @@ function applyPlan(
   sheet.maxY = Math.max(sheet.maxY, plan.y + plan.ih);
 }
 
+function offcutLabel(index: number, widthMm: number, heightMm: number): string {
+  const a = Math.round(Math.max(widthMm, heightMm));
+  const b = Math.round(Math.min(widthMm, heightMm));
+  return `Offcut ${index} · ${a} × ${b}`;
+}
+
 function guillotineOffcutRects(
   sheet: GuillotineSheet,
   binW: number,
   binH: number,
   kerf: number,
 ): LayoutOffcutRect[] {
-  const rects: LayoutOffcutRect[] = [];
+  const raw: Omit<LayoutOffcutRect, 'label'>[] = [];
   for (const strip of sheet.strips) {
     const rw = binW - strip.cursorX;
     if (rw >= MIN_OFFCUT_MM + kerf) {
       const uw = Math.floor(rw - kerf);
       const uh = Math.floor(strip.height - kerf);
       if (uw >= MIN_OFFCUT_MM && uh >= MIN_OFFCUT_MM) {
-        rects.push({
+        raw.push({
           x: strip.cursorX,
           y: strip.y,
           widthMm: uw,
@@ -262,10 +274,15 @@ function guillotineOffcutRects(
     const uw = Math.floor(binW - kerf);
     const uh = Math.floor(bh - kerf);
     if (uw >= MIN_OFFCUT_MM && uh >= MIN_OFFCUT_MM) {
-      rects.push({ x: 0, y: usedY, widthMm: uw, heightMm: uh });
+      raw.push({ x: 0, y: usedY, widthMm: uw, heightMm: uh });
     }
   }
-  return rects;
+  // Largest first so Offcut 1 is the best keeper.
+  raw.sort((a, b) => b.widthMm * b.heightMm - a.widthMm * a.heightMm);
+  return raw.map((r, i) => ({
+    ...r,
+    label: offcutLabel(i + 1, r.widthMm, r.heightMm),
+  }));
 }
 
 /**

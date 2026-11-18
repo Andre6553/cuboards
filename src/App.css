@@ -1354,9 +1354,17 @@
 .units-footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
   margin-top: 1rem;
+}
+
+.units-footer-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .saved-indicator {
@@ -2538,10 +2546,10 @@ fieldset.sub-card:disabled {
 }
 
 .sheet-map-offcut {
-  fill: #f8fafc;
-  stroke: #94a3b8;
-  stroke-width: 0.6;
-  stroke-dasharray: 4 3;
+  fill: #fef3c7;
+  stroke: #d97706;
+  stroke-width: 0.9;
+  stroke-dasharray: 5 3;
 }
 
 .sheet-map-cut-line {

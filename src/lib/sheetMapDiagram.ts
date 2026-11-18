@@ -103,7 +103,21 @@ export function buildSheetMapSvg(sheet: SheetMapSheet, patternId: string, option
 
   for (let i = 0; i < sheet.offcutRects.length; i++) {
     const r = sheet.offcutRects[i];
-    body += `<rect x="${pad + r.xMm}" y="${pad + grainBand + r.yMm}" width="${r.widthMm}" height="${r.heightMm}" fill="#f8fafc" stroke="#94a3b8" stroke-width="0.6" stroke-dasharray="4 3"/>`;
+    const label =
+      r.label?.trim() ||
+      `Offcut ${i + 1} · ${Math.round(Math.max(r.widthMm, r.heightMm))} × ${Math.round(Math.min(r.widthMm, r.heightMm))}`;
+    const fontSize = fitFontSize(label, r.widthMm, r.heightMm, expanded ? 1.6 : 1, forPdf);
+    const cx = pad + r.xMm + r.widthMm / 2;
+    const cy = pad + grainBand + r.yMm + r.heightMm / 2;
+    const minLabelW = forPdf ? 38 : expanded ? 28 : 55;
+    const minLabelH = forPdf ? 24 : expanded ? 14 : 24;
+    const showLabel = r.widthMm > minLabelW && r.heightMm > minLabelH;
+    body += `<g>`;
+    body += `<rect x="${pad + r.xMm}" y="${pad + grainBand + r.yMm}" width="${r.widthMm}" height="${r.heightMm}" fill="#fef3c7" stroke="#d97706" stroke-width="0.9" stroke-dasharray="5 3"/>`;
+    if (showLabel) {
+      body += `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" fill="#92400e" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="${fontSize}">${escapeXml(label)}</text>`;
+    }
+    body += `</g>`;
   }
 
   sheet.placements.forEach((p) => {

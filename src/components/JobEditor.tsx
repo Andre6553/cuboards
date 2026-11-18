@@ -131,7 +131,14 @@ export function JobEditor({
           {job.units.length > 0 && (
             <div className="units-footer">
               <button type="button" className="btn btn-secondary" onClick={addUnit}>+ Add another unit</button>
-              <button type="button" className="btn btn-primary" onClick={() => selectTab('cutlist')}>View cut list →</button>
+              <div className="units-footer-actions">
+                <button type="button" className="btn btn-secondary" onClick={collapseAllUnits}>
+                  Collapse all units
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => selectTab('cutlist')}>
+                  View cut list →
+                </button>
+              </div>
             </div>
           )}
         </>

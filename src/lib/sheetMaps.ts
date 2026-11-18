@@ -37,6 +37,7 @@ function layoutToSheets(
       yMm: r.y,
       widthMm: r.widthMm,
       heightMm: r.heightMm,
+      label: r.label,
     })),
   }));
 }
