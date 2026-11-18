@@ -1,4 +1,202 @@
-import type { JobSettings, KickplateCoverage, KitchenPlinthConfig } from '../types';
+import type {
+  JobSettings,
+  KickplateCoverage,
+  KitchenPlinthConfig,
+  PlasticKickplateConfig,
+  PlasticKickplateLine,
+  PlasticKickplatePurchase,
+} from '../types';
+
+/** Gelmar / plastic strip heights offered on the unit plinth dropdown. */
+export const PLASTIC_KICKPLATE_HEIGHTS = [100, 150] as const;
+export type PlasticKickplateHeight = (typeof PLASTIC_KICKPLATE_HEIGHTS)[number];
+
+/** Sold length of one PVC/Gelmar plinth strip (users buy whole strips only). */
+export const PLASTIC_KICKPLATE_STRIP_LENGTH_M = 3;
+
+/** Whole 3 m strips to buy for a needed run (e.g. 3.5 m → 2 strips → 6.00 m billed). */
+export function plasticKickplateStripsToBuy(neededMetres: number): {
+  neededMetres: number;
+  stripsToBuy: number;
+  billableMetres: number;
+} {
+  const needed = Math.max(0, neededMetres);
+  if (needed <= 0) return { neededMetres: 0, stripsToBuy: 0, billableMetres: 0 };
+  const stripsToBuy = Math.ceil(needed / PLASTIC_KICKPLATE_STRIP_LENGTH_M);
+  return {
+    neededMetres: needed,
+    stripsToBuy,
+    billableMetres: stripsToBuy * PLASTIC_KICKPLATE_STRIP_LENGTH_M,
+  };
+}
+
+/**
+ * Sum same product/height/price runs, then buy whole 3 m strips
+ * (e.g. 17.89 m → 6 × 3 m = 18.00 m billed).
+ */
+export function summarizePlasticKickplatePurchases(
+  lines: PlasticKickplateLine[],
+): PlasticKickplatePurchase[] {
+  const groups = new Map<string, PlasticKickplatePurchase>();
+  for (const line of lines) {
+    if (line.totalMetres <= 0) continue;
+    const key = JSON.stringify([
+      line.productName,
+      line.stripHeight,
+      line.stripWidth,
+      line.pricePerMetre,
+    ]);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.neededMetres += line.totalMetres;
+    } else {
+      groups.set(key, {
+        productName: line.productName,
+        stripHeight: line.stripHeight,
+        stripWidth: line.stripWidth,
+        pricePerMetre: line.pricePerMetre,
+        neededMetres: line.totalMetres,
+        stripsToBuy: 0,
+        billableMetres: 0,
+        subtotal: 0,
+      });
+    }
+  }
+  return Array.from(groups.values()).map((g) => {
+    const buy = plasticKickplateStripsToBuy(g.neededMetres);
+    return {
+      ...g,
+      neededMetres: Math.round(buy.neededMetres * 1000) / 1000,
+      stripsToBuy: buy.stripsToBuy,
+      billableMetres: buy.billableMetres,
+      subtotal: buy.billableMetres * g.pricePerMetre,
+    };
+  });
+}
+
+export function plasticKickplatePurchaseDetail(p: PlasticKickplatePurchase): string {
+  return (
+    `${p.neededMetres.toFixed(2)} m needed · buy ${p.stripsToBuy} × ${PLASTIC_KICKPLATE_STRIP_LENGTH_M} m strip` +
+    `${p.stripsToBuy === 1 ? '' : 's'} (${p.billableMetres.toFixed(2)} m) · ${p.stripHeight}×${p.stripWidth} mm`
+  );
+}
+
+export function isPlasticKickplateHeight(n: number): n is PlasticKickplateHeight {
+  return n === 100 || n === 150;
+}
+
+/** Snap any mm value to the nearer of 100 / 150 (ties → 100). */
+export function snapPlasticKickplateHeight(heightMm: number): PlasticKickplateHeight {
+  if (!Number.isFinite(heightMm)) return 100;
+  return Math.abs(heightMm - 150) < Math.abs(heightMm - 100) ? 150 : 100;
+}
+
+/**
+ * Keep job default `pricePerMetre` mirrored into the Gelmar height cache for the
+ * active strip height so unit 100/150 pricing has a real per-height rate.
+ */
+export function normalizePlasticKickplate(config: PlasticKickplateConfig): PlasticKickplateConfig {
+  const stripHeight = isPlasticKickplateHeight(config.stripHeight)
+    ? config.stripHeight
+    : snapPlasticKickplateHeight(config.stripHeight);
+  const map = { ...config.gelmarPricePerMetreByHeight };
+  if (
+    (map[stripHeight] == null || !Number.isFinite(map[stripHeight])) &&
+    Number.isFinite(config.pricePerMetre)
+  ) {
+    map[stripHeight] = config.pricePerMetre;
+  }
+  const pricePerMetre =
+    typeof map[stripHeight] === 'number' && Number.isFinite(map[stripHeight])
+      ? map[stripHeight]!
+      : config.pricePerMetre;
+  return {
+    ...config,
+    stripHeight,
+    pricePerMetre,
+    gelmarPricePerMetreByHeight: map,
+  };
+}
+
+/**
+ * R/m for a unit’s plastic kickplate height when Gelmar catalog is on.
+ * Uses only that height’s cached rate (seeded from job default when needed).
+ */
+export function resolveGelmarPlasticKickplatePricePerMetre(
+  config: PlasticKickplateConfig,
+  heightMm: number,
+): { stripHeight: PlasticKickplateHeight; pricePerMetre: number } {
+  const normalized = normalizePlasticKickplate(config);
+  const stripHeight = snapPlasticKickplateHeight(heightMm);
+  const cached = normalized.gelmarPricePerMetreByHeight?.[stripHeight];
+  if (typeof cached === 'number' && Number.isFinite(cached) && cached >= 0) {
+    return { stripHeight, pricePerMetre: cached };
+  }
+  // Height not in cache yet — only reuse job default when it is that same height.
+  if (normalized.stripHeight === stripHeight) {
+    return { stripHeight, pricePerMetre: normalized.pricePerMetre };
+  }
+  // Other height missing its own rate: do not silently reuse the wrong size’s R/m.
+  return { stripHeight, pricePerMetre: 0 };
+}
+
+export function withGelmarKickplatePrice(
+  config: PlasticKickplateConfig,
+  height: PlasticKickplateHeight,
+  pricePerMetre: number,
+): PlasticKickplateConfig {
+  const next: PlasticKickplateConfig = {
+    ...config,
+    gelmarPricePerMetreByHeight: {
+      ...config.gelmarPricePerMetreByHeight,
+      [height]: pricePerMetre,
+    },
+  };
+  if (config.stripHeight === height || !isPlasticKickplateHeight(config.stripHeight)) {
+    next.stripHeight = height;
+    next.pricePerMetre = pricePerMetre;
+  }
+  return next;
+}
+
+/** Gelmar-off: custom product for this unit, else match by height, else job default. */
+export function resolvePlasticKickplateProductForUnit(
+  config: PlasticKickplateConfig,
+  plinth: Pick<KitchenPlinthConfig, 'plasticKickplateProductId' | 'kickplateHeight'>,
+): {
+  productName: string;
+  stripHeight: number;
+  stripWidth: number;
+  pricePerMetre: number;
+} {
+  const byId = config.customProducts?.find((p) => p.id === plinth.plasticKickplateProductId);
+  if (byId) {
+    return {
+      productName: byId.name || config.name || 'Plastic kickplate strip',
+      stripHeight: byId.stripHeight,
+      stripWidth: byId.stripWidth,
+      pricePerMetre: byId.pricePerMetre,
+    };
+  }
+  const want = snapPlasticKickplateHeight(plinth.kickplateHeight);
+  const byHeight = config.customProducts?.find(
+    (p) => snapPlasticKickplateHeight(p.stripHeight) === want,
+  );
+  if (byHeight) {
+    return {
+      productName: byHeight.name || config.name || 'Plastic kickplate strip',
+      stripHeight: byHeight.stripHeight,
+      stripWidth: byHeight.stripWidth,
+      pricePerMetre: byHeight.pricePerMetre,
+    };
+  }
+  return {
+    productName: config.name || 'Plastic kickplate strip',
+    stripHeight: want,
+    stripWidth: config.stripWidth,
+    pricePerMetre: config.pricePerMetre,
+  };
+}
 
 /** Long side of the job sheet size (e.g. 2750 on a 2750 × 1830 board). */
 export function boardSheetLengthMm(settings: Pick<JobSettings, 'sheetWidth' | 'sheetHeight'>): number {

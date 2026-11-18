@@ -282,6 +282,11 @@ export interface PlasticKickplateProduct {
 export interface PlasticKickplateConfig {
   useGelmarCatalog?: boolean;
   customProducts?: PlasticKickplateProduct[];
+  /**
+   * Gelmar R/m by strip height (100 / 150). Used when pricing a unit’s plastic
+   * kickplate from plinth height while Gelmar catalog is on.
+   */
+  gelmarPricePerMetreByHeight?: { 100?: number; 150?: number };
   name: string;
   /** Strip profile height (mm) — e.g. 120 */
   stripHeight: number;
@@ -627,8 +632,25 @@ export interface PlasticKickplateLine {
   stripHeight: number;
   stripWidth: number;
   cupboardQty: number;
+  /** Installed / cut run needed (m) — not rounded to buy length. */
   totalMetres: number;
   pricePerMetre: number;
+  /**
+   * Money for this unit row. Quote / cost totals use job-level 3 m strip rounding
+   * (see `summarizePlasticKickplatePurchases`); unit subtotals stay needed×R/m for display.
+   */
+  subtotal: number;
+}
+
+/** One buy-group after summing same product/height/price runs and rounding up to 3 m strips. */
+export interface PlasticKickplatePurchase {
+  productName: string;
+  stripHeight: number;
+  stripWidth: number;
+  pricePerMetre: number;
+  neededMetres: number;
+  stripsToBuy: number;
+  billableMetres: number;
   subtotal: number;
 }
 
@@ -809,7 +831,10 @@ export interface CutListResult {
   hardware: HardwareItem[];
   screws: ScrewLine[];
   plasticKickplates: PlasticKickplateLine[];
+  /** Needed run metres (sum of unit lines, before 3 m strip rounding). */
   plasticKickplateTotalMetres: number;
+  /** Buy list: same product/height grouped, rounded up to whole 3 m strips. */
+  plasticKickplatePurchases: PlasticKickplatePurchase[];
   costs: CostLine[];
   /** Grain-locked parts that don't fit the sheet in the required direction. */
   sheetWarnings: string[];

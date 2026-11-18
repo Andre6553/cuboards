@@ -572,6 +572,10 @@ export function CutListView({ job }: Props) {
           {showPricingDetail && showTechnical && result.plasticKickplates.length > 0 && (
             <>
               <h3 className="section-title">Plastic kickplate</h3>
+              <p className="hint">
+                Run lengths are what you install. Buy whole 3 m strips only — the job buy list rounds each
+                height up (e.g. 3.5 m needed → 2 × 3 m strips).
+              </p>
               <div className="table-wrap">
                 <table className="data-table">
                   <thead>
@@ -581,9 +585,8 @@ export function CutListView({ job }: Props) {
                       <th>Run (mm)</th>
                       <th>Product · H×W (mm)</th>
                       <th>Cupboards</th>
-                      <th>Total (m)</th>
+                      <th>Needed (m)</th>
                       {!factory && <th>{currencySymbol}/m</th>}
-                      {!factory && <th>Subtotal</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -596,18 +599,55 @@ export function CutListView({ job }: Props) {
                         <td>{p.cupboardQty}</td>
                         <td>{p.totalMetres.toFixed(2)}</td>
                         {!factory && <td>{fmt(p.pricePerMetre)}</td>}
-                        {!factory && <td>{fmt(p.subtotal)}</td>}
                       </tr>
                     ))}
                     <tr className="total-row">
-                      <td colSpan={5}><strong>Job total</strong></td>
+                      <td colSpan={5}><strong>Needed total</strong></td>
                       <td><strong>{result.plasticKickplateTotalMetres.toFixed(2)}</strong></td>
                       {!factory && <td></td>}
-                      {!factory && <td><strong>{fmt(result.plasticKickplates.reduce((sum, line) => sum + line.subtotal, 0))}</strong></td>}
                     </tr>
                   </tbody>
                 </table>
               </div>
+              {!factory && result.plasticKickplatePurchases.length > 0 && (
+                <>
+                  <h4 className="section-title" style={{ marginTop: '1rem' }}>Buy (3 m strips)</h4>
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Product · H×W (mm)</th>
+                          <th>Needed (m)</th>
+                          <th>Strips to buy</th>
+                          <th>Billable (m)</th>
+                          <th>{currencySymbol}/m</th>
+                          <th>Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.plasticKickplatePurchases.map((p, i) => (
+                          <tr key={i}>
+                            <td>{p.productName} · {p.stripHeight} × {p.stripWidth}</td>
+                            <td>{p.neededMetres.toFixed(2)}</td>
+                            <td>{p.stripsToBuy} × 3 m</td>
+                            <td>{p.billableMetres.toFixed(2)}</td>
+                            <td>{fmt(p.pricePerMetre)}</td>
+                            <td>{fmt(p.subtotal)}</td>
+                          </tr>
+                        ))}
+                        <tr className="total-row">
+                          <td colSpan={5}><strong>Buy total</strong></td>
+                          <td>
+                            <strong>
+                              {fmt(result.plasticKickplatePurchases.reduce((sum, p) => sum + p.subtotal, 0))}
+                            </strong>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </>
           )}
 

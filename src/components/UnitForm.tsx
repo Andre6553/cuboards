@@ -92,12 +92,18 @@ import {
 } from '../lib/visibleBackPanel';
 import {
   boardSheetCrossMm,
+  isPlasticKickplateHeight,
   maxKickplatePieceRunMm,
   kickplateRunLengthMm,
   maxKickplateFrontRunMm,
   maxKickplateSideRunMm,
+  normalizePlasticKickplate,
+  PLASTIC_KICKPLATE_HEIGHTS,
+  resolveGelmarPlasticKickplatePricePerMetre,
   resolveKickplateFrontRunMm,
   resolveKickplateSideRunMm,
+  resolvePlasticKickplateProductForUnit,
+  snapPlasticKickplateHeight,
 } from '../lib/kickplateRules';
 import {
   applyKickplateEdgingToggle,
@@ -742,7 +748,23 @@ export function UnitForm({
           <div className="form-grid form-grid-4">
             <label>
               Kickplate type
-              <select value={plinth.kickplateType ?? 'wood'} onChange={(e) => setPlinth('kickplateType', e.target.value)}>
+              <select
+                value={plinth.kickplateType ?? 'wood'}
+                onChange={(e) => {
+                  const kickplateType = e.target.value as NonNullable<Unit['plinth']>['kickplateType'];
+                  const current = unit.plinth ?? defaultPlinth({ settings, materials }, unit.carcass.leftMaterialId);
+                  onChange({
+                    ...unit,
+                    plinth: {
+                      ...current,
+                      kickplateType,
+                      ...(kickplateType === 'plastic'
+                        ? { kickplateHeight: snapPlasticKickplateHeight(current.kickplateHeight) }
+                        : {}),
+                    },
+                  });
+                }}
+              >
                 {Object.entries(KICKPLATE_TYPE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
@@ -917,13 +939,29 @@ export function UnitForm({
             )}
             <label>
               Kickplate height (mm)
-              <NumberInput
-                disabled={!kickplateActive}
-                min={80}
-                max={200}
-                value={plinth.kickplateHeight}
-                onChange={(n) => setPlinth('kickplateHeight', n)}
-              />
+              {plinth.kickplateType === 'plastic' ? (
+                <select
+                  disabled={!kickplateActive}
+                  value={
+                    isPlasticKickplateHeight(plinth.kickplateHeight)
+                      ? plinth.kickplateHeight
+                      : snapPlasticKickplateHeight(plinth.kickplateHeight)
+                  }
+                  onChange={(e) => setPlinth('kickplateHeight', Number(e.target.value))}
+                >
+                  {PLASTIC_KICKPLATE_HEIGHTS.map((h) => (
+                    <option key={h} value={h}>{h} mm</option>
+                  ))}
+                </select>
+              ) : (
+                <NumberInput
+                  disabled={!kickplateActive}
+                  min={80}
+                  max={200}
+                  value={plinth.kickplateHeight}
+                  onChange={(n) => setPlinth('kickplateHeight', n)}
+                />
+              )}
             </label>
             <label className="checkbox-label">
               <input type="checkbox" checked={plinth.feetRequired !== false} onChange={(e) => setPlinth('feetRequired', e.target.checked)} />
@@ -983,9 +1021,22 @@ export function UnitForm({
                 .
               </>
             ) : (
-              <>Plastic kickplate: {kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front', plinth, settings)} mm run per cupboard
-                {unit.unitQty > 1 ? ` × ${unit.unitQty} = ${(kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front', plinth, settings) * unit.unitQty / 1000).toFixed(2)} m total` : ''}.
-                Set strip size &amp; price under Materials.</>
+              (() => {
+                const runMm = kickplateRunLengthMm(unit.width, unit.depth, plinth.kickplateCoverage ?? 'front', plinth, settings);
+                const pk = normalizePlasticKickplate(job.plasticKickplate);
+                const priced = pk.useGelmarCatalog !== false
+                  ? resolveGelmarPlasticKickplatePricePerMetre(pk, plinth.kickplateHeight)
+                  : resolvePlasticKickplateProductForUnit(pk, plinth);
+                return (
+                  <>
+                    Plastic kickplate: {runMm} mm run per cupboard
+                    {unit.unitQty > 1 ? ` × ${unit.unitQty} = ${(runMm * unit.unitQty / 1000).toFixed(2)} m total` : ''}
+                    {' '}· {priced.stripHeight} mm @ R{priced.pricePerMetre}/m
+                    {pk.useGelmarCatalog !== false ? ' (Gelmar height rate)' : ''}.
+                    {' '}Set prices under Materials.
+                  </>
+                );
+              })()
             )}
           </p>
         </CollapsibleSection>

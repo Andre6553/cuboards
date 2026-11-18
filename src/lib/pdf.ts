@@ -415,41 +415,59 @@ export async function exportCutListPdf(
 
     autoTable(doc, {
       startY: y,
-      head: factory
-        ? [['Unit', 'Coverage', 'Run (mm)', 'Product · H×W', 'Cupboards', 'Total (m)']]
-        : [['Unit', 'Coverage', 'Run (mm)', 'Product · H×W', 'Cupboards', 'Total (m)', `${curSym}/m`, 'Subtotal']],
-      body: factory
-        ? [
-            ...result.plasticKickplates.map((p) => [
-              p.unitName,
-              p.coverageLabel,
-              p.lengthMm.toString(),
-              `${p.productName} · ${p.stripHeight}×${p.stripWidth}`,
-              p.cupboardQty.toString(),
-              p.totalMetres.toFixed(2),
-            ]),
-            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2)],
-          ]
-        : [
-            ...result.plasticKickplates.map((p) => [
-              p.unitName,
-              p.coverageLabel,
-              p.lengthMm.toString(),
-              `${p.productName} · ${p.stripHeight}×${p.stripWidth}`,
-              p.cupboardQty.toString(),
-              p.totalMetres.toFixed(2),
-              fmt(p.pricePerMetre),
-              fmt(p.subtotal),
-            ]),
-            ['Job total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), '', fmt(result.plasticKickplates.reduce((sum, line) => sum + line.subtotal, 0))],
-          ],
+      head: [['Unit', 'Coverage', 'Run (mm)', 'Product · H×W', 'Cupboards', 'Needed (m)', `${curSym}/m`]],
+      body: [
+        ...result.plasticKickplates.map((p) => [
+          p.unitName,
+          p.coverageLabel,
+          p.lengthMm.toString(),
+          `${p.productName} · ${p.stripHeight}×${p.stripWidth}`,
+          p.cupboardQty.toString(),
+          p.totalMetres.toFixed(2),
+          fmt(p.pricePerMetre),
+        ]),
+        ['Needed total', '', '', '', '', result.plasticKickplateTotalMetres.toFixed(2), ''],
+      ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [45, 55, 72] },
       margin: { left: margin, right: margin },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = (doc as any).lastAutoTable.finalY + 6;
+
+    if (result.plasticKickplatePurchases.length > 0) {
+      doc.setFontSize(10);
+      doc.text('Buy (3 m strips)', margin, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [['Product · H×W', 'Needed (m)', 'Strips', 'Billable (m)', `${curSym}/m`, 'Subtotal']],
+        body: [
+          ...result.plasticKickplatePurchases.map((p) => [
+            `${p.productName} · ${p.stripHeight}×${p.stripWidth}`,
+            p.neededMetres.toFixed(2),
+            `${p.stripsToBuy} × 3 m`,
+            p.billableMetres.toFixed(2),
+            fmt(p.pricePerMetre),
+            fmt(p.subtotal),
+          ]),
+          [
+            'Buy total',
+            '',
+            '',
+            '',
+            '',
+            fmt(result.plasticKickplatePurchases.reduce((sum, p) => sum + p.subtotal, 0)),
+          ],
+        ],
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [45, 55, 72] },
+        margin: { left: margin, right: margin },
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      y = (doc as any).lastAutoTable.finalY + 8;
+    }
   }
 
   // Kickplate strips are costed in the Plastic kickplate line; keep them out of Hardware.

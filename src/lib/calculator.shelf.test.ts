@@ -83,12 +83,103 @@ describe('custom plastic kickplate pricing', () => {
     });
 
     const result = generateCutList(job);
+    // Unit rows stay needed × R/m (1 m each).
     expect(result.plasticKickplates.map(({ productName, subtotal }) => [productName, subtotal])).toEqual([
       ['Default strip', 25], ['Tall strip', 60], ['Default strip', 25],
     ]);
-    expect(result.costs.filter(({ name }) => name.endsWith('strip')).map(({ subtotal }) => subtotal)).toEqual([50, 60]);
+    // Quote buys whole 3 m strips: 2 m Default → 1×3 m @ 25; 1 m Tall → 1×3 m @ 60.
+    expect(result.plasticKickplatePurchases.map(({ productName, stripsToBuy, billableMetres, subtotal }) => [
+      productName, stripsToBuy, billableMetres, subtotal,
+    ])).toEqual([
+      ['Default strip', 1, 3, 75],
+      ['Tall strip', 1, 3, 180],
+    ]);
+    expect(result.costs.filter(({ name }) => name.endsWith('strip')).map(({ subtotal }) => subtotal)).toEqual([75, 180]);
 
     job.plasticKickplate.useGelmarCatalog = true;
+    // Default plinth height snaps to 100 mm → uses job default / seeded 100 mm rate.
     expect(generateCutList(job).plasticKickplates.map(({ subtotal }) => subtotal)).toEqual([25, 25, 25]);
+  });
+
+  it('prices Gelmar plastic lines from each unit’s 100/150 height cache', () => {
+    const job = testJob();
+    job.plasticKickplate = {
+      ...job.plasticKickplate,
+      useGelmarCatalog: true,
+      stripHeight: 100,
+      pricePerMetre: 40,
+      gelmarPricePerMetreByHeight: { 100: 40, 150: 55 },
+    };
+    job.units = [100, 150].map((kickplateHeight, index) => {
+      const unit = createDefaultUnit(job, index);
+      return {
+        ...unit,
+        width: 1000,
+        plinth: { ...unit.plinth!, kickplateType: 'plastic', kickplateHeight },
+      };
+    });
+
+    const result = generateCutList(job);
+    expect(result.plasticKickplates.map(({ stripHeight, pricePerMetre, subtotal }) => [stripHeight, pricePerMetre, subtotal])).toEqual([
+      [100, 40, 40],
+      [150, 55, 55],
+    ]);
+    // 1 m of each height → buy 1 × 3 m strip per height.
+    expect(result.plasticKickplatePurchases.map(({ stripHeight, stripsToBuy, subtotal }) => [
+      stripHeight, stripsToBuy, subtotal,
+    ])).toEqual([
+      [100, 1, 120],
+      [150, 1, 165],
+    ]);
+  });
+
+  it('rounds job plastic kickplate buy-up to whole 3 m strips (not fractional metres)', () => {
+    const job = testJob();
+    job.plasticKickplate = {
+      ...job.plasticKickplate,
+      name: 'PVC kickplate strip',
+      useGelmarCatalog: true,
+      stripHeight: 100,
+      pricePerMetre: 37.333333,
+      gelmarPricePerMetreByHeight: { 100: 37.333333, 150: 64.666667 },
+    };
+    const short = createDefaultUnit(job, 0);
+    const long = createDefaultUnit(job, 1);
+    // 900 mm @ 150 → 0.90 m needed → 1 × 3 m strip.
+    // 10 × 1789 mm @ 100 → 17.89 m needed → 6 × 3 m = 18.00 m.
+    job.units = [
+      {
+        ...short,
+        width: 900,
+        unitQty: 1,
+        plinth: { ...short.plinth!, kickplateType: 'plastic', kickplateHeight: 150 },
+      },
+      {
+        ...long,
+        width: 1789,
+        unitQty: 10,
+        plinth: { ...long.plinth!, kickplateType: 'plastic', kickplateHeight: 100 },
+      },
+    ];
+
+    const result = generateCutList(job);
+    expect(result.plasticKickplates.map(({ stripHeight, totalMetres }) => [stripHeight, Number(totalMetres.toFixed(2))])).toEqual([
+      [150, 0.9],
+      [100, 17.89],
+    ]);
+    expect(result.plasticKickplatePurchases.map(({ stripHeight, neededMetres, stripsToBuy, billableMetres }) => [
+      stripHeight,
+      Number(neededMetres.toFixed(2)),
+      stripsToBuy,
+      billableMetres,
+    ])).toEqual([
+      [150, 0.9, 1, 3],
+      [100, 17.89, 6, 18],
+    ]);
+    const kickCosts = result.costs.filter((c) => c.name === 'PVC kickplate strip');
+    expect(kickCosts.map(({ quantity, detail }) => [quantity, detail.includes('buy')])).toEqual([
+      [1, true],
+      [6, true],
+    ]);
   });
 });

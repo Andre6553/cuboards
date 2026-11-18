@@ -141,12 +141,23 @@ export function buildHardwareShoppingList(job: Job, result: CutListResult): Hard
     const row = fromScrewLine(s, isFitting ? 'fitting' : 'screw');
     if (row) addOrMerge(map, row);
   }
+  // Whole 3 m PVC/Gelmar strips (same rounding as quote costs).
+  for (const p of result.plasticKickplatePurchases ?? []) {
+    if (p.stripsToBuy <= 0) continue;
+    addOrMerge(map, {
+      description: `${p.productName} · ${p.stripHeight}×${p.stripWidth} mm`,
+      sku: '',
+      supplier: job.plasticKickplate.useGelmarCatalog !== false ? 'Gelmar' : 'Hardware store',
+      qty: p.stripsToBuy,
+      qtyUnit: 'each',
+      notes: `${p.neededMetres.toFixed(2)} m needed · buy ${p.stripsToBuy} × 3 m strip${p.stripsToBuy === 1 ? '' : 's'}`,
+    });
+  }
   const items = [...map.values()].sort((a, b) => {
     const s = a.supplier.localeCompare(b.supplier);
     if (s !== 0) return s;
     return a.description.localeCompare(b.description);
   });
-  void job;
   return items;
 }
 

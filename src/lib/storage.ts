@@ -19,6 +19,7 @@ import { defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from './spiceCu
 import { syncFloorCornerDoors } from './floorCornerRules';
 import { syncWallCornerDoors } from './wallCornerRules';
 import { kickplateEdgingFromLegacyPattern } from './kickplateEdging';
+import { normalizePlasticKickplate } from './kickplateRules';
 import { getDefaultRunnerPrices, getRunnerClearances } from './runnerCatalog';
 import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
 import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
@@ -227,7 +228,7 @@ export function migrateJob(job: Job): Job {
     ...job,
     edgingMaterials,
     masonite: { ...DEFAULT_MASONITE, ...job.masonite },
-    plasticKickplate: job.plasticKickplate ?? { ...DEFAULT_PLASTIC_KICKPLATE },
+    plasticKickplate: normalizePlasticKickplate(job.plasticKickplate ?? { ...DEFAULT_PLASTIC_KICKPLATE }),
     runnerPrices: { ...getDefaultRunnerPrices(), ...job.runnerPrices },
     hingePrices: { ...getDefaultHingePrices(), ...job.hingePrices },
     screwPrices: { ...getDefaultScrewPrices(), ...job.screwPrices },

@@ -57,6 +57,13 @@ import type {
 
 import { schedulePushUserPrefs } from '../lib/cloudPrefsPush';
 import {
+  isPlasticKickplateHeight,
+  normalizePlasticKickplate,
+  PLASTIC_KICKPLATE_HEIGHTS,
+  withGelmarKickplatePrice,
+  type PlasticKickplateHeight,
+} from '../lib/kickplateRules';
+import {
   loadCommunityMaterialsPrefs,
   saveCommunityMaterialsPrefs,
 } from '../lib/communityMaterials';
@@ -236,9 +243,20 @@ export function MaterialsForm({
   const [refreshingKickplate, setRefreshingKickplate] = useState(false);
   const [kickplateRefresh, setKickplateRefresh] = useState<GelmarRefreshUiState>(emptyGelmarRefreshUi);
   const latestKickplate = useRef<{ config: PlasticKickplateConfig; onChange: Props['onPlasticKickplateChange'] } | null>(null);
+  const kickplateDualRefreshTried = useRef(false);
   useEffect(() => {
     latestKickplate.current = { config: plasticKickplate, onChange: onPlasticKickplateChange };
     return () => { latestKickplate.current = null; };
+  }, [plasticKickplate, onPlasticKickplateChange]);
+
+  // Seed active height into the per-height map once so unit dropdown pricing has a rate.
+  useEffect(() => {
+    const normalized = normalizePlasticKickplate(plasticKickplate);
+    const before = JSON.stringify(plasticKickplate.gelmarPricePerMetreByHeight ?? {});
+    const after = JSON.stringify(normalized.gelmarPricePerMetreByHeight ?? {});
+    if (before !== after || normalized.pricePerMetre !== plasticKickplate.pricePerMetre) {
+      onPlasticKickplateChange(normalized);
+    }
   }, [plasticKickplate, onPlasticKickplateChange]);
 
   const [refreshingRunners, setRefreshingRunners] = useState(false);
@@ -330,32 +348,104 @@ export function MaterialsForm({
     }
   };
 
-  const refreshGelmarKickplate = (height: number) =>
+  const applyGelmarKickplatePrice = (
+    height: PlasticKickplateHeight,
+    pricePerMetre: number,
+    updateJobDefault: boolean,
+  ) => {
+    const latest = latestKickplate.current;
+    if (!latest || latest.config.useGelmarCatalog === false) return;
+    let next = withGelmarKickplatePrice(latest.config, height, pricePerMetre);
+    if (updateJobDefault) {
+      next = { ...next, stripHeight: height, pricePerMetre };
+    }
+    latest.onChange(next);
+    latestKickplate.current = { config: next, onChange: latest.onChange };
+  };
+
+  /** Quietly fill the other Gelmar height into the per-height cache (no UI spinner). */
+  const refreshOtherGelmarKickplateHeight = (height: PlasticKickplateHeight) => {
+    void fetchGelmarLivePrices(`/api/gelmar-kickplate?height=${height}`)
+      .then(({ prices }) => {
+        const pricePerMetre = prices.pricePerMetre;
+        if (typeof pricePerMetre !== 'number' || !Number.isFinite(pricePerMetre)) return;
+        applyGelmarKickplatePrice(height, pricePerMetre, false);
+      })
+      .catch(() => {
+        /* Primary refresh already owns the error UI. */
+      });
+  };
+
+  const refreshGelmarKickplate = (height: number, opts?: { alsoRefreshOther?: boolean }) => {
+    const h: PlasticKickplateHeight = height === 150 ? 150 : 100;
     void runGelmarRefresh({
-      apiPath: `/api/gelmar-kickplate?height=${height}`,
+      apiPath: `/api/gelmar-kickplate?height=${h}`,
       setRefreshing: setRefreshingKickplate,
       setUi: setKickplateRefresh,
-      currentPrices: { pricePerMetre: plasticKickplate.pricePerMetre },
+      currentPrices: {
+        pricePerMetre:
+          plasticKickplate.gelmarPricePerMetreByHeight?.[h] ?? plasticKickplate.pricePerMetre,
+      },
       getDefault: () => undefined,
-      formatLabel: () => `White ${height} mm plinth per metre`,
+      formatLabel: () => `White ${h} mm plinth per metre`,
       onPricesChange: ({ pricePerMetre }) => {
-        const latest = latestKickplate.current;
-        if (latest && latest.config.useGelmarCatalog !== false &&
-            latest.config.stripHeight === height &&
-            latest.config.pricePerMetre === plasticKickplate.pricePerMetre &&
-            pricePerMetre !== latest.config.pricePerMetre) {
-          latest.onChange({ ...latest.config, pricePerMetre });
-        }
+        applyGelmarKickplatePrice(h, pricePerMetre, true);
       },
     });
+    if (opts?.alsoRefreshOther !== false) {
+      refreshOtherGelmarKickplateHeight(h === 100 ? 150 : 100);
+    }
+  };
 
-  const canRefreshKickplate = plasticKickplate.stripHeight === 100 || plasticKickplate.stripHeight === 150;
+  const canRefreshKickplate = isPlasticKickplateHeight(plasticKickplate.stripHeight);
 
   const changeKickplateHeight = (stripHeight: number) => {
-    onPlasticKickplateChange({ ...plasticKickplate, stripHeight });
+    const h = isPlasticKickplateHeight(stripHeight) ? stripHeight : 100;
+    const mapped = plasticKickplate.gelmarPricePerMetreByHeight?.[h];
+    const next = normalizePlasticKickplate({
+      ...plasticKickplate,
+      stripHeight: h,
+      pricePerMetre: typeof mapped === 'number' ? mapped : plasticKickplate.pricePerMetre,
+    });
+    onPlasticKickplateChange(next);
+    if (latestKickplate.current) {
+      latestKickplate.current = { ...latestKickplate.current, config: next };
+    }
     setKickplateRefresh(emptyGelmarRefreshUi());
-    if (plasticKickplate.useGelmarCatalog !== false) refreshGelmarKickplate(stripHeight);
+    if (next.useGelmarCatalog !== false) {
+      refreshGelmarKickplate(h);
+    }
   };
+
+  const setGelmarHeightPrice = (height: PlasticKickplateHeight, pricePerMetre: number) => {
+    const next = withGelmarKickplatePrice(plasticKickplate, height, pricePerMetre);
+    onPlasticKickplateChange(next);
+    if (latestKickplate.current) {
+      latestKickplate.current = { ...latestKickplate.current, config: next };
+    }
+  };
+
+  // When Gelmar is on, fill any missing 100/150 rate once (quote needs both).
+  useEffect(() => {
+    if (plasticKickplate.useGelmarCatalog === false) {
+      kickplateDualRefreshTried.current = false;
+      return;
+    }
+    if (!canRefreshKickplate || refreshingKickplate || kickplateDualRefreshTried.current) return;
+    const map = plasticKickplate.gelmarPricePerMetreByHeight;
+    const missing = PLASTIC_KICKPLATE_HEIGHTS.some(
+      (h) => map?.[h] == null || !Number.isFinite(map[h]),
+    );
+    if (!missing) return;
+    kickplateDualRefreshTried.current = true;
+    refreshGelmarKickplate(plasticKickplate.stripHeight);
+  }, [
+    plasticKickplate.useGelmarCatalog,
+    plasticKickplate.stripHeight,
+    plasticKickplate.gelmarPricePerMetreByHeight,
+    canRefreshKickplate,
+    refreshingKickplate,
+  ]);
 
   const kickplateProducts = plasticKickplate.customProducts ?? [];
   const setKickplateProducts = (customProducts: PlasticKickplateProduct[]) =>
@@ -1611,7 +1701,17 @@ export function MaterialsForm({
             type="checkbox"
             checked={plasticKickplate.useGelmarCatalog !== false}
             disabled={refreshingKickplate}
-            onChange={(e) => onPlasticKickplateChange({ ...plasticKickplate, useGelmarCatalog: e.target.checked })}
+            onChange={(e) => {
+              const useGelmarCatalog = e.target.checked;
+              const next = { ...plasticKickplate, useGelmarCatalog };
+              onPlasticKickplateChange(next);
+              if (latestKickplate.current) {
+                latestKickplate.current = { ...latestKickplate.current, config: next };
+              }
+              if (useGelmarCatalog && isPlasticKickplateHeight(next.stripHeight)) {
+                refreshGelmarKickplate(next.stripHeight);
+              }
+            }}
           />
           Use Gelmar catalog &amp; live price refresh for plastic kickplates
         </label>
@@ -1693,7 +1793,11 @@ export function MaterialsForm({
           </>
         )}
 
-        <p className="hint">Job default for units without a selected product. Price is per linear metre.</p>
+        <p className="hint">
+          {plasticKickplate.useGelmarCatalog !== false
+            ? 'Each strip height has its own price per metre. Unit Kickplate height (100 or 150) uses that rate on the cut list and quote total.'
+            : 'Job default for units without a selected product. Price is per linear metre.'}
+        </p>
 
         <div className="form-grid form-grid-4">
 
@@ -1716,9 +1820,33 @@ export function MaterialsForm({
 
           <label>Strip width (mm)<NumberInput  value={plasticKickplate.stripWidth} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, stripWidth: n })} /></label>
 
-          <label>{priceInputLabel(settings, 'Price / metre')}<NumberInput disabled={refreshingKickplate} value={plasticKickplate.pricePerMetre} onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: n })} /></label>
-
+          {plasticKickplate.useGelmarCatalog === false && (
+            <label>
+              {priceInputLabel(settings, 'Price / metre')}
+              <NumberInput
+                disabled={refreshingKickplate}
+                value={plasticKickplate.pricePerMetre}
+                onChange={(n) => onPlasticKickplateChange({ ...plasticKickplate, pricePerMetre: n })}
+              />
+            </label>
+          )}
         </div>
+
+        {plasticKickplate.useGelmarCatalog !== false && (
+          <div className="form-grid form-grid-2" style={{ marginTop: '0.75rem' }}>
+            {PLASTIC_KICKPLATE_HEIGHTS.map((height) => (
+              <label key={height}>
+                {priceInputLabel(settings, `${height} mm · price / metre`)}
+                <NumberInput
+                  disabled={refreshingKickplate}
+                  min={0}
+                  value={plasticKickplate.gelmarPricePerMetreByHeight?.[height] ?? (plasticKickplate.stripHeight === height ? plasticKickplate.pricePerMetre : 0)}
+                  onChange={(n) => setGelmarHeightPrice(height, n)}
+                />
+              </label>
+            ))}
+          </div>
+        )}
 
       </CollapsibleSection>
 
