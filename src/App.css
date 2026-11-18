@@ -3446,3 +3446,189 @@ a.hw-shop-thumb-link {
   margin: 0.4rem 0 0;
   padding-left: 1.1rem;
 }
+
+/* Timbercity Client Cutting List (Factory format) */
+.factory-format-toggle {
+  margin-left: 0.25rem;
+}
+
+.timbercity-form-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timbercity-sheet {
+  border: 1px solid #c4c4c4;
+  background: #fff;
+  padding: 1rem 1.1rem 1.25rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.timbercity-sheet-brand-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.timbercity-sheet-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.timbercity-brand {
+  text-align: right;
+  color: #b91c1c;
+  line-height: 1.2;
+}
+
+.timbercity-brand-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.timbercity-brand-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #7f1d1d;
+}
+
+.timbercity-header-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .timbercity-header-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.timbercity-field-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  min-height: 1.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.timbercity-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #222;
+  white-space: nowrap;
+}
+
+.timbercity-value {
+  font-size: 0.85rem;
+  color: #111;
+  border-bottom: 1px solid #bbb;
+  min-height: 1.1rem;
+}
+
+.timbercity-value-fill {
+  flex: 1;
+  min-width: 6rem;
+}
+
+.timbercity-value-short {
+  width: 5rem;
+  display: inline-block;
+}
+
+.timbercity-page-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid #333;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.timbercity-tickbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.timbercity-tickbox-box {
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 1px solid #333;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.timbercity-tickbox.is-checked .timbercity-tickbox-box {
+  background: #f8fafc;
+}
+
+.timbercity-table-wrap {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.timbercity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.timbercity-table th,
+.timbercity-table td {
+  border: 1px solid #444;
+  padding: 0.28rem 0.35rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.timbercity-table th {
+  background: #f3f4f6;
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: none;
+}
+
+.timbercity-table td {
+  height: 1.55rem;
+}
+
+.timbercity-row-num {
+  width: 2rem;
+  text-align: center !important;
+  color: #555;
+  font-size: 0.72rem;
+}
+
+.timbercity-remarks {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timbercity-sheet-footer {
+  margin-top: 0.35rem;
+}
+
+.timbercity-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}

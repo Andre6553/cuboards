@@ -10,9 +10,11 @@ import type { Unit } from '../types';
 import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS, formatCutListDimensions } from '../lib/edgingCutSize';
 import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
+import { exportTimbercityCutListPdf } from '../lib/timbercityPdf';
 import { buildHardwareShoppingList } from '../lib/hardwareShopping';
 import { exportHardwareShoppingPdf } from '../lib/hardwareShoppingPdf';
 import { HardwareShoppingView } from './HardwareShoppingView';
+import { TimbercityFormView } from './TimbercityFormView';
 import { QuoteCostSummary, QuoteCostSummaryCompact } from './QuoteCostSummary';
 import { SheetMapView } from './SheetMapView';
 import { grainLabel, MIN_OFFCUT_MM, resolveSawKerfMm } from '../lib/sheetLayout';
@@ -199,10 +201,12 @@ function QuoteScopeTable({ units }: { units: Unit[] }) {
 }
 
 type CutListViewMode = CutListPdfMode | 'hardware';
+type FactoryFormat = 'cuboards' | 'timbercity';
 
 export function CutListView({ job }: Props) {
   const [mode, setMode] = useState<CutListViewMode>('full');
   const [factoryOrderSupplier, setFactoryOrderSupplier] = useState<string>('');
+  const [factoryFormat, setFactoryFormat] = useState<FactoryFormat>('cuboards');
   const factory = mode === 'factory';
   const quote = mode === 'quote';
   const hardware = mode === 'hardware';
@@ -273,7 +277,9 @@ export function CutListView({ job }: Props) {
           </h2>
           <p className="hint">
             {factory
-              ? 'Grouped by board type + edging tape. Choose a cut house to show only boards you order from them — PDF download follows the same filter.'
+              ? factoryFormat === 'timbercity'
+                ? 'Timbercity Client Cutting List — one form per board + edging, Finished Size, Length = grain. Edge Length/Width as 1/2 Long or Short. Download matches this view.'
+                : 'Cuboards factory table — grouped by board type + edging tape. Choose a cut house to filter boards; PDF matches this view.'
               : quote
                 ? 'Client-facing: scope of work and quotation total only — no supply breakdown or cut sizes.'
                 : hardware
@@ -296,6 +302,24 @@ export function CutListView({ job }: Props) {
               Hardware shopping
             </button>
           </div>
+          {factory && !hardware ? (
+            <div className="tab-bar factory-format-toggle" role="group" aria-label="Factory cut list format">
+              <button
+                type="button"
+                className={`tab ${factoryFormat === 'cuboards' ? 'active' : ''}`}
+                onClick={() => setFactoryFormat('cuboards')}
+              >
+                Cuboards
+              </button>
+              <button
+                type="button"
+                className={`tab ${factoryFormat === 'timbercity' ? 'active' : ''}`}
+                onClick={() => setFactoryFormat('timbercity')}
+              >
+                Timbercity
+              </button>
+            </div>
+          ) : null}
           {factory && !hardware && orderSuppliersOnJob.length > 0 ? (
             <label className="factory-order-supplier-filter">
               Send to cut house
@@ -323,6 +347,14 @@ export function CutListView({ job }: Props) {
                 });
                 return;
               }
+              if (factory && factoryFormat === 'timbercity') {
+                void exportTimbercityCutListPdf(job, result, {
+                  factoryOrderSupplier: factoryOrderSupplier || null,
+                }).catch((err: unknown) => {
+                  alert(err instanceof Error ? err.message : 'Could not create PDF. Check your connection and try again.');
+                });
+                return;
+              }
               void exportCutListPdf(job, result, mode, {
                 factoryOrderSupplier: factory ? factoryOrderSupplier || null : null,
               }).catch(() => {
@@ -332,7 +364,11 @@ export function CutListView({ job }: Props) {
           >
             {hardware
               ? 'Download shopping PDF'
-              : `Download ${factory ? 'factory' : quote ? 'client quote' : 'full'} PDF`}
+              : factory
+                ? factoryFormat === 'timbercity'
+                  ? 'Download Timbercity form'
+                  : 'Download factory PDF'
+                : `Download ${quote ? 'client quote' : 'full'} PDF`}
             {factory && factoryOrderSupplier ? ` (${factoryOrderSupplier})` : ''}
           </button>
         </div>
@@ -430,11 +466,13 @@ export function CutListView({ job }: Props) {
           {factory ? (
             <>
               <h3 className="section-title">
-                Cutting list
+                {factoryFormat === 'timbercity' ? 'Timbercity cutting list' : 'Cutting list'}
                 {factoryOrderSupplier ? ` — ${factoryOrderSupplier}` : ''}
               </h3>
               {factoryPieces.length === 0 ? (
                 <p className="hint">No parts assigned to this cut house. Set <strong>Order from</strong> on each board in Prices &amp; settings.</p>
+              ) : factoryFormat === 'timbercity' ? (
+                <TimbercityFormView job={job} pieces={factoryPieces} />
               ) : (
                 <FactoryCutListTable job={job} pieces={factoryPieces} />
               )}
