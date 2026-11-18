@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent, type PointerEvent } from 'react';
 import { CupboardViewer } from './CupboardViewer';
 import { defaultPlinth, BACKING_LABELS, COUNTERTOP_LABELS, CUT_SIZE_MODE_LABELS, EDGING_LABELS, DEFAULT_HINGE_PRESET_ID, isFloorCorner, isFloorUnit, isKitchenBase, isSpiceCupboard, isTallFloor, isWallCorner, KICKPLATE_COVERAGE_LABELS, KICKPLATE_EDGING_CHECKBOXES, KICKPLATE_TYPE_LABELS, MOUNT_TYPE_LABELS, mountTypesForUnitType, normalizeMountType, plinthHasKickplate, showsKickplate, UNIT_TYPE_LABELS, usesWallStyleCarcass } from '../lib/constants';
+import { resolveJobMaterialDefaults } from '../lib/jobMaterialDefaults';
 import { calcSpiceCupboardSizes, defaultSpiceCupboardConfig, resolveSpiceFrontHeightMm } from '../lib/spiceCupboardRules';
 import { useWarningChime } from '../lib/useWarningChime';
 import {
@@ -364,7 +365,8 @@ export function UnitForm({
   const showTopFillers = !cornerMount && (isFloor || wallTopFillers);
   const showCountertopType = showTopFillers && !tallFloorMount;
 
-  const defaultMat = materials[0]?.id ?? '';
+  const jobMats = resolveJobMaterialDefaults({ materials, edgingMaterials, settings });
+  const defaultMat = jobMats.carcassMaterialId || materials[0]?.id || '';
   const effectiveFillerId = resolveFillerMaterial(unit.carcass, materials);
 
   const handleSavePreset = () => {
@@ -386,9 +388,9 @@ export function UnitForm({
     const door: DoorConfig = {
       id: crypto.randomUUID(),
       qty: 1,
-      materialId: defaultMat,
+      materialId: jobMats.doorMaterialId,
       edgingPattern: '2_long_2_short',
-      edgingMaterialId: defaultEdgingForMaterial(defaultMat),
+      edgingMaterialId: jobMats.doorEdgingMaterialId,
       openingWidth: unit.width,
       openingHeight: unit.height,
       gaps,
@@ -414,8 +416,8 @@ export function UnitForm({
     const drawer: DrawerConfig = {
       id: crypto.randomUUID(),
       qty: 1,
-      boxMaterialId: defaultMat,
-      frontMaterialId: defaultMat,
+      boxMaterialId: jobMats.drawerBoxMaterialId,
+      frontMaterialId: jobMats.drawerFrontMaterialId,
       bottomType: 'masonite',
       boxHeight: 120,
       frontQty: 1,
@@ -424,8 +426,8 @@ export function UnitForm({
       openingHeight: hasDoor ? defaultDrawerOpeningHeight(unit) : equalShare,
       gaps,
       frontEdgingPattern: '2_long_2_short',
-      frontEdgingMaterialId: defaultEdgingForMaterial(defaultMat),
-      boxEdgingMaterialId: defaultEdgingForMaterial(defaultMat),
+      frontEdgingMaterialId: jobMats.drawerFrontEdgingMaterialId,
+      boxEdgingMaterialId: jobMats.drawerBoxEdgingMaterialId,
       gapToDoorMm: DEFAULT_GAP_TO_DOOR_MM,
       sideClearance: 13,
       frontClearance: 0,

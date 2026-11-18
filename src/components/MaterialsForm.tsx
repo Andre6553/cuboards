@@ -613,6 +613,155 @@ export function MaterialsForm({
 
         </div>
 
+        <h3 className="subsection-title">Default materials for new units</h3>
+        <p className="hint">
+          Used when you <strong>+ Add unit</strong> or add doors/drawers on this job. Existing units stay as they
+          are — change those by hand. Not saved to account defaults.
+        </p>
+        <div className="form-grid form-grid-4">
+          <label>
+            Visible side material
+            <select
+              value={settings.defaultVisibleSideMaterialId ?? ''}
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultVisibleSideMaterialId: e.target.value || undefined,
+                })
+              }
+            >
+              <option value="">Auto (2nd board, else 1st)</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                  {m.colour ? ` (${m.colour})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Carcass material
+            <select
+              value={settings.defaultCarcassMaterialId ?? ''}
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultCarcassMaterialId: e.target.value || undefined,
+                })
+              }
+            >
+              <option value="">Auto (1st board)</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                  {m.colour ? ` (${m.colour})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Carcass edging
+            <select
+              value={settings.defaultCarcassEdgingMaterialId ?? ''}
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultCarcassEdgingMaterialId: e.target.value || undefined,
+                })
+              }
+            >
+              <option value="">Auto (from carcass board)</option>
+              {edgingMaterials.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name} ({e.thickness} mm)
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Door material
+            <select
+              value={settings.defaultDoorMaterialId ?? ''}
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultDoorMaterialId: e.target.value || undefined,
+                })
+              }
+            >
+              <option value="">Auto (same as visible side)</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                  {m.colour ? ` (${m.colour})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Door edging
+            <select
+              value={settings.defaultDoorEdgingMaterialId ?? ''}
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultDoorEdgingMaterialId: e.target.value || undefined,
+                })
+              }
+            >
+              <option value="">Auto (from door board)</option>
+              {edgingMaterials.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name} ({e.thickness} mm)
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Drawer front material
+            <select
+              value={settings.defaultDrawerFrontMaterialId ?? ''}
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultDrawerFrontMaterialId: e.target.value || undefined,
+                })
+              }
+            >
+              <option value="">Auto (same as door)</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                  {m.colour ? ` (${m.colour})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Drawer front edging
+            <select
+              value={settings.defaultDrawerFrontEdgingMaterialId ?? ''}
+              onChange={(e) =>
+                onSettingsChange({
+                  ...settings,
+                  defaultDrawerFrontEdgingMaterialId: e.target.value || undefined,
+                })
+              }
+            >
+              <option value="">Auto (from drawer front board)</option>
+              {edgingMaterials.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name} ({e.thickness} mm)
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="hint">
+          Drawer boxes use carcass material + carcass edging. Door/drawer fronts use the door and drawer front
+          picks above.
+        </p>
+
         <datalist id="cuboards-known-suppliers">
           {knownSupplierNames.map((n) => (
             <option key={n} value={n} />

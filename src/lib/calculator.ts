@@ -82,6 +82,7 @@ import {
   usesFullHeightMelamineBack,
   bedroomWallFillerPieces,
 } from './carcassRules';
+import { resolveJobMaterialDefaults } from './jobMaterialDefaults';
 import { resolveBedroomWallSideFillerEdging, resolveBedroomWallTopFillerEdging } from './kickplateEdging';
 import {
   normalizeVisibleBackPanel,
@@ -2046,8 +2047,7 @@ export function createDefaultDrawer(unit: Unit, job: Job, materialId: string): D
 }
 
 export function createDefaultUnit(job: Job, index: number): Unit {
-  const defaultMat = job.materials[0]?.id ?? 'mat-white';
-  const visibleMat = job.materials[1]?.id ?? defaultMat;
+  const d = resolveJobMaterialDefaults(job);
   return {
     id: crypto.randomUUID(),
     name: `Unit ${index + 1}`,
@@ -2057,24 +2057,24 @@ export function createDefaultUnit(job: Job, index: number): Unit {
     depth: 560,
     unitQty: 1,
     carcass: {
-      leftMaterialId: visibleMat,
-      rightMaterialId: defaultMat,
-      leftEdgingMaterialId: job.materials.find((m) => m.id === visibleMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
-      rightEdgingMaterialId: job.materials.find((m) => m.id === defaultMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
-      bottomMaterialId: defaultMat,
-      bottomEdgingMaterialId: job.materials.find((m) => m.id === defaultMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
-      shelfMaterialId: defaultMat,
-      shelfEdgingMaterialId: job.materials.find((m) => m.id === defaultMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
-      fillerMaterialId: defaultMat,
-      fillerEdgingMaterialId: job.materials.find((m) => m.id === defaultMat)?.edgingMaterialId ?? job.edgingMaterials[0]?.id ?? '',
+      leftMaterialId: d.visibleSideMaterialId,
+      rightMaterialId: d.carcassMaterialId,
+      leftEdgingMaterialId: d.carcassEdgingMaterialId,
+      rightEdgingMaterialId: d.carcassEdgingMaterialId,
+      bottomMaterialId: d.carcassMaterialId,
+      bottomEdgingMaterialId: d.carcassEdgingMaterialId,
+      shelfMaterialId: d.carcassMaterialId,
+      shelfEdgingMaterialId: d.carcassEdgingMaterialId,
+      fillerMaterialId: d.carcassMaterialId,
+      fillerEdgingMaterialId: d.carcassEdgingMaterialId,
       shelfQty: 0,
       fillerWidth: job.settings.defaultFillerWidth,
       backingType: 'none',
-      backingMaterialId: defaultMat,
+      backingMaterialId: d.carcassMaterialId,
       countertopType: 'granite',
       mountType: 'floor',
     },
-    plinth: defaultPlinth(job, visibleMat),
+    plinth: defaultPlinth(job, d.visibleSideMaterialId),
     doors: [],
     drawers: [],
   };

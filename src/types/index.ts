@@ -227,6 +227,17 @@ export interface JobSettings {
   defaultOrderSupplier?: string;
   /** Cut-house line items on quotes (SMEL / SHB / BOOR, edging order waste) — not Gelmar hardware. */
   cutHouseCharges?: CutHouseChargeSettings;
+  /**
+   * Per-job defaults for **new** units / doors / drawers only (not account price list).
+   * Existing units are never rewritten when these change.
+   */
+  defaultVisibleSideMaterialId?: string;
+  defaultCarcassMaterialId?: string;
+  defaultCarcassEdgingMaterialId?: string;
+  defaultDoorMaterialId?: string;
+  defaultDoorEdgingMaterialId?: string;
+  defaultDrawerFrontMaterialId?: string;
+  defaultDrawerFrontEdgingMaterialId?: string;
 }
 
 /** Mossel Bay–style cut-house extras on the client quote (boards, edging order, drill). */

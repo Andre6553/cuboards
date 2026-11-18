@@ -1,4 +1,5 @@
 import { DEFAULT_CUT_HOUSE_CHARGES, DEFAULT_QUOTE_TERMS, DEFAULT_SETTINGS } from './constants';
+import { omitJobMaterialDefaultsFromSettings } from './jobMaterialDefaults';
 import {
   mergeEdgingAddOnly,
   mergeIntoMaterialCatalog,
@@ -32,12 +33,14 @@ export type PriceList = Pick<
 > & { savedAt: string };
 
 function normalizeSettingsForSave(settings: JobSettings): JobSettings {
+  // Job material defaults stay on the job only — never in account price list / Save defaults.
+  const withoutJobMats = omitJobMaterialDefaultsFromSettings(settings);
   return {
     ...DEFAULT_SETTINGS,
-    ...settings,
+    ...withoutJobMats,
     cutHouseCharges: {
       ...DEFAULT_CUT_HOUSE_CHARGES,
-      ...settings.cutHouseCharges,
+      ...withoutJobMats.cutHouseCharges,
     },
   };
 }
@@ -131,7 +134,18 @@ export function applyPriceListToJob(job: Job, list: PriceList): Job {
   const edgingMaterials = mergeById(job.edgingMaterials, list.edgingMaterials);
   mergeIntoMaterialCatalog(materials, edgingMaterials);
 
-  const settings = normalizeSettingsFromPriceList(list.settings);
+  const fromList = normalizeSettingsFromPriceList(list.settings);
+  // Keep this job's material defaults — they are never in the account price list.
+  const settings: JobSettings = {
+    ...fromList,
+    defaultVisibleSideMaterialId: job.settings.defaultVisibleSideMaterialId,
+    defaultCarcassMaterialId: job.settings.defaultCarcassMaterialId,
+    defaultCarcassEdgingMaterialId: job.settings.defaultCarcassEdgingMaterialId,
+    defaultDoorMaterialId: job.settings.defaultDoorMaterialId,
+    defaultDoorEdgingMaterialId: job.settings.defaultDoorEdgingMaterialId,
+    defaultDrawerFrontMaterialId: job.settings.defaultDrawerFrontMaterialId,
+    defaultDrawerFrontEdgingMaterialId: job.settings.defaultDrawerFrontEdgingMaterialId,
+  };
   const quoteTerms = list.quoteTerms
     ? { ...DEFAULT_QUOTE_TERMS, ...list.quoteTerms }
     : { ...DEFAULT_QUOTE_TERMS, ...job.quoteTerms };
