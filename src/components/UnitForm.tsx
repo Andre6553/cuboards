@@ -74,6 +74,7 @@ import {
   shouldAutoSelectNoFiller,
 } from '../lib/carcassRules';
 import { FillerEdgingCheckboxes } from './FillerEdgingCheckboxes';
+import { HandleAssignmentControls } from './HandleAssignmentControls';
 import { defaultBedroomWallExtra } from '../lib/extrasRules';
 import { usesBedroomExtrasForm, usesCustomExtrasForm } from '../lib/customExtrasRules';
 import { ExtraCustomPartsForm } from './ExtraCustomPartsForm';
@@ -2012,6 +2013,13 @@ export function UnitForm({
               })()}
             </label>
           </div>
+          <HandleAssignmentControls
+            job={job}
+            handle={door.handle}
+            handleCount={door.handleCount}
+            countLabel="door leaf"
+            onChange={(patch) => updateDoor(door.id, patch)}
+          />
           <h4 className="subsection-title">Door gaps (mm)</h4>
           <div className={`form-grid ${cornerMount ? 'form-grid-2' : 'form-grid-5'} door-gaps-grid`}>
             {!cornerMount && (
@@ -2325,6 +2333,13 @@ export function UnitForm({
               </label>
             )}
           </div>
+          <HandleAssignmentControls
+            job={job}
+            handle={drawer.handle}
+            handleCount={drawer.handleCount}
+            countLabel="drawer front"
+            onChange={(patch) => updateDrawer(drawer.id, patch)}
+          />
           <h4 className="subsection-title">Drawer front gaps (mm)</h4>
           <div className="form-grid form-grid-5 door-gaps-grid">
             <label>

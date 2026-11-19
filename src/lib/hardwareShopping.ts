@@ -1,5 +1,6 @@
 import type { CutListResult, HardwareItem, Job, ScrewLine } from '../types';
 import { GELMAR_CABINET_FOOT } from './footCatalog';
+import { HANDLE_CATALOG } from './handleCatalog';
 import { HINGE_CATALOG } from './hingeCatalog';
 import { RUNNER_CATALOG } from './runnerCatalog';
 import { getConnectingFittingById } from './connectingFittingCatalog';
@@ -41,6 +42,11 @@ function hingeBySku(sku: string) {
   return HINGE_CATALOG.find((h) => h.sku === sku);
 }
 
+function handleBySku(sku: string) {
+  if (!sku) return undefined;
+  return HANDLE_CATALOG.find((h) => h.sku === sku);
+}
+
 function runnerBySku(sku: string) {
   if (!sku) return undefined;
   return RUNNER_CATALOG.find((r) => r.sku === sku);
@@ -78,6 +84,12 @@ function supplierForHardware(
   if (hinge) {
     return { supplier: 'Gelmar', sku: hinge.sku ?? sku, url: hinge.url, imageUrl: hinge.imageUrl };
   }
+  const handle = handleBySku(sku);
+  if (handle || desc.includes('handle')) {
+    if (handle) {
+      return { supplier: 'Gelmar', sku: handle.sku ?? sku, url: handle.url, imageUrl: handle.imageUrl };
+    }
+  }
   const runner = runnerBySku(sku);
   if (runner) {
     return {
@@ -93,11 +105,23 @@ function supplierForHardware(
 }
 
 function notesWithoutSku(detail: string): string {
-  return detail.replace(/\s*·\s*SKU\s+[A-Za-z0-9-]+/gi, '').replace(/\s{2,}/g, ' ').trim();
+  return detail
+    .replace(/\s*·\s*SKU\s+[A-Za-z0-9-]+/gi, '')
+    // Door/front counts are cut-list context — same SKU is one shopping line.
+    .replace(/\s*·\s*\d+\/(?:door|front)\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s·\s·/g, ' · ')
+    .trim();
 }
 
+/**
+ * Same SKU = one shopping line (buy qty), even when cut-list notes differ
+ * (e.g. handle 1/door vs 1/front, hinge @ different door heights).
+ * No SKU → fall back to description + notes.
+ */
 function makeId(supplier: string, sku: string, description: string, notes: string): string {
-  return [supplier, sku || '', description, notes].join('|');
+  if (sku) return [supplier, sku, description].join('|');
+  return [supplier, '', description, notes].join('|');
 }
 
 function addOrMerge(map: Map<string, HardwareShoppingItem>, item: Omit<HardwareShoppingItem, 'id'>): void {

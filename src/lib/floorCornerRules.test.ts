@@ -41,6 +41,7 @@ function stubJob(): Job {
     plasticKickplate: { name: 'PVC', stripHeight: 100, stripWidth: 18, pricePerMetre: 45 },
     runnerPrices: {},
     hingePrices: {},
+    handlePrices: {},
     screwPrices: {},
     connectingFittingPrices: {},
     installRates: { enabled: false } as Job['installRates'],

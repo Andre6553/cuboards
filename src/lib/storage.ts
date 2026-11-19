@@ -4,6 +4,7 @@ import {
   DEFAULT_PLASTIC_KICKPLATE,
   DEFAULT_RUNNER_PRICES,
   DEFAULT_HINGE_PRICES,
+  DEFAULT_HANDLE_PRICES,
   DEFAULT_SCREW_PRICES,
   DEFAULT_CONNECTING_FITTING_PRICES,
   DEFAULT_INSTALL_RATES,
@@ -23,6 +24,7 @@ import { normalizePlasticKickplate } from './kickplateRules';
 import { EMPTY_INSTALLER, normalizeInstallerDetails } from './installerDetails';
 import { getDefaultRunnerPrices, getRunnerClearances } from './runnerCatalog';
 import { DEFAULT_HINGE_PRESET_ID, getDefaultHingePrices } from './hingeCatalog';
+import { getDefaultHandlePrices } from './handleCatalog';
 import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
 import { getDefaultScrewPrices } from './screwCatalog';
 import { normalizeMaterialSuppliers } from './materialSupplierPrices';
@@ -171,6 +173,7 @@ export function createNewJob(): Job {
     plasticKickplate: { ...DEFAULT_PLASTIC_KICKPLATE },
     runnerPrices: { ...DEFAULT_RUNNER_PRICES },
     hingePrices: { ...DEFAULT_HINGE_PRICES },
+    handlePrices: { ...DEFAULT_HANDLE_PRICES },
     screwPrices: { ...DEFAULT_SCREW_PRICES },
     connectingFittingPrices: { ...DEFAULT_CONNECTING_FITTING_PRICES },
     installRates: { ...DEFAULT_INSTALL_RATES },
@@ -234,6 +237,7 @@ export function migrateJob(job: Job): Job {
     plasticKickplate: normalizePlasticKickplate(job.plasticKickplate ?? { ...DEFAULT_PLASTIC_KICKPLATE }),
     runnerPrices: { ...getDefaultRunnerPrices(), ...job.runnerPrices },
     hingePrices: { ...getDefaultHingePrices(), ...job.hingePrices },
+    handlePrices: { ...getDefaultHandlePrices(), ...(job.handlePrices ?? {}) },
     screwPrices: { ...getDefaultScrewPrices(), ...job.screwPrices },
     connectingFittingPrices: { ...getDefaultConnectingFittingPrices(), ...job.connectingFittingPrices },
     installRates: { ...DEFAULT_INSTALL_RATES, ...job.installRates },

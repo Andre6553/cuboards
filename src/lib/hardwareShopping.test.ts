@@ -30,6 +30,39 @@ describe('hardware shopping list', () => {
     expect(formatShoppingQty(hinge!)).toBe('6 each');
   });
 
+  it('nests same handle SKU even when door vs front notes differ', () => {
+    const result = {
+      hardware: [
+        {
+          description: 'Cabinet handle',
+          qty: 36,
+          unitName: 'A',
+          detail: 'Kida Handle, White, Chrome Plated, 128mm · 1/door · SKU 8670',
+          pricePerPair: 43,
+          subtotal: 36 * 43,
+        },
+        {
+          description: 'Cabinet handle',
+          qty: 30,
+          unitName: 'B',
+          detail: 'Kida Handle, White, Chrome Plated, 128mm · 1/front · SKU 8670',
+          pricePerPair: 43,
+          subtotal: 30 * 43,
+        },
+      ],
+      screws: [],
+      plasticKickplatePurchases: [],
+    } as unknown as CutListResult;
+    const items = buildHardwareShoppingList({ id: 'j' } as Job, result);
+    const handles = items.filter((i) => i.description === 'Cabinet handle');
+    expect(handles).toHaveLength(1);
+    expect(handles[0].qty).toBe(66);
+    expect(handles[0].sku).toBe('8670');
+    expect(handles[0].subtotal).toBe(66 * 43);
+    expect(handles[0].notes).not.toMatch(/1\/door|1\/front/);
+    expect(formatShoppingQty(handles[0])).toBe('66 each');
+  });
+
   it('maps plinth corner hardware to Gelmar product page and image', () => {
     const result = {
       hardware: [

@@ -33,6 +33,7 @@ function testJob(): Job {
     },
     runnerPrices: { ...DEFAULT_RUNNER_PRICES },
     hingePrices: { ...DEFAULT_HINGE_PRICES },
+    handlePrices: {},
     screwPrices: { ...DEFAULT_SCREW_PRICES },
     connectingFittingPrices: { ...DEFAULT_CONNECTING_FITTING_PRICES },
     installRates: { ...DEFAULT_INSTALL_RATES },

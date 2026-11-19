@@ -1,5 +1,6 @@
 import type {
   ConnectingFittingPrices,
+  HandlePrices,
   HingePrices,
   Job,
   RunnerPrices,
@@ -8,11 +9,12 @@ import type {
 import { scheduleCloudPrefsPush } from './cloudPrefsPush';
 import { requireUserDataScope, userStorageKeys } from './userDataScope';
 
-export type GelmarPriceCategory = 'runners' | 'hinges' | 'screws' | 'connectingFittings';
+export type GelmarPriceCategory = 'runners' | 'hinges' | 'handles' | 'screws' | 'connectingFittings';
 
 export interface GelmarPriceSnapshot {
   runnerPrices: RunnerPrices;
   hingePrices: HingePrices;
+  handlePrices: HandlePrices;
   screwPrices: ScrewPrices;
   connectingFittingPrices: ConnectingFittingPrices;
   savedAt: string;
@@ -23,6 +25,7 @@ function emptySnapshot(): GelmarPriceSnapshot {
   return {
     runnerPrices: {},
     hingePrices: {},
+    handlePrices: {},
     screwPrices: {},
     connectingFittingPrices: {},
     savedAt: '',
@@ -61,6 +64,7 @@ export function patchGelmarCategoryPrices(
   };
   if (category === 'runners') next.runnerPrices = { ...base.runnerPrices, ...prices };
   if (category === 'hinges') next.hingePrices = { ...base.hingePrices, ...prices };
+  if (category === 'handles') next.handlePrices = { ...(base.handlePrices ?? {}), ...prices };
   if (category === 'screws') next.screwPrices = { ...base.screwPrices, ...prices };
   if (category === 'connectingFittings') {
     next.connectingFittingPrices = { ...base.connectingFittingPrices, ...prices };
@@ -76,6 +80,7 @@ export function applyGelmarSnapshotToJobPricing(job: Job): Job {
     ...job,
     runnerPrices: { ...job.runnerPrices, ...snap.runnerPrices },
     hingePrices: { ...job.hingePrices, ...snap.hingePrices },
+    handlePrices: { ...(job.handlePrices ?? {}), ...(snap.handlePrices ?? {}) },
     screwPrices: { ...job.screwPrices, ...snap.screwPrices },
     connectingFittingPrices: { ...job.connectingFittingPrices, ...snap.connectingFittingPrices },
   };

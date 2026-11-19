@@ -1,4 +1,10 @@
 import type { CustomHardwareItem, HardwarePricing, Job } from '../types';
+import type { HandleCatalogEntry } from './handleCatalog';
+import {
+  getHandleById,
+  getHandleGroups,
+  HANDLE_CATALOG,
+} from './handleCatalog';
 import type { HingeCatalogEntry } from './hingeCatalog';
 import {
   getHingeById,
@@ -16,12 +22,14 @@ export const DEFAULT_HARDWARE_PRICING: HardwarePricing = {
   useGelmarCatalog: {
     runners: true,
     hinges: true,
+    handles: true,
     screws: true,
     connectingFittings: true,
   },
   customCatalog: {
     runners: [],
     hinges: [],
+    handles: [],
     screws: [],
     connectingFittings: [],
   },
@@ -35,6 +43,7 @@ export function resolveHardwarePricing(job: Job): HardwarePricing {
       customCatalog: {
         runners: [],
         hinges: [],
+        handles: [],
         screws: [],
         connectingFittings: [],
       },
@@ -45,6 +54,7 @@ export function resolveHardwarePricing(job: Job): HardwarePricing {
     customCatalog: {
       runners: hp.customCatalog?.runners ?? [],
       hinges: hp.customCatalog?.hinges ?? [],
+      handles: hp.customCatalog?.handles ?? [],
       screws: hp.customCatalog?.screws ?? [],
       connectingFittings: hp.customCatalog?.connectingFittings ?? [],
     },
@@ -95,6 +105,17 @@ function customHingeEntry(item: CustomHardwareItem): HingeCatalogEntry {
   };
 }
 
+function customHandleEntry(item: CustomHardwareItem): HandleCatalogEntry {
+  return {
+    id: item.id,
+    name: item.description || 'Handle',
+    shortName: item.description || 'Handle',
+    category: 'custom',
+    categoryLabel: 'Your products',
+    defaultPrice: item.unitPrice,
+  };
+}
+
 export function getRunnerCatalogForJob(job: Job): RunnerCatalogEntry[] {
   if (usesGelmarCatalog(job, 'runners')) return RUNNER_CATALOG;
   return resolveHardwarePricing(job).customCatalog.runners.map(customRunnerEntry);
@@ -135,6 +156,26 @@ export function getHingeGroupsForJob(job: Job): { category: string; label: strin
     : [];
 }
 
+export function getHandleCatalogForJob(job: Job): HandleCatalogEntry[] {
+  if (usesGelmarCatalog(job, 'handles')) return HANDLE_CATALOG;
+  return resolveHardwarePricing(job).customCatalog.handles.map(customHandleEntry);
+}
+
+export function getHandleByIdForJob(job: Job, id?: string): HandleCatalogEntry | undefined {
+  if (!id) return undefined;
+  if (usesGelmarCatalog(job, 'handles')) return getHandleById(id);
+  const item = resolveHardwarePricing(job).customCatalog.handles.find((x) => x.id === id);
+  return item ? customHandleEntry(item) : undefined;
+}
+
+export function getHandleGroupsForJob(job: Job): { category: string; label: string; handles: HandleCatalogEntry[] }[] {
+  if (usesGelmarCatalog(job, 'handles')) return getHandleGroups();
+  const catalog = getHandleCatalogForJob(job);
+  return catalog.length
+    ? [{ category: 'custom', label: 'Your handle products', handles: catalog }]
+    : [];
+}
+
 export function resolveRunnerUnitPrice(job: Job, presetId: string): number {
   if (usesGelmarCatalog(job, 'runners')) {
     const entry = getRunnerById(presetId);
@@ -150,6 +191,16 @@ export function resolveHingeUnitPrice(job: Job, presetId: string): number {
     return job.hingePrices[presetId] ?? entry?.defaultPrice ?? job.hingePrices.custom ?? 0;
   }
   const item = resolveHardwarePricing(job).customCatalog.hinges.find((x) => x.id === presetId);
+  return item?.unitPrice ?? 0;
+}
+
+export function resolveHandleUnitPrice(job: Job, presetId: string): number {
+  if (usesGelmarCatalog(job, 'handles')) {
+    const entry = getHandleById(presetId);
+    const prices = job.handlePrices ?? {};
+    return prices[presetId] ?? entry?.defaultPrice ?? prices.custom ?? 0;
+  }
+  const item = resolveHardwarePricing(job).customCatalog.handles.find((x) => x.id === presetId);
   return item?.unitPrice ?? 0;
 }
 

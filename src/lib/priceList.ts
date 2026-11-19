@@ -26,6 +26,7 @@ export type PriceList = Pick<
   | 'plasticKickplate'
   | 'runnerPrices'
   | 'hingePrices'
+  | 'handlePrices'
   | 'screwPrices'
   | 'connectingFittingPrices'
   | 'installRates'
@@ -70,6 +71,7 @@ function writePriceListFromJob(job: Job): PriceList {
     plasticKickplate: job.plasticKickplate,
     runnerPrices: job.runnerPrices,
     hingePrices: job.hingePrices,
+    handlePrices: job.handlePrices,
     screwPrices: job.screwPrices,
     connectingFittingPrices: job.connectingFittingPrices,
     installRates: job.installRates,
@@ -162,6 +164,7 @@ export function applyPriceListToJob(job: Job, list: PriceList): Job {
     plasticKickplate: { ...list.plasticKickplate },
     runnerPrices: { ...job.runnerPrices, ...list.runnerPrices },
     hingePrices: { ...job.hingePrices, ...list.hingePrices },
+    handlePrices: { ...(job.handlePrices ?? {}), ...(list.handlePrices ?? {}) },
     screwPrices: { ...job.screwPrices, ...list.screwPrices },
     connectingFittingPrices: { ...job.connectingFittingPrices, ...list.connectingFittingPrices },
     installRates: { ...list.installRates },

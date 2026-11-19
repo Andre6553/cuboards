@@ -160,6 +160,7 @@ export function JobEditor({
             plasticKickplate={job.plasticKickplate}
             runnerPrices={job.runnerPrices}
             hingePrices={job.hingePrices}
+            handlePrices={job.handlePrices ?? {}}
             screwPrices={job.screwPrices}
             connectingFittingPrices={job.connectingFittingPrices}
             installRates={job.installRates}
@@ -171,6 +172,7 @@ export function JobEditor({
             onPlasticKickplateChange={(plasticKickplate) => onChange({ ...job, plasticKickplate })}
             onRunnerPricesChange={(runnerPrices) => onChange({ ...job, runnerPrices })}
             onHingePricesChange={(hingePrices) => onChange({ ...job, hingePrices })}
+            onHandlePricesChange={(handlePrices) => onChange({ ...job, handlePrices })}
             onScrewPricesChange={(screwPrices) => onChange({ ...job, screwPrices })}
             onConnectingFittingPricesChange={(connectingFittingPrices) => onChange({ ...job, connectingFittingPrices })}
             onInstallRatesChange={(installRates) => onChange({ ...job, installRates })}

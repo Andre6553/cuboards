@@ -97,6 +97,10 @@ export interface HingePrices {
   [presetId: string]: number;
 }
 
+export interface HandlePrices {
+  [presetId: string]: number;
+}
+
 export interface ScrewPrices {
   [screwId: string]: number;
 }
@@ -123,12 +127,14 @@ export interface HardwarePricing {
   useGelmarCatalog: {
     runners: boolean;
     hinges: boolean;
+    handles: boolean;
     screws: boolean;
     connectingFittings: boolean;
   };
   customCatalog: {
     runners: CustomHardwareItem[];
     hinges: CustomHardwareItem[];
+    handles: CustomHardwareItem[];
     screws: CustomHardwareItem[];
     connectingFittings: CustomHardwareItem[];
   };
@@ -192,6 +198,19 @@ export interface DoorHinge {
   customUnitPrice?: number;
 }
 
+/** Handles per door leaf or drawer front (1–3). Unset = 1. */
+export type HandleCount = 1 | 2 | 3;
+
+/**
+ * Handle product on a door or drawer.
+ * Unset or `job_default` → use `JobSettings.defaultHandleId` (inherit until override).
+ */
+export interface PartHandle {
+  type: 'preset' | 'custom' | 'job_default';
+  presetId?: string;
+  customUnitPrice?: number;
+}
+
 export interface Client {
   name: string;
   phone: string;
@@ -245,6 +264,11 @@ export interface JobSettings {
   defaultDoorEdgingMaterialId?: string;
   defaultDrawerFrontMaterialId?: string;
   defaultDrawerFrontEdgingMaterialId?: string;
+  /**
+   * Default Gelmar/custom handle for doors & drawer fronts on this job.
+   * Doors/drawers inherit until they override. Kept on the job (and Save defaults).
+   */
+  defaultHandleId?: string;
 }
 
 /** Mossel Bay–style cut-house extras on the client quote (boards, edging order, drill). */
@@ -447,6 +471,10 @@ export interface DoorConfig {
    * (2 up to 1200 mm, 4 above). Also the hinge qty on the quote.
    */
   hingeHoleCount?: number;
+  /** Handle product — unset / job_default inherits job settings default. */
+  handle?: PartHandle;
+  /** Handles per door leaf (1–3). Unset = 1. */
+  handleCount?: HandleCount;
 }
 
 export interface DrawerGaps {
@@ -480,6 +508,10 @@ export interface DrawerConfig {
   /** @deprecated Ignored — box height is set on `boxHeight`. Kept for old saved jobs. */
   frontOverhangMm?: number;
   runner: DrawerRunner;
+  /** Handle product — unset / job_default inherits job settings default. */
+  handle?: PartHandle;
+  /** Handles per drawer front (1–3). Unset = 1. */
+  handleCount?: HandleCount;
   /** Visible front opening width (mm) — set per row when unit has doors + drawers. */
   openingWidth: number;
   /** Visible front opening height (mm). */
@@ -680,6 +712,7 @@ export interface Job {
   plasticKickplate: PlasticKickplateConfig;
   runnerPrices: RunnerPrices;
   hingePrices: HingePrices;
+  handlePrices: HandlePrices;
   screwPrices: ScrewPrices;
   connectingFittingPrices: ConnectingFittingPrices;
   hardwarePricing?: HardwarePricing;

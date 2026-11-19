@@ -2,6 +2,7 @@ import type {
   ConnectingFittingPrices,
   CutHouseChargeSettings,
   EdgingMaterial,
+  HandlePrices,
   HingePrices,
   JobSettings,
   KickplateType,
@@ -18,6 +19,7 @@ import type {
 import { CUT_SIZE_MODE_LABELS } from './edgingCutSize';
 import { BRAND_RUNNER_PRESETS, getDefaultRunnerPrices } from './runnerCatalog';
 import { getDefaultHingePrices } from './hingeCatalog';
+import { getDefaultHandlePrices } from './handleCatalog';
 import { getDefaultScrewPrices } from './screwCatalog';
 import { getDefaultConnectingFittingPrices } from './connectingFittingCatalog';
 
@@ -33,6 +35,15 @@ export {
   DEFAULT_HINGE_PRESET_ID,
 } from './hingeCatalog';
 export type { HingeCatalogEntry } from './hingeCatalog';
+export {
+  getHandleById,
+  getHandleGroups,
+  getDefaultHandlePrices,
+  GELMAR_HANDLES,
+  GELMAR_HANDLES_SCRAPED_AT,
+  HANDLE_CATALOG,
+} from './handleCatalog';
+export type { HandleCatalogEntry } from './handleCatalog';
 export { getDefaultScrewPrices, getScrewById, GELMAR_SCREWS_SCRAPED_AT, SCREW_CATALOG } from './screwCatalog';
 export type { ScrewCatalogEntry } from './screwCatalog';
 export { DEFAULT_SCREW_USAGE } from './screwRules';
@@ -275,6 +286,7 @@ export const DEFAULT_MASONITE: MasoniteConfig = {
 
 export const DEFAULT_RUNNER_PRICES: RunnerPrices = getDefaultRunnerPrices();
 export const DEFAULT_HINGE_PRICES: HingePrices = getDefaultHingePrices();
+export const DEFAULT_HANDLE_PRICES: HandlePrices = getDefaultHandlePrices();
 export const DEFAULT_SCREW_PRICES: ScrewPrices = getDefaultScrewPrices();
 export const DEFAULT_CONNECTING_FITTING_PRICES: ConnectingFittingPrices = getDefaultConnectingFittingPrices();
 

@@ -22,6 +22,7 @@ import {
 } from './orderSupplier';
 import { appendSheetMapsToPdf } from './sheetMapPdf';
 import { splitQuoteCostLines } from './costSummaryGroups';
+import { nestHardwareByDetail } from './hardwareNest';
 import type { CutListGroup, CutListResult, Job } from '../types';
 
 function renderFactoryCutListTable(
@@ -471,7 +472,10 @@ export async function exportCutListPdf(
   }
 
   // Kickplate strips are costed in the Plastic kickplate line; keep them out of Hardware.
-  const hardwareRows = result.hardware.filter((h) => h.description !== 'Plastic kickplate strip');
+  // Same item + detail across units → one nested qty / total line.
+  const hardwareRows = nestHardwareByDetail(
+    result.hardware.filter((h) => h.description !== 'Plastic kickplate strip'),
+  );
   if (!factory && hardwareRows.length > 0) {
     if (y > 150) { doc.addPage(); y = margin; }
     doc.setFontSize(12);

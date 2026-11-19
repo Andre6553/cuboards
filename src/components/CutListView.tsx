@@ -11,6 +11,7 @@ import { CUT_SIZE_MODE_CUTLIST_HINT, CUT_SIZE_MODE_LABELS, formatCutListDimensio
 import { formatMoney, resolveQuoteCurrency } from '../lib/currency';
 import { exportCutListPdf, type CutListPdfMode } from '../lib/pdf';
 import { exportTimbercityCutListPdf } from '../lib/timbercityPdf';
+import { nestHardwareByDetail } from '../lib/hardwareNest';
 import { buildHardwareShoppingList } from '../lib/hardwareShopping';
 import { exportHardwareShoppingPdf } from '../lib/hardwareShoppingPdf';
 import { HardwareShoppingView } from './HardwareShoppingView';
@@ -255,7 +256,10 @@ export function CutListView({ job }: Props) {
   const hasDrawerParts = result.pieces.some((p) => p.category === 'drawer');
   const hasDrawerRunners = result.hardware.some((h) => h.description === 'Drawer runner pair');
   // Kickplate strips have their own table above; keep them out of Hardware so nothing shows twice.
-  const hardwareRows = result.hardware.filter((h) => h.description !== 'Plastic kickplate strip');
+  // Same item + detail across units → one nested line (qty + total).
+  const hardwareRows = nestHardwareByDetail(
+    result.hardware.filter((h) => h.description !== 'Plastic kickplate strip'),
+  );
   const hardwareTotal = hardwareRows.reduce((sum, h) => sum + h.subtotal, 0);
   const screwsTotal = result.screws.reduce((sum, s) => sum + s.subtotal, 0);
   const sizeMode = job.settings.cutSizeMode ?? 'final';

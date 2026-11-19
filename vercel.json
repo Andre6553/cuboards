@@ -11,6 +11,7 @@
     "api/gelmar-plinth-corner.js": { "maxDuration": 30 },
     "api/gelmar-runners.js": { "maxDuration": 60 },
     "api/gelmar-hinges.js": { "maxDuration": 60 },
+    "api/gelmar-handles.js": { "maxDuration": 120 },
     "api/gelmar-screws.js": { "maxDuration": 60 },
     "api/gelmar-connecting-fittings.js": { "maxDuration": 60 },
     "api/payfast-initiate.js": { "maxDuration": 30 },

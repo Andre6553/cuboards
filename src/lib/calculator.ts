@@ -36,6 +36,13 @@ import {
   resolveRunnerUnitPrice,
 } from './hardwarePricing';
 import { DEFAULT_HINGE_PRESET_ID } from './hingeCatalog';
+import {
+  resolveHandleCatalogEntry,
+  resolveHandleCount,
+  resolveHandlePriceEach,
+  resolvePartHandle,
+} from './handleRules';
+import type { PartHandle } from '../types';
 import { applyCutSizeMode, edgingRunMm, type LongAlong } from './edgingCutSize';
 import {
   applyKickplateCutSizeMode,
@@ -289,6 +296,39 @@ function stripSkuAndPrice(shortName: string): string {
     .split(' · ')
     .filter((bit) => !/^SKU\s/i.test(bit) && !/^R\s?\d/.test(bit))
     .join(' · ');
+}
+
+function pushHandleHardware(
+  job: Job,
+  hardware: HardwareItem[],
+  opts: {
+    handle: PartHandle | undefined;
+    handleCount: number | undefined;
+    leafOrFrontQty: number;
+    unitName: string;
+    detailSuffix: string;
+  },
+) {
+  const resolved = resolvePartHandle(opts.handle, job);
+  const entry = resolveHandleCatalogEntry(opts.handle, job);
+  if (resolved.type === 'job_default' && !entry) return;
+  if (resolved.type === 'preset' && !resolved.presetId) return;
+
+  const perPart = resolveHandleCount(opts.handleCount);
+  const qty = opts.leafOrFrontQty * perPart;
+  if (qty <= 0) return;
+
+  const priceEach = resolveHandlePriceEach(opts.handle, job);
+  const name = stripSkuAndPrice(entry?.name ?? (resolved.type === 'custom' ? 'Custom handle' : 'Handle'));
+  const skuNote = entry?.sku ? ` · SKU ${entry.sku}` : '';
+  hardware.push({
+    description: 'Cabinet handle',
+    qty,
+    unitName: opts.unitName,
+    detail: `${name} · ${perPart}/${opts.detailSuffix}${skuNote}`,
+    pricePerPair: priceEach,
+    subtotal: priceEach * qty,
+  });
 }
 
 function joinNotes(...parts: (string | undefined)[]): string {
@@ -1218,6 +1258,14 @@ function calcDoors(
       pricePerPair: priceEach,
       subtotal: priceEach * hingeQty,
     });
+
+    pushHandleHardware(job, hardware, {
+      handle: door.handle,
+      handleCount: door.handleCount,
+      leafOrFrontQty: door.qty * mult,
+      unitName: unit.name,
+      detailSuffix: 'door',
+    });
   }
 }
 
@@ -1424,6 +1472,14 @@ function calcDrawers(
       detail: `${presetName} — ${runnerLength} mm length${skuNote}`,
       pricePerPair,
       subtotal: pricePerPair * drawerMult,
+    });
+
+    pushHandleHardware(job, hardware, {
+      handle: drawer.handle,
+      handleCount: drawer.handleCount,
+      leafOrFrontQty: frontPieceQty,
+      unitName: unit.name,
+      detailSuffix: 'front',
     });
   }
 }

@@ -12,6 +12,7 @@ const files = [
   { name: 'gelmarScrews.json', listKey: 'screws' },
   { name: 'gelmarConnectingFittings.json', listKey: 'fittings' },
   { name: 'gelmarHinges.json', listKey: 'hinges' },
+  { name: 'gelmarHandles.json', listKey: 'handles' },
   { name: 'gelmarRunners.json', listKey: 'runners' },
 ];
 

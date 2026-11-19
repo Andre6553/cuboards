@@ -8,10 +8,13 @@ import {
   DEFAULT_SCREW_USAGE,
   SHEET_SIZE_PRESETS,
   GELMAR_CONNECTING_FITTINGS_SCRAPED_AT,
+  GELMAR_HANDLES_SCRAPED_AT,
   GELMAR_HINGES_SCRAPED_AT,
   GELMAR_SCRAPED_AT,
   GELMAR_SCREWS_SCRAPED_AT,
   getConnectingFittingById,
+  getHandleById,
+  getHandleGroups,
   getHingeById,
   getHingeGroups,
   getRunnerById,
@@ -42,6 +45,7 @@ import type {
   CutSizeMode,
   CustomHardwareItem,
   EdgingMaterial,
+  HandlePrices,
   HardwarePricing,
   HingePrices,
   InstallRates,
@@ -86,6 +90,7 @@ import { CollapsibleSection } from './CollapsibleSection';
 import { NumberInput } from './NumberInput';
 import { CustomHardwareEditor } from './CustomHardwareEditor';
 import { GelmarPriceRefreshPanel } from './GelmarPriceRefreshPanel';
+import { JobDefaultHandlePicker } from './JobDefaultHandlePicker';
 
 
 
@@ -102,6 +107,8 @@ interface Props {
   runnerPrices: RunnerPrices;
 
   hingePrices: HingePrices;
+
+  handlePrices: HandlePrices;
 
   screwPrices: ScrewPrices;
 
@@ -126,6 +133,8 @@ interface Props {
   onRunnerPricesChange: (prices: RunnerPrices) => void;
 
   onHingePricesChange: (prices: HingePrices) => void;
+
+  onHandlePricesChange: (prices: HandlePrices) => void;
 
   onScrewPricesChange: (prices: ScrewPrices) => void;
 
@@ -163,6 +172,8 @@ export function MaterialsForm({
 
   hingePrices,
 
+  handlePrices,
+
   screwPrices,
 
   connectingFittingPrices,
@@ -182,6 +193,8 @@ export function MaterialsForm({
   onRunnerPricesChange,
 
   onHingePricesChange,
+
+  onHandlePricesChange,
 
   onScrewPricesChange,
 
@@ -274,6 +287,9 @@ export function MaterialsForm({
   const [runnerRefresh, setRunnerRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
   const [refreshingHinges, setRefreshingHinges] = useState(false);
   const [hingeRefresh, setHingeRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
+  const [refreshingHandles, setRefreshingHandles] = useState(false);
+  const [handleRefresh, setHandleRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
+  const [handleFilter, setHandleFilter] = useState('');
   const [refreshingScrews, setRefreshingScrews] = useState(false);
   const [screwRefresh, setScrewRefresh] = useState<GelmarRefreshUiState>(() => emptyGelmarRefreshUi());
   const [refreshingFittings, setRefreshingFittings] = useState(false);
@@ -304,6 +320,12 @@ export function MaterialsForm({
     if (!h) return id;
     const category = h.categoryLabel.replace(/^Gelmar — /, '');
     return [category, h.sku ? `SKU ${h.sku}` : null, h.shortName.replace(/ · SKU \d+ · R [\d.]+$/, '')].filter(Boolean).join(' · ');
+  };
+
+  const formatHandleChangeLabel = (id: string) => {
+    const h = getHandleById(id);
+    if (!h) return id;
+    return [h.sku ? `SKU ${h.sku}` : null, h.name].filter(Boolean).join(' · ');
   };
 
   const formatScrewChangeLabel = (id: string) => {
@@ -545,6 +567,35 @@ export function MaterialsForm({
       formatLabel: formatHingeChangeLabel,
       onPricesChange: onHingePricesChange,
     });
+
+  const refreshGelmarHandles = () =>
+    void runGelmarRefresh({
+      apiPath: '/api/gelmar-handles',
+      gelmarCategory: 'handles',
+      setRefreshing: setRefreshingHandles,
+      setUi: setHandleRefresh,
+      currentPrices: handlePrices,
+      getDefault: (id) => getHandleById(id)?.defaultPrice,
+      formatLabel: formatHandleChangeLabel,
+      onPricesChange: onHandlePricesChange,
+    });
+
+  const filteredHandleGroups = useMemo(() => {
+    const q = handleFilter.trim().toLowerCase();
+    const groups = getHandleGroups();
+    if (!q) return groups;
+    return groups
+      .map((g) => ({
+        ...g,
+        handles: g.handles.filter(
+          (h) =>
+            h.name.toLowerCase().includes(q) ||
+            (h.sku ?? '').includes(q) ||
+            (h.centresMm != null && String(h.centresMm).includes(q)),
+        ),
+      }))
+      .filter((g) => g.handles.length > 0);
+  }, [handleFilter]);
 
   const refreshGelmarScrews = () =>
     void runGelmarRefresh({
@@ -815,6 +866,19 @@ export function MaterialsForm({
           </label>
 
         </div>
+
+        <h3 className="subsection-title">Default handle</h3>
+        <p className="hint">
+          Used for doors and drawer fronts on this job unless a unit picks a different handle. Browse the photo
+          catalog to choose. Saved with the job (and My default prices).
+        </p>
+        <JobDefaultHandlePicker
+          settings={settings}
+          onSettingsChange={onSettingsChange}
+          hardwarePricing={hardwarePricing}
+          handlePrices={handlePrices}
+          formatPrice={fmt}
+        />
 
         <h3 className="subsection-title">Default materials for new units</h3>
         <p className="hint">
@@ -2112,6 +2176,96 @@ export function MaterialsForm({
                           </td>
                         </tr>
                       )),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          }
+        />
+
+      </CollapsibleSection>
+
+
+
+      <CollapsibleSection title="Handle prices — price each">
+
+        <CustomHardwareEditor
+          category="handles"
+          categoryLabel="handles"
+          useGelmar={hardwarePricing.useGelmarCatalog.handles !== false}
+          onUseGelmarChange={(v) => setUseGelmar('handles', v)}
+          items={hardwarePricing.customCatalog.handles ?? []}
+          onItemsChange={(items) => setCustomCatalog('handles', items)}
+          defaultPriceUnit="each"
+          currencySymbol={currencySymbol}
+          gelmarPanel={
+            <>
+              <GelmarPriceRefreshPanel
+                snapshotScrapedAt={GELMAR_HANDLES_SCRAPED_AT}
+                liveAt={handleRefresh.liveAt}
+                refreshing={refreshingHandles}
+                onRefresh={refreshGelmarHandles}
+                note={handleRefresh.note}
+                error={handleRefresh.error}
+                changes={handleRefresh.changes}
+                checked={handleRefresh.checked}
+                formatPrice={fmt}
+                hint={
+                  <>
+                    Gelmar handles from{' '}
+                    <a href="https://www.gelmar.co.za/handles.html" target="_blank" rel="noreferrer">
+                      gelmar.co.za/handles
+                    </a>{' '}
+                    (pages 1–31). Refresh updates price each. Override for your branch. Filter to find a SKU or name.
+                  </>
+                }
+              />
+
+              <label className="field-label" style={{ display: 'block', marginBottom: '0.5rem' }}>
+                Filter handles
+                <input
+                  type="search"
+                  className="text-input"
+                  value={handleFilter}
+                  onChange={(e) => setHandleFilter(e.target.value)}
+                  placeholder="Name, SKU, or mm (e.g. 96)"
+                  style={{ display: 'block', width: '100%', maxWidth: '28rem', marginTop: '0.25rem' }}
+                />
+              </label>
+
+              <div className="table-wrap gelmar-prices">
+                <table className="data-table data-table-compact">
+                  <thead>
+                    <tr>
+                      <th>SKU</th>
+                      <th>Handle</th>
+                      <th>{ratePerUnitLabel(settings, 'each')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHandleGroups.flatMap((g) =>
+                      g.handles.map((h) => (
+                        <tr key={h.id}>
+                          <td>{h.sku ?? '—'}</td>
+                          <td>{h.name}</td>
+                          <td>
+                            <NumberInput
+                              className="price-input-inline"
+                              step={0.01}
+                              value={handlePrices[h.id] ?? h.defaultPrice}
+                              onChange={(n) => onHandlePricesChange({ ...handlePrices, [h.id]: n })}
+                            />
+                          </td>
+                        </tr>
+                      )),
+                    )}
+                    {filteredHandleGroups.every((g) => g.handles.length === 0) && (
+                      <tr>
+                        <td colSpan={3}>
+                          <span className="hint">No handles match that filter.</span>
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
