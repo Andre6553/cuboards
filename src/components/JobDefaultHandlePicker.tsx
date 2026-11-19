@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import type { HandlePrices, HardwarePricing, Job, JobSettings } from '../types';
 import { DEFAULT_INSTALL_RATES, DEFAULT_MASONITE, DEFAULT_PLASTIC_KICKPLATE } from '../lib/constants';
-import { DEFAULT_HARDWARE_PRICING, getHandleByIdForJob, resolveHandleUnitPrice } from '../lib/hardwarePricing';
+import {
+  DEFAULT_HARDWARE_PRICING,
+  getHandleByIdForJob,
+  resolveHandleUnitPrice,
+  usesGelmarCatalog,
+} from '../lib/hardwarePricing';
 import { HandlePickerDashboard } from './HandlePickerDashboard';
 
 interface Props {
@@ -48,8 +53,52 @@ export function JobDefaultHandlePicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const job = jobStub(settings, hardwarePricing, handlePrices);
-  const selected = getHandleByIdForJob(job, settings.defaultHandleId);
+  const useGelmar = usesGelmarCatalog(job, 'handles');
+  const customHandles = hardwarePricing.customCatalog?.handles ?? [];
+  const selectedId = settings.defaultHandleId ?? '';
+  const customSelectValue = customHandles.some((h) => h.id === selectedId) ? selectedId : '';
+  const selected = selectedId ? getHandleByIdForJob(job, selectedId) : undefined;
   const price = selected ? resolveHandleUnitPrice(job, selected.id) : 0;
+
+  const setDefaultHandleId = (id: string | undefined) =>
+    onSettingsChange({ ...settings, defaultHandleId: id || undefined });
+
+  if (!useGelmar) {
+    const customSelected = customSelectValue
+      ? customHandles.find((h) => h.id === customSelectValue)
+      : undefined;
+    return (
+      <div className="handle-summary handle-summary--custom">
+        <div className="handle-summary-thumb handle-summary-thumb--empty" aria-hidden>
+          {customSelected ? '—' : 'None'}
+        </div>
+        <div className="handle-summary-text" style={{ flex: '1 1 16rem' }}>
+          <label>
+            Job default handle
+            <select
+              value={customSelectValue}
+              onChange={(e) => setDefaultHandleId(e.target.value || undefined)}
+            >
+              <option value="">No Handle</option>
+              {customHandles.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.description?.trim() || 'Handle'}
+                  {h.unitPrice > 0 ? ` · ${formatPrice(h.unitPrice)}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint" style={{ margin: '0.35rem 0 0' }}>
+            {customHandles.length === 0
+              ? 'Add your own handles under Handle prices (Gelmar catalog off), then pick one here. No Handle = no handles on the cut list.'
+              : customSelected
+                ? `${formatPrice(customSelected.unitPrice)} each · used on doors and drawer fronts unless a unit overrides.`
+                : 'No Handle — this job will not add handles to Hardware.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -72,8 +121,10 @@ export function JobDefaultHandlePicker({
             </>
           ) : (
             <>
-              <div className="handle-summary-name">No default handle</div>
-              <div className="handle-summary-meta">Browse the catalog to pick one for this job.</div>
+              <div className="handle-summary-name">No Handle</div>
+              <div className="handle-summary-meta">
+                Browse the Gelmar catalog, or leave as No Handle so this job adds none.
+              </div>
             </>
           )}
         </div>
@@ -81,12 +132,8 @@ export function JobDefaultHandlePicker({
           Browse handles…
         </button>
         {selected && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => onSettingsChange({ ...settings, defaultHandleId: undefined })}
-          >
-            Clear
+          <button type="button" className="btn btn-secondary" onClick={() => setDefaultHandleId(undefined)}>
+            No Handle
           </button>
         )}
       </div>
@@ -98,7 +145,7 @@ export function JobDefaultHandlePicker({
           title="Choose job default handle"
           onCancel={() => setOpen(false)}
           onDone={(id) => {
-            onSettingsChange({ ...settings, defaultHandleId: id });
+            setDefaultHandleId(id);
             setOpen(false);
           }}
         />

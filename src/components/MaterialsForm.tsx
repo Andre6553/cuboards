@@ -869,8 +869,9 @@ export function MaterialsForm({
 
         <h3 className="subsection-title">Default handle</h3>
         <p className="hint">
-          Used for doors and drawer fronts on this job unless a unit picks a different handle. Browse the photo
-          catalog to choose. Saved with the job (and My default prices).
+          Used for doors and drawer fronts on this job unless a unit picks a different handle. With Gelmar on,
+          browse the photo catalog; with Gelmar off, pick one of your manual handles (or No Handle). Saved with
+          the job (and My default prices).
         </p>
         <JobDefaultHandlePicker
           settings={settings}
