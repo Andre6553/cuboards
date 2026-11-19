@@ -3666,7 +3666,8 @@ a.hw-shop-thumb-link {
   margin-top: 0.5rem;
 }
 
-/* —— Handle picker dashboard (full-screen) —— */
+
+/* -- Handle picker dashboard (full-screen) -- */
 .handle-picker-dashboard {
   position: fixed;
   inset: 0;
