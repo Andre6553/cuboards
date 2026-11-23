@@ -411,14 +411,15 @@ export interface CarcassConfig {
   /** Side filler short edges (along width). Empty = 0. */
   sideFillerEdgingShortCount?: 0 | 1 | 2;
   /**
-   * Bedroom wall mount only. Two strips (front and back), filler width × carcass width.
+   * Bedroom wall mount only. Optional extra top strips (tick box) — user size/qty/edging.
+   * Separate from the always-on 2 top fillers (filler width × W−2T) from `topFillerCount`.
    */
   topFillers?: boolean;
-  /** Bedroom wall top filler strip width (mm). Empty = `fillerWidth`. */
+  /** Bedroom wall optional top filler strip width (mm). Empty = `fillerWidth`. */
   topFillerWidth?: number;
-  /** Bedroom wall top filler strip length (mm). Empty = carcass width. */
+  /** Bedroom wall optional top filler strip length (mm). Empty = carcass width. */
   topFillerHeight?: number;
-  /** Bedroom wall top filler quantity. Empty = 2. */
+  /** Bedroom wall optional top filler quantity. Empty = 2. */
   topFillerQty?: number;
   /** Top filler long edges (along carcass width). Empty = 1. */
   topFillerEdgingLongCount?: 0 | 1 | 2;

@@ -30,6 +30,7 @@ Setup: `docs/supabase-auth-setup.md`. Migration `0001_auth_profiles_trial_device
 **2026-10-22:** Pricing → **30-day trial**, **R500/year** (PayFast one-off annual; `paid_until` +1 year on ITN). Existing accounts keep their current `trial_ends_at` / `paid_until`.
 
 ## Notes
+- **2026-11-23:** Bedroom + wall mount always adds **2 top fillers** (`fillerWidth` × **W−2T**) as Top filler (front/back). Optional **side fillers** / **top fillers** tick boxes still work as before (custom qty/sizes/edging).
 - **2026-11-19:** Job settings **default handle** via full-screen photo picker; doors/drawers inherit until override; handles/leaf or /front = 1–3 (default 1). Cut list Hardware lines `Cabinet handle` qty × price (shopping list too).
 - **2026-11-19:** Prices & Settings → **Handle prices — price each** (Gelmar handles catalog, pages 1–31 of gelmar.co.za/handles.html). Same pattern as cabinet hinges: live Refresh API `/api/gelmar-handles`, editable R each, My default prices + Gelmar snapshot. Filter box for the ~368 SKUs.
 - **2026-11-18:** Timbercity PDF appends **visual sheet maps** (cut preview) after the form pages; same cut-house filter as the forms. Page No on forms is `n/total` across form pages only.

@@ -58,7 +58,9 @@ export function fillersFollowSideMaterial(_carcass: CarcassConfig, _materials: M
  * Granite / stone → 2 (front + back). Wooden top → 3 (plus centre).
  * Floor + solid melamine backing: granite → 1 (front only); non-granite → 2 (front + back, no centre).
  * Wall-style carcass (pure wall + kitchen tall floor): 2 fillers, or 0 when melamine backing + No Filler.
- * Kitchen base on wall mount uses fillers like a floor unit. Bedroom wall uses optional ticks.
+ * Kitchen base on wall mount uses fillers like a floor unit.
+ * Bedroom wall: always 2 top fillers (filler width × W−2T) — same size as kitchen/wall top fillers.
+ * Optional side fillers are separate (`bedroomWallFillerPieces`).
  */
 export function topFillerCount(unit: Pick<Unit, 'type' | 'carcass'>): number {
   const mount = unit.carcass.mountType ?? 'floor';
@@ -69,6 +71,8 @@ export function topFillerCount(unit: Pick<Unit, 'type' | 'carcass'>): number {
     }
     return 2;
   }
+  // Bedroom wall: 2 top fillers (front + back) at fillerWidth × internal W.
+  if (mount === 'wall' && unit.type === 'bedroom') return 2;
   if (mount === 'wall' && unit.type !== 'kitchen_base') return 0;
   if (mount === 'floor' && (unit.carcass.backingType ?? 'none') === 'melamine') {
     return (unit.carcass.countertopType ?? 'granite') === 'granite' ? 1 : 2;
@@ -102,6 +106,7 @@ export function resolveBedroomWallSideFiller(unit: Pick<Unit, 'height' | 'carcas
   return { width, length, qty };
 }
 
+/** Optional bedroom wall top fillers (tick box). Defaults: filler width × carcass width, qty 2. */
 export function resolveBedroomWallTopFiller(unit: Pick<Unit, 'width' | 'carcass'>): {
   width: number;
   length: number;
@@ -114,7 +119,11 @@ export function resolveBedroomWallTopFiller(unit: Pick<Unit, 'width' | 'carcass'
   return { width, length, qty };
 }
 
-/** Optional bedroom wall fillers. Sizes and qty are user-typed; defaults match the old 2 × filler width × carcass. */
+/**
+ * Optional bedroom wall side/top fillers (tick boxes) — user qty, sizes, edging.
+ * In addition, bedroom wall always gets 2 standard top fillers via `topFillerCount`
+ * (filler width × W−2T as Top filler front/back).
+ */
 export function bedroomWallFillerPieces(unit: Pick<Unit, 'type' | 'width' | 'height' | 'carcass'>): {
   side: { width: number; length: number; qty: number } | null;
   top: { width: number; length: number; qty: number } | null;

@@ -68,12 +68,12 @@ describe('topFillerCount', () => {
     expect(topFillerCount(unit('bedroom', 'floor', 'wooden', 'melamine'))).toBe(2);
   });
 
-  it('does not add floor fillers on a bedroom wall unit', () => {
-    expect(topFillerCount(unit('bedroom', 'wall'))).toBe(0);
+  it('bedroom wall always gets 2 top fillers; floor bedroom still uses countertop rules', () => {
+    expect(topFillerCount(unit('bedroom', 'wall'))).toBe(2);
     expect(topFillerCount(unit('bedroom', 'floor'))).toBe(2);
   });
 
-  it('sizes bedroom wall fillers from carcass height, carcass width, and filler width', () => {
+  it('sizes optional bedroom wall side/top fillers from tick boxes (in addition to topFillerCount)', () => {
     const bedroom = {
       type: 'bedroom' as const,
       width: 1000,

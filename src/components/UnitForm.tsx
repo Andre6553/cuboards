@@ -1066,8 +1066,8 @@ export function UnitForm({
             </>
           ) : (
             <>
-              Wall mount: same carcass as a wall unit. Tick side fillers and top fillers below if you want them. No
-              kickplate or feet.
+              Wall mount: always 2 top fillers (filler width × W−2T). Tick side fillers and top fillers below for optional
+              extra strips. No kickplate or feet.
             </>
           )}
         </p>
@@ -1521,7 +1521,7 @@ export function UnitForm({
             />
             <span className="hint-inline">
               {unit.type === 'bedroom' && !isFloor
-                ? 'Used when side or top fillers are ticked'
+                ? `Always 2 × ${unit.carcass.fillerWidth} × ${unit.width - 2 * settings.thickness} mm (W−2T); tick boxes add extra strips`
                 : wallStyleCarcass
                   ? 'Front & back top fillers'
                   : unit.carcass.countertopType === 'wooden'
@@ -1655,9 +1655,8 @@ export function UnitForm({
       })()}
       {unit.type === 'bedroom' && !isFloor && (
         <p className="hint">
-          {unit.carcass.sideFillers || unit.carcass.topFillers
-            ? 'Type qty, width and height yourself. Tick No edging or 1 Long / 2 Long / 1 short / 2 short. Cut only while the filler tick boxes are on.'
-            : 'Tick side fillers and/or top fillers to add them. You set qty, both sizes, and edging.'}
+          Always on cut list: 2 × filler width × (width − 2 × board thickness) as Top filler (front/back). Tick side
+          fillers and/or top fillers for optional extra strips — set qty, sizes, and edging yourself.
         </p>
       )}
       {showTopFillers && (unit.carcass.backingType === 'melamine' || unit.carcass.countertopType === 'wooden') && (
